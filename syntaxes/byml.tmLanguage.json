@@ -19,7 +19,7 @@
       }
     },
     "list-line": {
-      "match": "^(\\s*)-(\\s+)([A-Za-z_][\\w./-]*)(\\s*)(:)(\\s*)(.*)$",
+      "match": "^(\\s*)-(\\s+)([A-Za-z_][\\w./-]*|\\d+)(\\s*)(:)(\\s*)(.*)$",
       "captures": {
         "2": { "name": "punctuation.definition.list.begin.byml" },
         "3": { "name": "entity.name.tag.byml" },
@@ -28,7 +28,7 @@
       }
     },
     "key-line": {
-      "match": "^(\\s*)([A-Za-z_][\\w./-]*)(\\s*)(:)(\\s*)(.*)$",
+      "match": "^(\\s*)([A-Za-z_][\\w./-]*|\\d+)(\\s*)(:)(\\s*)(.*)$",
       "captures": {
         "2": { "name": "entity.name.tag.byml" },
         "4": { "name": "punctuation.separator.key-value.byml" },
@@ -37,12 +37,17 @@
     },
     "inline-value": {
       "patterns": [
+        { "include": "#msbt-cmd" },
         { "include": "#number" },
         { "include": "#boolean" },
         { "include": "#null" },
         { "include": "#quoted-string" },
         { "include": "#path-string" }
       ]
+    },
+    "msbt-cmd": {
+      "match": "\\{cmd:[^}]+\\}",
+      "name": "constant.other.tag.byml"
     },
     "number": {
       "match": "(?<![\\w./-])(-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)(?![\\w./-])",

@@ -1,7 +1,7 @@
 {
   "name": "totk-vscode",
   "displayName": "totk-vscode",
-  "description": "Edits TOTK SARC and BYML files",
+  "description": "Edits TOTK SARC archives, BYML, and MSBT files",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.120.0"
@@ -12,6 +12,7 @@
   "activationEvents": [
     "onStartupFinished",
     "workspaceContains:**/*.pack",
+    "workspaceContains:**/*.sarc",
     "onFileSystem:sarc",
     "onCommand:totk-editor.openPack"
   ],
@@ -46,6 +47,16 @@
           "light": "./icons/bgyml.svg",
           "dark": "./icons/bgyml.svg"
         }
+      },
+      {
+        "id": "msbt",
+        "extensions": [".msbt"],
+        "aliases": ["MSBT", "msbt"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/msbt.svg",
+          "dark": "./icons/msbt.svg"
+        }
       }
     ],
     "grammars": [
@@ -58,18 +69,25 @@
         "language": "bgyml",
         "scopeName": "source.byml",
         "path": "./syntaxes/byml.tmLanguage.json"
+      },
+      {
+        "language": "msbt",
+        "scopeName": "source.byml",
+        "path": "./syntaxes/byml.tmLanguage.json"
       }
     ],
     "commands": [
       {
         "command": "totk-editor.openPack",
-        "title": "TOTK: Open Pack File"
+        "title": "TOTK: Open SARC Archive"
       }
     ],
     "configurationDefaults": {
       "material-icon-theme.files.associations": {
         "**.pack": "package",
-        "**.pack.zs": "package"
+        "**.pack.zs": "package",
+        "**.sarc": "package",
+        "**.sarc.zs": "package"
       },
       "[byml]": {
         "editor.insertSpaces": true,
@@ -117,6 +135,51 @@
         }
       },
       "[bgyml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.tokenColorCustomizations": {
+          "textMateRules": [
+            {
+              "scope": [
+                "entity.name.tag.byml",
+                "source.byml entity.name.tag"
+              ],
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": [
+                "string.unquoted.byml",
+                "string.quoted.double.byml",
+                "source.byml string.unquoted",
+                "source.byml string.quoted.double"
+              ],
+              "settings": { "foreground": "#CE9178" }
+            },
+            {
+              "scope": [
+                "constant.numeric.byml",
+                "source.byml constant.numeric"
+              ],
+              "settings": { "foreground": "#B5CEA8" }
+            },
+            {
+              "scope": [
+                "constant.language.boolean.byml",
+                "constant.language.null.byml"
+              ],
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": [
+                "punctuation.definition.list.begin.byml",
+                "punctuation.separator.key-value.byml"
+              ],
+              "settings": { "foreground": "#D4D4D4" }
+            }
+          ]
+        }
+      },
+      "[msbt]": {
         "editor.insertSpaces": true,
         "editor.tabSize": 2,
         "editor.tokenColorCustomizations": {

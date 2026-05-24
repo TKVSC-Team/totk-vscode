@@ -3,14 +3,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFileSync } from 'child_process';
 
-const PACK_FILE_PATTERN = /\.pack(\.zs)?$/i;
+const ARCHIVE_FILE_PATTERN = /\.(pack|sarc)(\.zs)?$/i;
 
-function isPackFile(filePath: string): boolean {
-    return PACK_FILE_PATTERN.test(filePath);
+function isArchiveFile(filePath: string): boolean {
+    return ARCHIVE_FILE_PATTERN.test(filePath);
 }
 
-function pathContainsPack(filePath: string): boolean {
-    return /\.pack(\.zs)?/i.test(filePath);
+function pathContainsArchive(filePath: string): boolean {
+    return /\.(pack|sarc)(\.zs)?/i.test(filePath);
 }
 
 function toSarcUri(fileUri: vscode.Uri): vscode.Uri {
@@ -70,7 +70,7 @@ class SarcProvider implements vscode.FileSystemProvider {
     }
 
     private getPhysicalPath(fsPath: string): string {
-        const match = fsPath.match(/(.*\.pack(\.zs)?)/i);
+        const match = fsPath.match(/(.*\.(pack|sarc)(\.zs)?)/i);
         return match ? match[1] : fsPath;
     }
 
@@ -84,7 +84,7 @@ class SarcProvider implements vscode.FileSystemProvider {
     }
 
     private isOnDisk(fsPath: string): boolean {
-        return !pathContainsPack(fsPath);
+        return !pathContainsArchive(fsPath);
     }
 
     private listDiskDirectory(dirPath: string): [string, vscode.FileType][] {
@@ -97,7 +97,7 @@ class SarcProvider implements vscode.FileSystemProvider {
             if (entry.isDirectory()) {
                 return [entry.name, vscode.FileType.Directory] as [string, vscode.FileType];
             }
-            if (isPackFile(entryPath)) {
+            if (isArchiveFile(entryPath)) {
                 return [entry.name, vscode.FileType.Directory] as [string, vscode.FileType];
             }
             return [entry.name, vscode.FileType.File] as [string, vscode.FileType];
@@ -119,7 +119,7 @@ class SarcProvider implements vscode.FileSystemProvider {
             };
         }
 
-        if (isPackFile(diskPath)) {
+        if (isArchiveFile(diskPath)) {
             return {
                 type: vscode.FileType.Directory,
                 ctime: stat.ctimeMs,
@@ -318,25 +318,27 @@ export function activate(context: vscode.ExtensionContext) {
         }),
     );
 
-    const openPack = vscode.commands.registerCommand('totk-editor.openPack', async () => {
+    const openArchive = vscode.commands.registerCommand('totk-editor.openPack', async () => {
         const fileUri = await vscode.window.showOpenDialog({
             canSelectMany: false,
-            filters: { 'Pack Files': ['pack', 'zs'] },
+            filters: {
+                'SARC Archives': ['pack', 'sarc', 'zs'],
+            },
         });
 
         if (fileUri && fileUri[0]) {
-            const packPath = fileUri[0].fsPath;
-            const sarcUri = toSarcUri(vscode.Uri.file(packPath));
+            const archivePath = fileUri[0].fsPath;
+            const sarcUri = toSarcUri(vscode.Uri.file(archivePath));
 
             vscode.workspace.updateWorkspaceFolders(
                 vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders.length : 0,
                 null,
-                { uri: sarcUri, name: path.basename(packPath) },
+                { uri: sarcUri, name: path.basename(archivePath) },
             );
         }
     });
 
-    context.subscriptions.push(openPack);
+    context.subscriptions.push(openArchive);
 }
 
 export function deactivate() { }

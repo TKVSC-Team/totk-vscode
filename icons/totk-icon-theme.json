@@ -8,24 +8,35 @@
     },
     "_totk_bgyml": {
       "iconPath": "./bgyml.svg"
+    },
+    "_totk_msbt": {
+      "iconPath": "./msbt.svg"
     }
   },
   "folderNames": {
     "*.pack": "_totk_pack",
-    "*.pack.zs": "_totk_pack"
+    "*.pack.zs": "_totk_pack",
+    "*.sarc": "_totk_pack",
+    "*.sarc.zs": "_totk_pack"
   },
   "folderNamesExpanded": {
     "*.pack": "_totk_pack",
-    "*.pack.zs": "_totk_pack"
+    "*.pack.zs": "_totk_pack",
+    "*.sarc": "_totk_pack",
+    "*.sarc.zs": "_totk_pack"
   },
   "fileExtensions": {
     "pack": "_totk_pack",
     "pack.zs": "_totk_pack",
+    "sarc": "_totk_pack",
+    "sarc.zs": "_totk_pack",
     "byml": "_totk_byml",
-    "bgyml": "_totk_bgyml"
+    "bgyml": "_totk_bgyml",
+    "msbt": "_totk_msbt"
   },
   "languageIds": {
     "byml": "_totk_byml",
-    "bgyml": "_totk_bgyml"
+    "bgyml": "_totk_bgyml",
+    "msbt": "_totk_msbt"
   }
 }
