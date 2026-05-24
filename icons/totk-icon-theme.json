@@ -1,0 +1,31 @@
+{
+  "iconDefinitions": {
+    "_totk_pack": {
+      "iconPath": "./pack.svg"
+    },
+    "_totk_byml": {
+      "iconPath": "./byml.svg"
+    },
+    "_totk_bgyml": {
+      "iconPath": "./bgyml.svg"
+    }
+  },
+  "folderNames": {
+    "*.pack": "_totk_pack",
+    "*.pack.zs": "_totk_pack"
+  },
+  "folderNamesExpanded": {
+    "*.pack": "_totk_pack",
+    "*.pack.zs": "_totk_pack"
+  },
+  "fileExtensions": {
+    "pack": "_totk_pack",
+    "pack.zs": "_totk_pack",
+    "byml": "_totk_byml",
+    "bgyml": "_totk_bgyml"
+  },
+  "languageIds": {
+    "byml": "_totk_byml",
+    "bgyml": "_totk_bgyml"
+  }
+}

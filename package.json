@@ -1,0 +1,192 @@
+{
+  "name": "totk-vscode",
+  "displayName": "totk-vscode",
+  "description": "Edits TOTK SARC and BYML files",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.120.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:**/*.pack",
+    "onFileSystem:sarc",
+    "onCommand:totk-editor.openPack"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "iconThemes": [
+      {
+        "id": "totk-icons",
+        "path": "./icons/totk-icon-theme.json",
+        "extends": {
+          "all": true
+        }
+      }
+    ],
+    "languages": [
+      {
+        "id": "byml",
+        "extensions": [".byml"],
+        "aliases": ["BYML", "byml"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/byml.svg",
+          "dark": "./icons/byml.svg"
+        }
+      },
+      {
+        "id": "bgyml",
+        "extensions": [".bgyml"],
+        "aliases": ["Binary BYML", "bgyml"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/bgyml.svg",
+          "dark": "./icons/bgyml.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "byml",
+        "scopeName": "source.byml",
+        "path": "./syntaxes/byml.tmLanguage.json"
+      },
+      {
+        "language": "bgyml",
+        "scopeName": "source.byml",
+        "path": "./syntaxes/byml.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "totk-editor.openPack",
+        "title": "TOTK: Open Pack File"
+      }
+    ],
+    "configurationDefaults": {
+      "material-icon-theme.files.associations": {
+        "**.pack": "package",
+        "**.pack.zs": "package"
+      },
+      "[byml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.tokenColorCustomizations": {
+          "textMateRules": [
+            {
+              "scope": [
+                "entity.name.tag.byml",
+                "source.byml entity.name.tag"
+              ],
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": [
+                "string.unquoted.byml",
+                "string.quoted.double.byml",
+                "source.byml string.unquoted",
+                "source.byml string.quoted.double"
+              ],
+              "settings": { "foreground": "#CE9178" }
+            },
+            {
+              "scope": [
+                "constant.numeric.byml",
+                "source.byml constant.numeric"
+              ],
+              "settings": { "foreground": "#B5CEA8" }
+            },
+            {
+              "scope": [
+                "constant.language.boolean.byml",
+                "constant.language.null.byml"
+              ],
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": [
+                "punctuation.definition.list.begin.byml",
+                "punctuation.separator.key-value.byml"
+              ],
+              "settings": { "foreground": "#D4D4D4" }
+            }
+          ]
+        }
+      },
+      "[bgyml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.tokenColorCustomizations": {
+          "textMateRules": [
+            {
+              "scope": [
+                "entity.name.tag.byml",
+                "source.byml entity.name.tag"
+              ],
+              "settings": { "foreground": "#9CDCFE" }
+            },
+            {
+              "scope": [
+                "string.unquoted.byml",
+                "string.quoted.double.byml",
+                "source.byml string.unquoted",
+                "source.byml string.quoted.double"
+              ],
+              "settings": { "foreground": "#CE9178" }
+            },
+            {
+              "scope": [
+                "constant.numeric.byml",
+                "source.byml constant.numeric"
+              ],
+              "settings": { "foreground": "#B5CEA8" }
+            },
+            {
+              "scope": [
+                "constant.language.boolean.byml",
+                "constant.language.null.byml"
+              ],
+              "settings": { "foreground": "#569CD6" }
+            },
+            {
+              "scope": [
+                "punctuation.definition.list.begin.byml",
+                "punctuation.separator.key-value.byml"
+              ],
+              "settings": { "foreground": "#D4D4D4" }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.120.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.27.3",
+    "eslint": "^9.39.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  }
+}

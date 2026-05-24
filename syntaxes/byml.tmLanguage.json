@@ -1,0 +1,68 @@
+{
+  "name": "byml",
+  "scopeName": "source.byml",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#bare-dash" },
+    { "include": "#list-line" },
+    { "include": "#key-line" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "(#.*)$",
+      "name": "comment.line.number-sign.byml"
+    },
+    "bare-dash": {
+      "match": "^(\\s*)-(\\s*)$",
+      "captures": {
+        "2": { "name": "punctuation.definition.list.begin.byml" }
+      }
+    },
+    "list-line": {
+      "match": "^(\\s*)-(\\s+)([A-Za-z_][\\w./-]*)(\\s*)(:)(\\s*)(.*)$",
+      "captures": {
+        "2": { "name": "punctuation.definition.list.begin.byml" },
+        "3": { "name": "entity.name.tag.byml" },
+        "5": { "name": "punctuation.separator.key-value.byml" },
+        "7": { "patterns": [{ "include": "#inline-value" }] }
+      }
+    },
+    "key-line": {
+      "match": "^(\\s*)([A-Za-z_][\\w./-]*)(\\s*)(:)(\\s*)(.*)$",
+      "captures": {
+        "2": { "name": "entity.name.tag.byml" },
+        "4": { "name": "punctuation.separator.key-value.byml" },
+        "6": { "patterns": [{ "include": "#inline-value" }] }
+      }
+    },
+    "inline-value": {
+      "patterns": [
+        { "include": "#number" },
+        { "include": "#boolean" },
+        { "include": "#null" },
+        { "include": "#quoted-string" },
+        { "include": "#path-string" }
+      ]
+    },
+    "number": {
+      "match": "(?<![\\w./-])(-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)(?![\\w./-])",
+      "name": "constant.numeric.byml"
+    },
+    "boolean": {
+      "match": "(?<![\\w./-])(true|false)(?![\\w./-])",
+      "name": "constant.language.boolean.byml"
+    },
+    "null": {
+      "match": "(?<![\\w./-])(null)(?![\\w./-])",
+      "name": "constant.language.null.byml"
+    },
+    "quoted-string": {
+      "match": "\"(?:\\\\.|[^\"\\\\])*\"",
+      "name": "string.quoted.double.byml"
+    },
+    "path-string": {
+      "match": "[A-Za-z_][\\w./-]*",
+      "name": "string.unquoted.byml"
+    }
+  }
+}
