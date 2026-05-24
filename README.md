@@ -80,7 +80,7 @@ npm install
 npm run package:vsix
 ```
 
-That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`). Send that file to anyone using VS Code or Cursor.
+That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`). This can be used in VSCode or Cursor.
 
 **Install on another machine**
 
