@@ -29,3 +29,7 @@
 - - Material Animations
 - - Node-Based formats
 - - BFRES Family (separate icons)
+
+## Node Editor
+- Node colouring ✅
+-

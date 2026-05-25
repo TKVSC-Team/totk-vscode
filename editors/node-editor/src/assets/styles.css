@@ -1,1 +1,210 @@
 @import "tailwindcss";
+
+.node-editor-root {
+  width: 100vw;
+  height: 100vh;
+  background: #0f1118;
+}
+
+.node-editor-toolbar {
+  position: absolute;
+  z-index: 20;
+  top: 10px;
+  right: 10px;
+}
+
+.node-editor-title {
+  position: absolute;
+  z-index: 20;
+  top: 10px;
+  left: 12px;
+  color: #c9d1d9;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.ainb-node-card {
+  width: 320px;
+  border-radius: 8px;
+  border: 2px solid #4f5b77;
+  background: rgba(24, 28, 40, 0.86);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  color: #ebeff8;
+  padding: 8px 10px;
+  max-height: 420px;
+  overflow: visible;
+}
+
+.ainb-node-blue {
+  border-color: #4a8dff;
+}
+
+.ainb-node-red {
+  border-color: #d74b4b;
+}
+
+.ainb-node-green {
+  border-color: #41c76a;
+}
+
+.ainb-node-brown {
+  border-color: #b27a4a;
+}
+
+.ainb-node-purple {
+  border-color: #9a63d8;
+}
+
+.ainb-node-gray {
+  border-color: #8b95a7;
+}
+
+.ainb-node-notimplemented {
+  border-color: #f08b3e;
+}
+
+.ainb-node-id {
+  font-size: 10px;
+  color: #8ea0c4;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ainb-node-title {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ainb-node-type {
+  font-size: 11px;
+  color: #9bb1d9;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ainb-node-tags {
+  font-size: 10px;
+  color: #b6bfd2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ainb-sections {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+  max-height: 300px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.ainb-pin-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ainb-pin-column {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ainb-pin-row {
+  position: relative;
+  font-size: 10px;
+  color: #d8deeb;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ainb-pin-row-left {
+  padding-left: 10px;
+}
+
+.ainb-pin-row-right {
+  justify-content: flex-end;
+  padding-right: 10px;
+  text-align: right;
+}
+
+.ainb-pin-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ainb-pin-linked .ainb-pin-text {
+  color: #f1f4fb;
+}
+
+.ainb-pin-handle-left {
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.ainb-pin-handle-right {
+  right: -10px;
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.ainb-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 4px;
+}
+
+.ainb-section-title {
+  font-size: 10px;
+  color: #a8b4cf;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.ainb-section-entry {
+  font-size: 10px;
+  color: #e5e9f2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ainb-handle {
+  width: 8px;
+  height: 8px;
+  background: #8aa2d0;
+  border: none;
+  position: absolute;
+}
+
+.react-flow__edge path {
+  transition: stroke 120ms ease, stroke-width 120ms ease, filter 120ms ease;
+}
+
+.react-flow__edge.selected path {
+  stroke: rgba(255, 210, 86, 0.98) !important;
+  stroke-width: 2.7 !important;
+  filter: drop-shadow(0 0 2px rgba(255, 210, 86, 0.45));
+}
