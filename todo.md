@@ -1,3 +1,4 @@
+# Mind
 - CTRL & Shift Click
 - Nested archives
 - Look into playing audio
@@ -9,3 +10,8 @@
 - blarc support
 - bntx support
 - tkmm options
+
+# 5th
+- organize repo
+- abstract editable files into configs
+- ainb file handling

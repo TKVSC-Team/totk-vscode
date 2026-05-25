@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 let baseExtensions: Set<string> | undefined;
 
 export function initAampExtensions(extensionPath: string): void {
-    const jsonPath = path.join(extensionPath, 'aamp-extensions.json');
+    const jsonPath = path.join(extensionPath, 'config', 'aamp-extensions.json');
     const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8')) as string[];
     baseExtensions = new Set(parsed.map((ext) => ext.toLowerCase()));
 }

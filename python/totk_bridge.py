@@ -213,6 +213,8 @@ def _file_kind(logical_path: str, file_data: bytes | None = None, romfs_path: st
         return 'aamp'
     if is_xlnk_extension(logical_path):
         return 'xlnk'
+    if lower.endswith('.ainb') or lower.endswith('.ainb.zs'):
+        return 'ainb'
     if file_data is not None:
         try:
             data, _, _ = decompress_container(file_data, logical_path, romfs_path)
@@ -243,6 +245,11 @@ def read_file_content(file_data: bytes, logical_path: str, sarc=None, romfs_path
         return read_baev_content_disk(logical_path, romfs_path)
     if kind == 'xlnk':
         return read_xlnk_content(file_data, logical_path, romfs_path)
+    if kind == 'ainb':
+        import subprocess, shutil
+        bin_path = shutil.which('ainb')
+        result = subprocess.run([bin_path, logical_path], capture_output=True, text=True, check=True)
+        return result.stdout
     return (
         f'<Binary Data: {len(file_data)} bytes. '
         'Editable types: .byml, .bgyml, .msbt, .asb, .baev, .belnk, .bslnk, '
@@ -290,6 +297,8 @@ def write_file_content(logical_path: str, editor_text: str, sarc, is_sarc_compre
         writer = oead.SarcWriter.from_sarc(sarc)
         writer.files[logical_path] = new_bytes
         save_sarc(archive_path, writer.write()[1], is_sarc_compressed)
+    elif kind == 'ainb':
+        raise ValueError('AINB writing is not yet supported')
     else:
         raise ValueError(f'Cannot write file type: {logical_path}')
 

@@ -39,6 +39,7 @@ import {
     formatExternalToolPrompt,
     registerExternalToolSupport,
 } from './externalTools';
+import { getCoreExtensions, initCoreFsExtensions } from './coreFsExtensions';
 
 function shouldOfferExternalToolPrompt(content: string): boolean {
     return content.startsWith('<Binary Data:') || content.startsWith('Error reading file:');
@@ -431,12 +432,13 @@ class SarcProvider implements vscode.FileSystemProvider {
 
 export async function activate(context: vscode.ExtensionContext) {
     initAampExtensions(context.extensionPath);
+    initCoreFsExtensions(context.extensionPath);
     console.log('TOTK Editor is now active!');
 
     registerSyntaxColorSync(context);
     registerDocumentLanguageModes(context);
 
-    const bridgePath = path.join(context.extensionPath, 'totk_bridge.py');
+    const bridgePath = path.join(context.extensionPath, 'python', 'totk_bridge.py');
     const getPython = () => getCachedPythonExecutable() ?? '';
 
     const sarcProvider = new SarcProvider(bridgePath, getPython);
@@ -535,18 +537,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const openEditableFile = vscode.commands.registerCommand('totk-editor.openEditableFile', async () => {
         const aampFilterExtensions = [...getAampExtensions()];
+        const coreFilterExtensions = Object.keys(getCoreExtensions());
         const fileUri = await vscode.window.showOpenDialog({
             canSelectMany: false,
             filters: {
                 'TOTK Files': [
-                    'byml',
-                    'bgyml',
-                    'msbt',
-                    'asb',
-                    'baev',
+                    ...coreFilterExtensions,
                     'zs',
                     ...aampFilterExtensions,
-                ],
+                ]
             },
         });
 

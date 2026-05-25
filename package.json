@@ -59,7 +59,7 @@
           "BYML",
           "byml"
         ],
-        "configuration": "./language-configuration.json",
+        "configuration": "./config/language-configuration.json",
         "icon": {
           "light": "./icons/byml.svg",
           "dark": "./icons/byml.svg"
@@ -74,7 +74,7 @@
           "Binary BYML",
           "bgyml"
         ],
-        "configuration": "./language-configuration.json",
+        "configuration": "./config/language-configuration.json",
         "icon": {
           "light": "./icons/bgyml.svg",
           "dark": "./icons/bgyml.svg"
@@ -89,7 +89,7 @@
           "MSBT",
           "msbt"
         ],
-        "configuration": "./language-configuration.json",
+        "configuration": "./config/language-configuration.json",
         "icon": {
           "light": "./icons/msbt.svg",
           "dark": "./icons/msbt.svg"
@@ -143,6 +143,18 @@
           "light": "./icons/xlnk.svg",
           "dark": "./icons/xlnk.svg"
         }
+      },
+      {
+        "id": "ainb",
+        "extensions": [
+          ".ainb",
+          ".ainb.zs"
+        ],
+        "aliases": [
+          "AINB",
+          "ainb"
+        ],
+        "configuration": "./config/language-configuration.json"
       }
     ],
     "grammars": [
@@ -609,7 +621,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
+    "@types/node": "^22.19.19",
     "@types/vscode": "^1.120.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",

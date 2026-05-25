@@ -8,7 +8,7 @@ import oead
 
 from zstd_totk import compress_container, decompress_container
 
-_EXTENSIONS_PATH = Path(__file__).parent / 'aamp-extensions.json'
+_EXTENSIONS_PATH = Path(__file__).parent.parent / 'config' / 'aamp-extensions.json'
 AAMP_EXTENSIONS = frozenset(json.loads(_EXTENSIONS_PATH.read_text(encoding='utf-8')))
 
 
