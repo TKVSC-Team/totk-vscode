@@ -15,6 +15,6 @@
 - tkmm options
 
 # 5th
-- organize repo
+- organize repo ✅
 - abstract editable files into configs
 - ainb file handling
