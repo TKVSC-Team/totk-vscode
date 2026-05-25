@@ -7,7 +7,7 @@
 - Look into playing audio
 - bfres 
 - mc (de)compress
-- alphabetical sorting
+- alphabetical sorting ✅
 - CRUD files within archive
 - export files from archive
 - blarc support
