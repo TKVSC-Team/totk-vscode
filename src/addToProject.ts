@@ -44,6 +44,7 @@ export async function addDumpEntryToProject(
     sourceFsPath: string,
     projectRoot: string,
     romfsRoot?: string,
+    options?: { suppressSuccessMessage?: boolean },
 ): Promise<boolean> {
     const dumpRoot = romfsRoot?.trim()
         ? normalizePath(romfsRoot)
@@ -71,9 +72,11 @@ export async function addDumpEntryToProject(
     try {
         await ensureParentDirectory(copyPaths.destination);
         await fs.promises.copyFile(copyPaths.source, copyPaths.destination);
-        void vscode.window.showInformationMessage(
-            `Added to project: ${path.relative(normalizePath(projectRoot), copyPaths.destination)}`,
-        );
+        if (!options?.suppressSuccessMessage) {
+            void vscode.window.showInformationMessage(
+                `Added to project: ${path.relative(normalizePath(projectRoot), copyPaths.destination)}`,
+            );
+        }
         return true;
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

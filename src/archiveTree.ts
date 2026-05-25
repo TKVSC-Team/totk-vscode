@@ -150,6 +150,7 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
         treeDataProvider: provider,
         showCollapseAll: true,
         dragAndDropController: new ArchiveTreeDragDrop(),
+        canSelectMany: true,
     });
     setArchiveTreeView(treeView);
     context.subscriptions.push(treeView);

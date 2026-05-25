@@ -25,6 +25,14 @@ function refreshArchives(): void {
 
 function selectedItems(item?: ArchiveTreeItem): ArchiveTreeItem[] {
     if (item?.resourceUri) {
+        const selected = getArchiveSelection();
+        const clickedInSelection = selected.some(
+            (selectedItem) =>
+                selectedItem.resourceUri.toString() === item.resourceUri.toString(),
+        );
+        if (clickedInSelection) {
+            return selected;
+        }
         return [item];
     }
     return getArchiveSelection();
@@ -37,6 +45,30 @@ function isDiskMutableItem(item: ArchiveTreeItem): boolean {
         item.contextValue === 'archiveDir' ||
         item.contextValue === 'archiveRoot'
     );
+}
+
+function normalizeFsPath(fsPath: string): string {
+    return fsPath.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
+function pruneNestedSelections(items: ArchiveTreeItem[]): ArchiveTreeItem[] {
+    const sorted = [...items].sort(
+        (a, b) => normalizeFsPath(a.resourceUri.fsPath).length - normalizeFsPath(b.resourceUri.fsPath).length,
+    );
+    const kept: ArchiveTreeItem[] = [];
+
+    for (const candidate of sorted) {
+        const candidatePath = normalizeFsPath(candidate.resourceUri.fsPath);
+        const isInsideKept = kept.some((entry) => {
+            const parentPath = normalizeFsPath(entry.resourceUri.fsPath);
+            return candidatePath === parentPath || candidatePath.startsWith(`${parentPath}/`);
+        });
+        if (!isInsideKept) {
+            kept.push(candidate);
+        }
+    }
+
+    return kept;
 }
 
 async function resolveTargetFolder(item?: ArchiveTreeItem): Promise<vscode.Uri | undefined> {
@@ -102,7 +134,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
         vscode.commands.registerCommand(
             'totk-editor.archiveDelete',
             async (item?: ArchiveTreeItem) => {
-                const items = selectedItems(item).filter(isDiskMutableItem);
+                const items = pruneNestedSelections(selectedItems(item).filter(isDiskMutableItem));
                 if (items.length === 0) {
                     return;
                 }
@@ -120,6 +152,13 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 }
                 try {
                     for (const entry of items) {
+                        const exists = await vscode.workspace.fs.stat(entry.resourceUri).then(
+                            () => true,
+                            () => false,
+                        );
+                        if (!exists) {
+                            continue;
+                        }
                         const stat = await vscode.workspace.fs.stat(entry.resourceUri);
                         await vscode.workspace.fs.delete(entry.resourceUri, {
                             recursive: stat.type === vscode.FileType.Directory,

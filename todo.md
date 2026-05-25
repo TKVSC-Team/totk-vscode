@@ -1,4 +1,8 @@
-- CTRL & Shift Click
+# TODO
+
+## Mind
+
+- CTRL & Shift Click ✅
 - Nested archives
 - Look into playing audio
 - bfres
@@ -9,3 +13,7 @@
 - blarc support
 - bntx support
 - tkmm options
+
+## 5th
+
+## Aster
