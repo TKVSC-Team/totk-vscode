@@ -3,9 +3,9 @@
 ## Mind
 
 - CTRL & Shift Click ✅
-- Nested archives
+- Nested archives ✅
 - Look into playing audio
-- bfres
+- bfres 
 - mc (de)compress
 - alphabetical sorting
 - CRUD files within archive

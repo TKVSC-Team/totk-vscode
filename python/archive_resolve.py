@@ -43,39 +43,50 @@ def resolve_sarc_view(disk_archive_path: str, locator_path: str, romfs_path: str
     """
     Open the on-disk archive and walk nested archive *files* along locator_path.
 
-    Returns (sarc, path_prefix, is_disk_compressed) where path_prefix is the
-    path of ``locator_path`` inside the innermost open SARC (after nested archives).
+    Returns (sarc, path_prefix, is_disk_compressed, consumed_archive_prefix) where:
+    - path_prefix is the path of ``locator_path`` inside the innermost open SARC
+      (after nested archives)
+    - consumed_archive_prefix is the virtual path from the disk archive root to
+      the current innermost open archive (e.g. "A.sarc" or "dir/A.sarc/B.sarc")
     """
     locator_path = _normalize_path(locator_path)
     sarc, is_compressed = load_sarc_file(disk_archive_path, romfs_path)
 
     if not locator_path:
-        return sarc, '', is_compressed
+        return sarc, '', is_compressed, ''
 
     segments = locator_path.split('/')
     after_archive = 0
+    consumed_archive_segments: list[str] = []
 
     for index, segment in enumerate(segments):
         if not _is_archive_name(segment):
             continue
 
-        entry_path = '/'.join(segments[: index + 1])
+        # Relative to the currently open SARC, not always the disk archive root.
+        entry_path = '/'.join(segments[after_archive: index + 1])
         file_data = _get_file_bytes(sarc, entry_path)
         file_data, _, _ = decompress_container(file_data, entry_path, romfs_path)
         sarc = oead.Sarc(file_data)
+        consumed_archive_segments.extend(segments[after_archive: index + 1])
         after_archive = index + 1
 
     path_prefix = '/'.join(segments[after_archive:]).strip('/')
-    return sarc, path_prefix, is_compressed
+    consumed_archive_prefix = '/'.join(consumed_archive_segments).strip('/')
+    return sarc, path_prefix, is_compressed, consumed_archive_prefix
 
 
 def list_archive_files(disk_archive_path: str, locator_path: str, romfs_path: str) -> list[str]:
-    sarc, prefix, _ = resolve_sarc_view(disk_archive_path, locator_path, romfs_path)
+    sarc, prefix, _, consumed_archive_prefix = resolve_sarc_view(
+        disk_archive_path, locator_path, romfs_path
+    )
     names = [file.name for file in sarc.get_files()]
-    if not prefix:
-        return names
-    prefix_slash = prefix + '/'
-    return [name for name in names if name.startswith(prefix_slash)]
+    if prefix:
+        prefix_slash = prefix + '/'
+        names = [name for name in names if name.startswith(prefix_slash)]
+    if consumed_archive_prefix:
+        return [f'{consumed_archive_prefix}/{name}' for name in names]
+    return names
 
 
 def read_archive_file_bytes(disk_archive_path: str, file_path: str, romfs_path: str) -> bytes:
@@ -87,5 +98,5 @@ def read_archive_file_bytes(disk_archive_path: str, file_path: str, romfs_path: 
     if _is_archive_name(leaf):
         raise IsADirectoryError(file_path)
 
-    sarc, lookup, _ = resolve_sarc_view(disk_archive_path, file_path, romfs_path)
+    sarc, lookup, _, _ = resolve_sarc_view(disk_archive_path, file_path, romfs_path)
     return _get_file_bytes(sarc, lookup)
