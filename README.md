@@ -103,13 +103,6 @@ That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`). This
 4. First run will download Python libraries into a private venv (one-time setup notification).
 
 
-## Publishing checklist (maintainers)
-
-- Run `npm run package:vsix` so `dist/extension.js` is built before packaging.
-- Ship `totk_bridge.py`, `xlink_io.py`, `zstd_totk.py`, `aamp_io.py`, `aamp-extensions.json`, `byml_editor_format.py`, `msbt_editor_format.py`, `vendor/xlink2/xlink_tool.exe`, and `requirements.txt` (included in the VSIX by default).
-- Do **not** add `*.py` to `.vscodeignore`.
-- Test a clean machine: install only the VSIX + Python, no manual `pip install`.
-
 ## Development
 
 ```bash

@@ -26,10 +26,12 @@ import { getAampExtensions, initAampExtensions } from './aampExtensions';
 import { createDiskDirectory, deleteDiskPath, renameDiskPath } from './diskFsOps';
 import {
     focusArchiveSidebar,
+    type ArchiveTreeItem,
     migrateSarcWorkspaceFolders,
     registerArchiveTree,
 } from './archiveTree';
-import { registerGameDumpTree } from './dumpTree';
+import { getArchiveSelection } from './archiveFsCommands';
+import { getDumpSelection, registerGameDumpTree, type DumpTreeItem } from './dumpTree';
 import { createReadonlyArchiveFs } from './readonlyArchiveFs';
 import { resolveRomfsPath } from './romfs';
 import {
@@ -78,6 +80,33 @@ function getBridgeEnv(): NodeJS.ProcessEnv {
         TOTK_EXTRA_AAMP_EXTS: extraAamp.map((ext) => ext.replace(/^\./, '')).join(','),
         ...(xlinkTool ? { TOTK_XLINK_TOOL: xlinkTool } : {}),
     };
+}
+
+function pickExportDestinationName(destinationFolder: string, preferredName: string): string {
+    const parsed = path.parse(preferredName);
+    let candidate = preferredName;
+    let index = 1;
+    while (fs.existsSync(path.join(destinationFolder, candidate))) {
+        candidate = `${parsed.name} (${index})${parsed.ext}`;
+        index++;
+    }
+    return candidate;
+}
+
+function selectedUrisFromTree<T extends { resourceUri: vscode.Uri }>(
+    clicked: T | undefined,
+    selection: T[],
+): vscode.Uri[] {
+    if (!clicked?.resourceUri) {
+        return selection.map((entry) => entry.resourceUri);
+    }
+    const clickedInSelection = selection.some(
+        (entry) => entry.resourceUri.toString() === clicked.resourceUri.toString(),
+    );
+    if (clickedInSelection) {
+        return selection.map((entry) => entry.resourceUri);
+    }
+    return [clicked.resourceUri];
 }
 
 class SarcProvider implements vscode.FileSystemProvider {
@@ -595,6 +624,98 @@ export async function activate(context: vscode.ExtensionContext) {
     const archiveTree = registerArchiveTree(context);
     registerGameDumpTree(context, archiveTree);
     await migrateSarcWorkspaceFolders(archiveTree);
+
+    const exportFromArchiveSelection = async (
+        sourceUris: vscode.Uri[],
+    ): Promise<void> => {
+        const archiveUris = sourceUris.filter((uri) => isPathInsideArchive(uri.fsPath));
+        if (archiveUris.length === 0) {
+            void vscode.window.showWarningMessage('Select one or more files inside an archive first.');
+            return;
+        }
+
+        const fileUris: vscode.Uri[] = [];
+        for (const uri of archiveUris) {
+            try {
+                const stat = await vscode.workspace.fs.stat(uri);
+                if (stat.type === vscode.FileType.File) {
+                    fileUris.push(uri);
+                }
+            } catch {
+                // skip
+            }
+        }
+        if (fileUris.length === 0) {
+            void vscode.window.showWarningMessage('No files selected (folders are not exported).');
+            return;
+        }
+
+        const picked = await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            canSelectFiles: false,
+            canSelectFolders: true,
+            title: 'Choose export destination folder',
+            openLabel: 'Export Here',
+        });
+        const destinationFolder = picked?.[0]?.fsPath;
+        if (!destinationFolder) {
+            return;
+        }
+
+        const pythonExe = getPython();
+        if (!pythonExe) {
+            await promptPythonSetup(context);
+            return;
+        }
+
+        let exported = 0;
+        for (const uri of fileUris) {
+            try {
+                const diskArchive = getDiskArchivePath(uri.fsPath);
+                const locator = getLocatorInsideDiskArchive(uri.fsPath, diskArchive);
+                const exportedPath = runBridgeJson<{ path: string }>(
+                    pythonExe,
+                    bridgePath,
+                    ['export-temp', diskArchive, locator],
+                    undefined,
+                    getBridgeEnv(),
+                ).path;
+                const data = fs.readFileSync(exportedPath);
+                fs.unlinkSync(exportedPath);
+
+                const desiredName = path.basename(locator) || path.basename(uri.fsPath);
+                const finalName = pickExportDestinationName(destinationFolder, desiredName);
+                fs.writeFileSync(path.join(destinationFolder, finalName), data);
+                exported++;
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                void vscode.window.showErrorMessage(`Export failed for ${uri.fsPath}: ${message}`);
+            }
+        }
+
+        if (exported > 0) {
+            void vscode.window.showInformationMessage(
+                `Exported ${exported}/${fileUris.length} file(s) to ${destinationFolder}`,
+            );
+        }
+    };
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'totk-editor.archiveExport',
+            async (item?: ArchiveTreeItem) => {
+                const uris = selectedUrisFromTree(item, getArchiveSelection());
+                await exportFromArchiveSelection(uris);
+            },
+        ),
+        vscode.commands.registerCommand(
+            'totk-editor.dumpExport',
+            async (item?: DumpTreeItem) => {
+                const uris = selectedUrisFromTree(item, getDumpSelection());
+                await exportFromArchiveSelection(uris);
+            },
+        ),
+    );
 
     const openEditableFile = vscode.commands.registerCommand('totk-editor.openEditableFile', async () => {
         const aampFilterExtensions = [...getAampExtensions()];

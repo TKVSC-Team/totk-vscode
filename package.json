@@ -236,6 +236,14 @@
         "title": "Paste"
       },
       {
+        "command": "totk-editor.archiveExport",
+        "title": "Export..."
+      },
+      {
+        "command": "totk-editor.dumpExport",
+        "title": "Export..."
+      },
+      {
         "command": "totk-editor.openEditableFile",
         "title": "TOTK: Open File (BYML, AAMP, MSBT, ASB, BAEV, belnk, bslnk)"
       },
@@ -389,8 +397,18 @@
           "group": "9_cutcopypaste@3"
         },
         {
+          "command": "totk-editor.archiveExport",
+          "when": "view == totk-editor.archives && viewItem == archiveVirtualFile",
+          "group": "5_export@1"
+        },
+        {
+          "command": "totk-editor.dumpExport",
+          "when": "view == totk-editor.gameDump && viewItem == dumpVirtualFile",
+          "group": "5_export@1"
+        },
+        {
           "submenu": "totk-editor.addToProject",
-          "when": "view == totk-editor.gameDump && (viewItem == dumpFile || viewItem == dumpArchive)",
+          "when": "view == totk-editor.gameDump && (viewItem == dumpFile || viewItem == dumpVirtualFile || viewItem == dumpArchive)",
           "group": "2_add"
         }
       ],

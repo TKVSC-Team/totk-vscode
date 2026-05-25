@@ -1,14 +1,19 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { addDumpEntryToProject, pickProjectRoot } from './addToProject';
-import { isArchiveFile } from './archives';
+import { isArchiveFile, isPathInsideArchive } from './archives';
 import type { ArchiveTreeProvider } from './archiveTree';
 import { resolveRomfsPath } from './romfs';
 
 export const DUMP_SCHEME = 'totk-dump';
+let dumpTreeView: vscode.TreeView<DumpTreeItem> | undefined;
 
 export function toDumpUri(fileUri: vscode.Uri): vscode.Uri {
     return fileUri.with({ scheme: DUMP_SCHEME });
+}
+
+export function getDumpSelection(): DumpTreeItem[] {
+    return [...(dumpTreeView?.selection ?? [])];
 }
 
 export class DumpTreeItem extends vscode.TreeItem {
@@ -95,7 +100,7 @@ function contextValueForEntry(
     romfsPath: string,
 ): string {
     if (!isDirectory) {
-        return 'dumpFile';
+        return isPathInsideArchive(fsPath) ? 'dumpVirtualFile' : 'dumpFile';
     }
     if (isArchiveFile(name)) {
         return 'dumpArchive';
@@ -122,6 +127,7 @@ export function registerGameDumpTree(
         showCollapseAll: true,
         canSelectMany: true,
     });
+    dumpTreeView = treeView;
     context.subscriptions.push(treeView);
 
     const selectedItems = (item?: DumpTreeItem): DumpTreeItem[] => {
@@ -165,7 +171,9 @@ export function registerGameDumpTree(
             async (item: DumpTreeItem | undefined) => {
                 const entries = selectedItems(item).filter(
                     (entry) =>
-                        entry.contextValue === 'dumpFile' || entry.contextValue === 'dumpArchive',
+                        entry.contextValue === 'dumpFile' ||
+                        entry.contextValue === 'dumpVirtualFile' ||
+                        entry.contextValue === 'dumpArchive',
                 );
                 if (entries.length === 0) {
                     void vscode.window.showWarningMessage(
