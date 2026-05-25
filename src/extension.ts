@@ -6,6 +6,8 @@ import {
     ensurePythonEnvironment,
     getCachedPythonExecutable,
     promptPythonSetup,
+    browseForPython,
+    pickDetectedPython,
 } from './pythonEnv';
 import { registerSyntaxColorSync } from './syntaxColors';
 import { isEditableFile, toTotkDiskUri } from './editableFiles';
@@ -33,6 +35,35 @@ import {
     migrateOffStandaloneIconTheme,
     registerIconThemeCommands,
 } from './iconTheme';
+import {
+    formatExternalToolPrompt,
+    registerExternalToolSupport,
+} from './externalTools';
+
+function shouldOfferExternalToolPrompt(content: string): boolean {
+    return content.startsWith('<Binary Data:') || content.startsWith('Error reading file:');
+}
+
+function isLikelyBinaryBuffer(data: Uint8Array): boolean {
+    const sampleLength = Math.min(data.length, 2048);
+    if (sampleLength === 0) {
+        return false;
+    }
+
+    let suspicious = 0;
+    for (let i = 0; i < sampleLength; i++) {
+        const byte = data[i]!;
+        if (byte === 0) {
+            return true;
+        }
+        const isControl = byte < 9 || (byte > 13 && byte < 32);
+        if (isControl) {
+            suspicious++;
+        }
+    }
+
+    return suspicious / sampleLength > 0.2;
+}
 
 function getBridgeEnv(): NodeJS.ProcessEnv {
     const config = vscode.workspace.getConfiguration('totk-editor');
@@ -263,7 +294,17 @@ class SarcProvider implements vscode.FileSystemProvider {
                     return new TextEncoder().encode(`Error reading file: ${message}`);
                 }
             }
-            return fs.readFileSync(fsPath);
+            const raw = fs.readFileSync(fsPath);
+            // For non-editable binary files opened from archive-related trees, show external-tool actions.
+            if ((uri.scheme === 'totk-dump' || uri.scheme === 'sarc') && isLikelyBinaryBuffer(raw)) {
+                return new TextEncoder().encode(
+                    formatExternalToolPrompt(
+                        fsPath,
+                        'TOTK Editor does not have a built-in parser for this file type yet.',
+                    ),
+                );
+            }
+            return raw;
         }
 
         const diskArchive = this.getDiskArchive(fsPath);
@@ -278,10 +319,20 @@ class SarcProvider implements vscode.FileSystemProvider {
                 getBridgeEnv(),
             );
 
+            if (shouldOfferExternalToolPrompt(content)) {
+                const reason = content.startsWith('Error reading file:')
+                    ? content
+                    : 'TOTK Editor does not have a built-in parser for this file type yet.';
+                return new TextEncoder().encode(formatExternalToolPrompt(filePath, reason));
+            }
+
             return new TextEncoder().encode(content);
         } catch (error) {
             console.error('Python Read Error:', error);
-            return new TextEncoder().encode(`Error reading file: ${error}`);
+            const message = error instanceof Error ? error.message : String(error);
+            return new TextEncoder().encode(
+                formatExternalToolPrompt(filePath, `Error reading file: ${message}`),
+            );
         }
     }
 
@@ -414,6 +465,7 @@ export async function activate(context: vscode.ExtensionContext) {
             isReadonly: false,
         }),
     );
+    registerExternalToolSupport(context, { bridgePath, getPython, getBridgeEnv });
 
     const redirectedDocuments = new Set<string>();
     context.subscriptions.push(
@@ -463,7 +515,11 @@ export async function activate(context: vscode.ExtensionContext) {
             await promptPythonSetup(context);
         }
     });
-    context.subscriptions.push(setupPython);
+    context.subscriptions.push(
+        setupPython,
+        vscode.commands.registerCommand('totk-editor.pickPython', () => pickDetectedPython(context)),
+        vscode.commands.registerCommand('totk-editor.browsePython', () => browseForPython(context)),
+    );
 
     const python = await ensurePythonEnvironment(context);
     if (!python) {

@@ -1,7 +1,8 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
-import { execFileSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import * as vscode from 'vscode';
 
 const VENV_DIR_NAME = 'python-env';
@@ -70,36 +71,206 @@ function launcherVersion(launcher: PythonLauncher): [number, number] | undefined
     }
 }
 
+function isLikelyRealPythonExe(exePath: string): boolean {
+    try {
+        const stat = fs.statSync(exePath);
+        if (!stat.isFile()) {
+            return false;
+        }
+        // Windows Store "python3.exe" stubs are tiny reparse points, not real interpreters.
+        if (process.platform === 'win32' && stat.size < 10_000) {
+            return false;
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/** Run `where` / `which` in a shell so we see the same PATH as CMD, not VS Code's trimmed PATH. */
+function resolveNamesViaShell(names: string[]): string[] {
+    const found: string[] = [];
+    const seen = new Set<string>();
+
+    for (const name of names) {
+        try {
+            const command =
+                process.platform === 'win32'
+                    ? `where "${name}" 2>nul`
+                    : `command -v "${name}" 2>/dev/null`;
+            const output = execSync(command, {
+                encoding: 'utf-8',
+                timeout: 15_000,
+                stdio: ['ignore', 'pipe', 'pipe'],
+                env: process.env,
+                ...(process.platform === 'win32' ? { shell: 'cmd.exe' } : { shell: '/bin/sh' }),
+            });
+            for (const line of output.split(/\r?\n/)) {
+                const trimmed = line.trim().replace(/^"(.*)"$/, '$1');
+                if (!trimmed || seen.has(trimmed.toLowerCase())) {
+                    continue;
+                }
+                if (!fs.existsSync(trimmed)) {
+                    continue;
+                }
+                if (process.platform === 'win32' && !isLikelyRealPythonExe(trimmed)) {
+                    continue;
+                }
+                seen.add(trimmed.toLowerCase());
+                found.push(trimmed);
+            }
+        } catch {
+            /* not on PATH in shell either */
+        }
+    }
+
+    return found;
+}
+
+function collectExecutablesInDir(rootDir: string, depth = 2): string[] {
+    const results: string[] = [];
+    if (!fs.existsSync(rootDir)) {
+        return results;
+    }
+
+    const tryExe = (dir: string) => {
+        const exe =
+            process.platform === 'win32'
+                ? path.join(dir, 'python.exe')
+                : path.join(dir, 'bin', 'python3');
+        const fallback = path.join(dir, 'bin', 'python');
+        for (const candidate of [exe, fallback]) {
+            if (fs.existsSync(candidate) && isLikelyRealPythonExe(candidate)) {
+                results.push(candidate);
+            }
+        }
+    };
+
+    tryExe(rootDir);
+
+    if (depth <= 0) {
+        return results;
+    }
+
+    let entries: fs.Dirent[];
+    try {
+        entries = fs.readdirSync(rootDir, { withFileTypes: true });
+    } catch {
+        return results;
+    }
+
+    for (const entry of entries) {
+        if (!entry.isDirectory()) {
+            continue;
+        }
+        results.push(...collectExecutablesInDir(path.join(rootDir, entry.name), depth - 1));
+    }
+
+    return results;
+}
+
+function discoverInstalledPythonExecutables(): string[] {
+    const seen = new Set<string>();
+    const results: string[] = [];
+
+    const push = (exe: string) => {
+        const normalized = path.normalize(exe);
+        const key = normalized.toLowerCase();
+        if (seen.has(key)) {
+            return;
+        }
+        if (!isLikelyRealPythonExe(normalized)) {
+            return;
+        }
+        seen.add(key);
+        results.push(normalized);
+    };
+
+    for (const exe of resolveNamesViaShell([
+        'python3.12',
+        'python3.11',
+        'python3.10',
+        'python3',
+        'python',
+        'py',
+    ])) {
+        push(exe);
+    }
+
+    const roots: string[] = [];
+    if (process.platform === 'win32') {
+        const localAppData = process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local');
+        roots.push(path.join(localAppData, 'Programs', 'Python'));
+        roots.push(path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Python'));
+        const programFilesX86 = process.env['ProgramFiles(x86)'];
+        if (programFilesX86) {
+            roots.push(path.join(programFilesX86, 'Python'));
+        }
+        roots.push(path.join(os.homedir(), '.pyenv', 'pyenv-win', 'versions'));
+        roots.push(path.join(os.homedir(), 'scoop', 'apps', 'python', 'current'));
+    } else {
+        roots.push('/usr/local/bin', '/opt/homebrew/bin', path.join(os.homedir(), '.pyenv', 'versions'));
+    }
+
+    for (const root of roots) {
+        for (const exe of collectExecutablesInDir(root, 2)) {
+            push(exe);
+        }
+    }
+
+    return results;
+}
+
+function launcherLabel(launcher: PythonLauncher, version?: [number, number]): string {
+    const versionText = version ? `Python ${version[0]}.${version[1]}` : 'Python';
+    const args = launcher.prefixArgs.length ? ` ${launcher.prefixArgs.join(' ')}` : '';
+    return `${versionText} — ${launcher.executable}${args}`;
+}
+
 export function getSystemPythonCandidates(): PythonLauncher[] {
     const candidates: PythonLauncher[] = [];
+    const seen = new Set<string>();
+
+    const add = (launcher: PythonLauncher) => {
+        const key = `${launcher.executable}\0${launcher.prefixArgs.join(' ')}`;
+        if (seen.has(key)) {
+            return;
+        }
+        seen.add(key);
+        candidates.push(launcher);
+    };
+
     const configured = vscode.workspace.getConfiguration('totk-editor').get<string>('pythonPath', '').trim();
     if (configured) {
-        candidates.push({ executable: configured, prefixArgs: [] });
+        add({ executable: configured, prefixArgs: [] });
     }
 
     if (process.platform === 'win32') {
-        candidates.push({ executable: 'py', prefixArgs: ['-3.12'] });
-        candidates.push({ executable: 'py', prefixArgs: ['-3.11'] });
-        candidates.push({ executable: 'py', prefixArgs: ['-3.10'] });
-        candidates.push({ executable: 'py', prefixArgs: ['-3'] });
+        const pyPath = resolveNamesViaShell(['py'])[0];
+        if (pyPath) {
+            for (const ver of ['-3.12', '-3.11', '-3.10', '-3']) {
+                add({ executable: pyPath, prefixArgs: [ver] });
+            }
+        } else {
+            for (const ver of ['-3.12', '-3.11', '-3.10', '-3']) {
+                add({ executable: 'py', prefixArgs: [ver] });
+            }
+        }
+    }
+
+    for (const exe of discoverInstalledPythonExecutables()) {
+        add({ executable: exe, prefixArgs: [] });
     }
 
     for (const name of ['python3.12', 'python3.11', 'python3.10', 'python3', 'python']) {
-        candidates.push({ executable: name, prefixArgs: [] });
+        add({ executable: name, prefixArgs: [] });
     }
 
     return candidates;
 }
 
 export function findSystemPython(): PythonLauncher | undefined {
-    const seen = new Set<string>();
     for (const launcher of getSystemPythonCandidates()) {
-        const key = `${launcher.executable}\0${launcher.prefixArgs.join(' ')}`;
-        if (seen.has(key)) {
-            continue;
-        }
-        seen.add(key);
-
         if (!tryLauncher(launcher)) {
             continue;
         }
@@ -110,6 +281,78 @@ export function findSystemPython(): PythonLauncher | undefined {
         }
     }
     return undefined;
+}
+
+export async function listDetectedPythonLaunchers(): Promise<
+    { label: string; launcher: PythonLauncher; supported: boolean }[]
+> {
+    const items: { label: string; launcher: PythonLauncher; supported: boolean }[] = [];
+
+    for (const launcher of getSystemPythonCandidates()) {
+        if (!tryLauncher(launcher)) {
+            continue;
+        }
+        const version = launcherVersion(launcher);
+        const supported = version !== undefined && isVersionSupported(version);
+        items.push({
+            label: launcherLabel(launcher, version),
+            launcher,
+            supported,
+        });
+    }
+
+    return items;
+}
+
+export async function configurePythonPath(
+    context: vscode.ExtensionContext,
+    executable: string,
+): Promise<boolean> {
+    const config = vscode.workspace.getConfiguration('totk-editor');
+    await config.update('pythonPath', executable, vscode.ConfigurationTarget.Global);
+    const python = await ensurePythonEnvironment(context, true);
+    if (python) {
+        void vscode.window.showInformationMessage(`TOTK Editor: Using ${executable}`);
+        return true;
+    }
+    return false;
+}
+
+export async function browseForPython(context: vscode.ExtensionContext): Promise<void> {
+    const selection = await vscode.window.showOpenDialog({
+        title: 'Select python.exe (Python 3.10+)',
+        filters: process.platform === 'win32' ? { Python: ['exe'] } : undefined,
+        canSelectMany: false,
+    });
+    const picked = selection?.[0]?.fsPath;
+    if (!picked) {
+        return;
+    }
+    await configurePythonPath(context, picked);
+}
+
+export async function pickDetectedPython(context: vscode.ExtensionContext): Promise<void> {
+    const detected = await listDetectedPythonLaunchers();
+    const supported = detected.filter((item) => item.supported);
+
+    if (supported.length === 0) {
+        const failed = detected.length
+            ? 'Found Python installs, but none are version 3.10 or newer.'
+            : 'No working Python installs were found. Use Browse if python3 works in CMD but not here.';
+        void vscode.window.showErrorMessage(`TOTK Editor: ${failed}`);
+        await browseForPython(context);
+        return;
+    }
+
+    const choice = await vscode.window.showQuickPick(supported, {
+        title: 'Select Python for TOTK Editor',
+        placeHolder: 'CMD may list python3 on PATH even when Cursor cannot see it — pick the full path below.',
+    });
+    if (!choice) {
+        return;
+    }
+
+    await configurePythonPath(context, choice.launcher.executable);
 }
 
 function verifyVenvPython(venvPython: string): boolean {
@@ -227,12 +470,18 @@ export function ensurePythonEnvironment(
 
 export async function promptPythonSetup(context: vscode.ExtensionContext): Promise<void> {
     const choice = await vscode.window.showErrorMessage(
-        'TOTK Editor needs Python 3.10+ to read and write archives. Install Python from python.org (enable "Add to PATH"), then retry setup. You can also set totk-editor.pythonPath to your python.exe.',
+        'TOTK Editor could not find Python 3.10+. Cursor/VS Code often use a different PATH than CMD — set the full path to python.exe, or pick from detected installs.',
+        'Pick Python',
+        'Browse for python.exe',
         'Retry Setup',
         'Open Settings',
     );
 
-    if (choice === 'Retry Setup') {
+    if (choice === 'Pick Python') {
+        await pickDetectedPython(context);
+    } else if (choice === 'Browse for python.exe') {
+        await browseForPython(context);
+    } else if (choice === 'Retry Setup') {
         await ensurePythonEnvironment(context, true);
     } else if (choice === 'Open Settings') {
         await vscode.commands.executeCommand('workbench.action.openSettings', 'totk-editor.pythonPath');

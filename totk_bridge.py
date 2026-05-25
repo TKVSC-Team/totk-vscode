@@ -54,6 +54,16 @@ def _json_read_payload(content: str) -> dict:
     return {'content': content}
 
 
+def export_archive_file_to_temp(archive_path: str, internal_path: str, romfs_path: str = '') -> str:
+    file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
+    file_name = Path(internal_path).name or 'file.bin'
+    safe_name = ''.join(ch if ch.isalnum() or ch in '._-' else '_' for ch in file_name)
+    fd, tmp_path = tempfile.mkstemp(prefix='totk-tool-', suffix=f'-{safe_name}')
+    with os.fdopen(fd, 'wb') as out:
+        out.write(file_data)
+    return tmp_path
+
+
 def get_romfs_path():
     return os.environ.get('TOTK_EDITOR_ROMFS', '').strip()
 
@@ -340,6 +350,14 @@ def main():
                         _json_read_payload(
                             read_file_content(file_data, internal_path, None, romfs_path)
                         )
+                    )
+                )
+
+            elif command == 'export-temp':
+                internal_path = sys.argv[3]
+                print(
+                    json.dumps(
+                        {'path': export_archive_file_to_temp(archive_path, internal_path, romfs_path)}
                     )
                 )
 

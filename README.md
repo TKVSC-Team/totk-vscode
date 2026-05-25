@@ -42,7 +42,13 @@ Files opened as plain `file://` binary (garbled text) means Python setup failed 
 - Conversion uses `vendor/xlink2/xlink_tool.exe` on Windows (from [dt-12345/xlink2](https://github.com/dt-12345/xlink2)). On Linux/macOS, place `xlink_tool` there or set **TOTK Editor → Xlink Tool Path** / env `TOTK_XLINK_TOOL`.
 - `.belnk.zs` / `.bslnk.zs` need **Romfs Path** set (same as other `.zs` assets) so ZSTD dictionaries apply.
 
-If setup fails, run **TOTK: Set Up Python Environment** from the Command Palette, or set `totk-editor.pythonPath` to your `python.exe`.
+If setup fails, run **TOTK: Set Up Python Environment** from the Command Palette.
+
+**`python3` works in CMD but the extension cannot find Python?** Cursor and VS Code are often launched without your full user PATH (unlike a terminal you opened yourself). Fix:
+
+1. **TOTK: Select Python (from detected installs)** — scans `where python3`, common install folders, and `py`.
+2. **TOTK: Browse for python.exe** — point at the real interpreter (e.g. `%LocalAppData%\\Programs\\Python\\Python312\\python.exe`).
+3. Or set **TOTK Editor → Python Path** to that full path, then **TOTK: Set Up Python Environment** again.
 
 ### `.zs` compressed files
 
