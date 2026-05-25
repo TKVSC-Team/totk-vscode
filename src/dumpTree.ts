@@ -120,8 +120,21 @@ export function registerGameDumpTree(
     const treeView = vscode.window.createTreeView('totk-editor.gameDump', {
         treeDataProvider: provider,
         showCollapseAll: true,
+        canSelectMany: true,
     });
     context.subscriptions.push(treeView);
+
+    const selectedItems = (item?: DumpTreeItem): DumpTreeItem[] => {
+        if (!item) {
+            return [...treeView.selection];
+        }
+        const selected = treeView.selection;
+        const inSelection = selected.some(
+            (selectedItem) =>
+                selectedItem.resourceUri.toString() === item.resourceUri.toString(),
+        );
+        return inSelection ? [...selected] : [item];
+    };
 
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
@@ -150,7 +163,14 @@ export function registerGameDumpTree(
         vscode.commands.registerCommand(
             'totk-editor.addDumpToProject',
             async (item: DumpTreeItem | undefined) => {
-                if (!item?.resourceUri) {
+                const entries = selectedItems(item).filter(
+                    (entry) =>
+                        entry.contextValue === 'dumpFile' || entry.contextValue === 'dumpArchive',
+                );
+                if (entries.length === 0) {
+                    void vscode.window.showWarningMessage(
+                        'Select one or more files in TotK Dump first.',
+                    );
                     return;
                 }
 
@@ -160,8 +180,25 @@ export function registerGameDumpTree(
                     return;
                 }
 
-                const copied = await addDumpEntryToProject(item.resourceUri.fsPath, projectRoot);
-                if (copied) {
+                let copiedCount = 0;
+                for (const entry of entries) {
+                    const copied = await addDumpEntryToProject(
+                        entry.resourceUri.fsPath,
+                        projectRoot,
+                        undefined,
+                        { suppressSuccessMessage: entries.length > 1 },
+                    );
+                    if (copied) {
+                        copiedCount++;
+                    }
+                }
+
+                if (copiedCount > 0) {
+                    if (entries.length > 1) {
+                        void vscode.window.showInformationMessage(
+                            `Added ${copiedCount}/${entries.length} selected items to project.`,
+                        );
+                    }
                     archiveTree.refresh();
                 }
             },

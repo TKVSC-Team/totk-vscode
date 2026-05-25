@@ -1,5 +1,8 @@
-# Mind
-- CTRL & Shift Click
+# TODO
+
+## Mind
+
+- CTRL & Shift Click ✅
 - Nested archives
 - Look into playing audio
 - bfres
