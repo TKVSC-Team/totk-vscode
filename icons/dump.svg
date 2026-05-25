@@ -1,4 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-  <path fill="currentColor" d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-  <path fill="currentColor" opacity="0.55" d="M16 11h-5v5h-1.5v-5H9V9.5h5V9h1.5v2.5H16V11z"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Projects" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: #e1ddd2;
+      }
+    </style>
+  </defs>
+  <path d="M13.2,4.8H4.8c-1.54,0-2.8,1.26-2.8,2.8V24.4c0,1.54,1.26,2.8,2.8,2.8H27.2c1.54,0,2.8-1.26,2.8-2.8V10.4c0-1.54-1.26-2.8-2.8-2.8h-11.2l-2.8-2.8Z"/>
+  <g>
+    <g>
+      <path class="cls-2" d="M15.99572,10l-4.64251,7.01376h9.25741l-4.6149-7.01376Z"/>
+      <path class="cls-2" d="M6.73949,24l4.6149-6.98624,4.64251,6.98624H6.73949Z"/>
+      <path class="cls-2" d="M15.99604,24h9.28502l-4.67012-6.98624-4.6149,6.98624Z"/>
+    </g>
+    <g>
+      <path class="cls-1" d="M15.99572,10l-4.64251,7.01376h9.25741l-4.6149-7.01376Z"/>
+      <path class="cls-1" d="M6.73949,24l4.6149-6.98624,4.64251,6.98624H6.73949Z"/>
+      <path class="cls-1" d="M15.99604,24h9.28502l-4.67012-6.98624-4.6149,6.98624Z"/>
+    </g>
+  </g>
 </svg>
