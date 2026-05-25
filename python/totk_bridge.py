@@ -150,7 +150,8 @@ def read_ainb_content(file_data: bytes, logical_path: str = '', romfs_path: str 
             # Fallback when CLI entrypoint is not on PATH inside the extension environment.
             cmd = [sys.executable, '-m', 'ainb', str(in_path)]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Force converter output into temp space (not the extension's python folder).
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=tmp_dir)
         if result.returncode != 0:
             detail = (result.stderr or result.stdout or '').strip() or f'exit {result.returncode}'
             raise ValueError(f'AINB conversion failed: {detail}')
@@ -163,6 +164,11 @@ def read_ainb_content(file_data: bytes, logical_path: str = '', romfs_path: str 
         out_json = in_path.with_suffix('.json')
         if out_json.is_file():
             return out_json.read_text(encoding='utf-8')
+
+        # Some converter builds write JSON into cwd with various names.
+        json_outputs = sorted(Path(tmp_dir).glob('*.json'))
+        if json_outputs:
+            return json_outputs[0].read_text(encoding='utf-8')
 
         raise ValueError('AINB conversion produced no output.')
 
