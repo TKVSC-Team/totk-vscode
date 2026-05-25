@@ -50,9 +50,18 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
 
     private roots: vscode.Uri[] = [];
 
+    private sortRoots(): void {
+        this.roots.sort((a, b) =>
+            path.basename(a.fsPath).localeCompare(path.basename(b.fsPath), undefined, {
+                sensitivity: 'base',
+            }),
+        );
+    }
+
     constructor(private readonly context: vscode.ExtensionContext) {
         const stored = context.globalState.get<string[]>(STORAGE_KEY, []);
         this.roots = stored.map((fsPath) => toSarcUri(vscode.Uri.file(fsPath)));
+        this.sortRoots();
     }
 
     getTreeItem(element: ArchiveTreeItem): vscode.TreeItem {
@@ -102,6 +111,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
             return;
         }
         this.roots.push(sarcUri);
+        this.sortRoots();
         void this.persistRoots();
         this.onDidChangeTreeDataEmitter.fire(undefined);
     }
