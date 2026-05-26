@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Armatures" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg id="Nodes" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
     <style>
       .cls-1 {
-        fill: #2e3191;
+        fill: #81b7f2;
       }
 
       .cls-2 {
@@ -12,7 +12,7 @@
 
       .cls-2, .cls-3 {
         fill: none;
-        stroke: #d8935b;
+        stroke: #efa065;
         stroke-width: 3px;
       }
     </style>

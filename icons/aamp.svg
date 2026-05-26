@@ -1,18 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg id="AAMP" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
     <style>
-      .bg { fill: #d4710a; }
-      .accent { fill: #f2c98a; }
-      .track { stroke: #f2c98a; stroke-width: 2; stroke-linecap: round; fill: none; }
+      .cls-1 {
+        fill: #d89319;
+      }
+
+      .cls-2 {
+        fill: #e0b3f2;
+      }
+
+      .cls-2, .cls-3 {
+        stroke: #efdcb4;
+        stroke-linecap: round;
+        stroke-miterlimit: 10;
+        stroke-width: 2.5px;
+      }
+
+      .cls-3 {
+        fill: none;
+      }
+
+      .cls-4 {
+        fill: #efdcb4;
+      }
     </style>
   </defs>
-  <path class="bg" d="M26.5,5V27c0,1.66-1.34,3-3,3H8.5c-1.66,0-3-1.34-3-3V10.74c0-.06,0-.12,.01-.17,.04-.73,.35-1.43,.87-1.95L12.12,2.88c.56-.56,1.33-.88,2.12-.88h9.26c1.66,0,3,1.34,3,3Z"/>
-  <path class="accent" d="M14.24,2V7.57c0,1.65-1.35,3-3,3H5.51c.04-.73,.35-1.43,.87-1.95L12.12,2.88c.56-.56,1.33-.88,2.12-.88Z"/>
-  <line class="track" x1="10" y1="15" x2="22" y2="15"/>
-  <circle class="accent" cx="15" cy="15" r="2"/>
-  <line class="track" x1="10" y1="20" x2="22" y2="20"/>
-  <circle class="accent" cx="19" cy="20" r="2"/>
-  <line class="track" x1="10" y1="25" x2="20" y2="25"/>
-  <circle class="accent" cx="12" cy="25" r="2"/>
+  <path class="cls-1" d="M26.5,5V27c0,1.65997-1.34003,3-3,3H8.5c-1.65997,0-3-1.34003-3-3V10.73999c0-.06,0-.12,.01001-.16998,.03998-.73004,.34998-1.42999,.87-1.95001L12.12,2.88c.56-.56,1.33002-.88,2.12-.88h9.26001c1.65997,0,3,1.33997,3,3Z"/>
+  <path class="cls-4" d="M14.23999,2V7.57001c0,1.64996-1.34998,3-3,3H5.51001c.03998-.73004,.34998-1.42999,.87-1.95001L12.12,2.88c.56-.56,1.33002-.88,2.12-.88Z"/>
+  <line class="cls-2" x1="10" y1="24" x2="22" y2="24"/>
+  <line class="cls-2" x1="10" y1="19" x2="22" y2="19"/>
+  <line class="cls-2" x1="10" y1="14" x2="22" y2="14"/>
+  <line class="cls-3" x1="11.80597" y1="12.40285" x2="11.80597" y2="15.59715"/>
+  <line class="cls-3" x1="19.50746" y1="17.40285" x2="19.50746" y2="20.59715"/>
+  <line class="cls-3" x1="14.55224" y1="22.40285" x2="14.55224" y2="25.59715"/>
 </svg>
