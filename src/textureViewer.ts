@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { BntxTextureResult } from './bridge';
+import type { BntxTextureResult, BntxChannelInfo, BntxImageInfo, BntxMiscInfo } from './bridge';
 
 const panels = new Map<string, vscode.WebviewPanel>();
 
@@ -33,18 +33,18 @@ function buildHtml(result: BntxTextureResult): string {
         ? `data:image/png;base64,${result.pngBase64}`
         : '';
 
-    const metaRows = meta
-        ? [
-              row('Name', meta.name),
-              row('Width', String(meta.width)),
-              row('Height', String(meta.height)),
-              row('Format', `${meta.format} (${meta.formatId})`),
-              row('Mip Count', String(meta.mipCount)),
-              row('Tile Mode', meta.tileMode),
-              row('Block Height', `${meta.blockH} (log2=${meta.blockHLog2})`),
-              row('Image Size', formatBytes(meta.dataSize)),
-          ].join('')
-        : '<tr><td colspan="2">No metadata available</td></tr>';
+    const channelsSection = meta?.channels
+        ? buildSection('Channels', buildChannelRows(meta.channels))
+        : '';
+    const imageInfoSection = meta?.imageInfo
+        ? buildSection('Image Info', buildImageInfoRows(meta.imageInfo))
+        : '';
+    const miscSection = meta?.misc
+        ? buildSection('Misc', buildMiscRows(meta.misc))
+        : '';
+    const metaSections = meta
+        ? `${channelsSection}${imageInfoSection}${miscSection}`
+        : '<p style="color:#888;">No metadata available</p>';
 
     const errorNote = !result.pngBase64
         ? '<p style="color:#e8a040;margin-top:12px;">Rendering failed — check the developer console for details.</p>'
@@ -105,29 +105,47 @@ function buildHtml(result: BntxTextureResult): string {
     .size-toggle:hover {
         background: var(--vscode-button-hoverBackground, #1177bb);
     }
-    .props-panel { flex: 1 1 auto; min-width: 250px; }
-    .props-panel h2 {
-        font-size: 14px;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: var(--vscode-foreground, #ddd);
-        border-bottom: 1px solid var(--vscode-panel-border, #444);
-        padding-bottom: 6px;
+    .props-panel {
+        flex: 1 1 auto;
+        min-width: 280px;
+        max-height: 100vh;
+        overflow-y: auto;
     }
-    table { width: 100%; border-collapse: collapse; }
+    .prop-section { margin-bottom: 16px; }
+    .prop-section-header {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--vscode-foreground, #ddd);
+        background: var(--vscode-sideBarSectionHeader-background, #252526);
+        padding: 5px 8px;
+        border: 1px solid var(--vscode-panel-border, #444);
+        border-bottom: none;
+        cursor: pointer;
+        user-select: none;
+    }
+    .prop-section-header::before {
+        content: '▾ ';
+        font-size: 10px;
+    }
+    table { width: 100%; border-collapse: collapse; border: 1px solid var(--vscode-panel-border, #333); }
     td {
-        padding: 4px 8px;
-        border-bottom: 1px solid var(--vscode-panel-border, #333);
+        padding: 3px 8px;
+        border-bottom: 1px solid var(--vscode-panel-border, #2a2a2a);
         vertical-align: top;
     }
     td:first-child {
         color: var(--vscode-descriptionForeground, #999);
         white-space: nowrap;
-        width: 110px;
+        width: 120px;
+        background: var(--vscode-editor-background, #1e1e1e);
     }
     td:last-child {
         color: var(--vscode-foreground, #ddd);
         font-weight: 500;
+    }
+    tr.highlight td:first-child {
+        background: var(--vscode-list-activeSelectionBackground, #094771);
+        color: var(--vscode-list-activeSelectionForeground, #fff);
     }
 </style>
 </head>
@@ -141,8 +159,7 @@ function buildHtml(result: BntxTextureResult): string {
             : ''}
     </div>
     <div class="props-panel">
-        <h2>Image Info</h2>
-        <table>${metaRows}</table>
+        ${metaSections}
         ${errorNote}
     </div>
     <script>
@@ -167,6 +184,49 @@ function buildHtml(result: BntxTextureResult): string {
 
 function row(label: string, value: string): string {
     return `<tr><td>${label}</td><td>${value}</td></tr>`;
+}
+
+function buildSection(title: string, rows: string): string {
+    return `<div class="prop-section">
+        <div class="prop-section-header">${title}</div>
+        <table>${rows}</table>
+    </div>`;
+}
+
+function buildChannelRows(ch: BntxChannelInfo): string {
+    return [
+        row('Red Channel', ch.red),
+        row('Green Channel', ch.green),
+        row('Blue Channel', ch.blue),
+        row('Alpha Channel', ch.alpha),
+    ].join('');
+}
+
+function buildImageInfoRows(info: BntxImageInfo): string {
+    return [
+        row('Width', String(info.width)),
+        row('Height', String(info.height)),
+        row('Mip Count', String(info.mipCount)),
+        row('Format', info.format),
+        row('Use SRGB', info.useSRGB),
+        row('Name', info.name),
+        row('Access Flags', info.accessFlags),
+    ].join('');
+}
+
+function buildMiscRows(misc: BntxMiscInfo): string {
+    return [
+        row('Depth', String(misc.depth)),
+        row('Tile Mode', misc.tileMode),
+        row('Swizzle', String(misc.swizzle)),
+        row('Alignment', String(misc.alignment)),
+        row('Pitch', String(misc.pitch)),
+        row('Dims', misc.dims),
+        row('Surface Shape', misc.surfaceShape),
+        row('Flags', String(misc.flags)),
+        row('Image Size', formatBytes(misc.imageSize)),
+        row('Sample Count', String(misc.sampleCount)),
+    ].join('');
 }
 
 function formatBytes(bytes: number): string {

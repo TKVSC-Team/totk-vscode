@@ -65,6 +65,8 @@ def _fmt_info(format_id: int) -> tuple[str, int, int, int, str]:
             name += '_SRGB'
         elif variant == 0x02:
             name += '_SNORM'
+        elif variant == 0x01:
+            name += '_UNORM'
         return name, bpp, bw, bh, dec
     return (f'Unknown(0x{format_id:04X})', 4, 1, 1, 'unknown')
 
@@ -242,26 +244,71 @@ def _bc5_to_normal(bgra: bytes, pixel_count: int) -> bytes:
 #  Public API
 # ---------------------------------------------------------------------------
 
+_CHANNEL_NAMES = {0: 'Zero', 1: 'One', 2: 'Red', 3: 'Green', 4: 'Blue', 5: 'Alpha'}
+_DIM_NAMES = {1: 'Dim1D', 2: 'Dim2D', 3: 'Dim3D', 6: 'DimCube'}
+_ACCESS_FLAG_NAMES = {0x20: 'Texture'}
+
+
+def _channel_name(val: int) -> str:
+    return _CHANNEL_NAMES.get(val, f'Unknown({val})')
+
+
+def _dim_name(val: int) -> str:
+    return _DIM_NAMES.get(val, f'Unknown({val})')
+
+
+def _access_flags_str(val: int) -> str:
+    name = _ACCESS_FLAG_NAMES.get(val)
+    return name if name else f'0x{val:02X}'
+
+
 def get_texture_metadata(bntx_data: bytes, texture_name: str) -> dict | None:
-    """Return structured metadata for a BNTX texture."""
+    """Return structured metadata for a BNTX texture, grouped like Switch Toolbox."""
     for tex in _parse_textures(bntx_data):
         if tex.name == texture_name:
             fmt_name, bpp, blk_w, blk_h, _ = _fmt_info(tex.format_id)
+            is_srgb = (tex.format_id & 0xFF) in _SRGB_VARIANTS
             tile_label = 'Linear' if tex.tile_mode == 1 else 'Default'
+            dim_label = _dim_name(tex.dims)
             return {
                 'name': tex.name,
+                'channels': {
+                    'red': _channel_name(tex.channel_r),
+                    'green': _channel_name(tex.channel_g),
+                    'blue': _channel_name(tex.channel_b),
+                    'alpha': _channel_name(tex.channel_a),
+                },
+                'imageInfo': {
+                    'width': tex.width,
+                    'height': tex.height,
+                    'mipCount': tex.mip_count,
+                    'format': fmt_name,
+                    'formatId': f'0x{tex.format_id:04X}',
+                    'useSRGB': 'True' if is_srgb else 'False',
+                    'name': tex.name,
+                    'accessFlags': _access_flags_str(tex.access_flags),
+                },
+                'misc': {
+                    'depth': tex.depth,
+                    'tileMode': tile_label,
+                    'swizzle': tex.swizzle,
+                    'alignment': tex.alignment,
+                    'pitch': tex.pitch,
+                    'dims': dim_label,
+                    'surfaceShape': dim_label,
+                    'flags': tex.flags,
+                    'imageSize': tex.image_size,
+                    'sampleCount': tex.sample_count,
+                },
                 'width': tex.width,
                 'height': tex.height,
                 'format': fmt_name,
                 'formatId': f'0x{tex.format_id:04X}',
                 'mipCount': tex.mip_count,
-                'bpp': bpp,
-                'blockWidth': blk_w,
-                'blockHeight': blk_h,
+                'dataSize': tex.data_size,
                 'tileMode': tile_label,
                 'blockH': 1 << tex.block_height_log2,
                 'blockHLog2': tex.block_height_log2,
-                'dataSize': tex.data_size,
             }
     return None
 

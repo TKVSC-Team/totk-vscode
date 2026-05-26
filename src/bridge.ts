@@ -36,22 +36,53 @@ export function runBridgeJson<T>(
 
 type BridgeReadPayload = { content?: string; contentPath?: string; error?: string };
 
+export interface BntxChannelInfo {
+    red: string;
+    green: string;
+    blue: string;
+    alpha: string;
+}
+
+export interface BntxImageInfo {
+    width: number;
+    height: number;
+    mipCount: number;
+    format: string;
+    formatId: string;
+    useSRGB: string;
+    name: string;
+    accessFlags: string;
+}
+
+export interface BntxMiscInfo {
+    depth: number;
+    tileMode: string;
+    swizzle: number;
+    alignment: number;
+    pitch: number;
+    dims: string;
+    surfaceShape: string;
+    flags: number;
+    imageSize: number;
+    sampleCount: number;
+}
+
 export interface BntxTextureResult {
     bntxTexture: true;
     metadata?: {
         name: string;
+        channels: BntxChannelInfo;
+        imageInfo: BntxImageInfo;
+        misc: BntxMiscInfo;
         width: number;
         height: number;
         format: string;
         formatId: string;
         mipCount: number;
-        bpp: number;
-        blockWidth: number;
-        blockHeight: number;
+        dataSize: number;
         tileMode: string;
         blockH: number;
         blockHLog2: number;
-        dataSize: number;
     };
     pngBase64?: string;
 }

@@ -16,6 +16,7 @@
 - [x] bntx image render size
 - [ ] tkmm options
 - [x] tkcl editor
+- [x] additional image metadata
 
 ## 5th
 - [x] organize repo
