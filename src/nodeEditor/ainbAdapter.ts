@@ -70,41 +70,66 @@ export class AinbNodeFormatAdapter implements NodeFormatAdapter {
     }
 
     // --- LAYOUT ENGINE ---
-    private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number, { x: number, y: number }> {
+private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number, { x: number, y: number }> {
         const depths = new Map<number, number>();
         const adj = new Map<number, number[]>();
+        const inDegree = new Map<number, number>();
 
-        // Map parent -> children
+        // 1. Map parent -> children and track incoming connections
         nodes.forEach(n => {
             const children: number[] = [];
             Object.values(n.Plugs || {}).flat().forEach(plug => {
-                if (plug['Node Index'] !== undefined && plug['Node Index'] >= 0) children.push(plug['Node Index']);
+                const targetIdx = plug['Node Index'];
+                if (targetIdx !== undefined && targetIdx >= 0) {
+                    children.push(targetIdx);
+                    inDegree.set(targetIdx, (inDegree.get(targetIdx) || 0) + 1);
+                }
             });
             adj.set(n['Node Index'], children);
         });
 
         const queue: { id: number; d: number }[] = [];
         
-        // Root nodes start at depth 1 (Commands are depth 0)
+        // 2. Queue explicit root nodes (Commands)
         commands.forEach(cmd => {
             if (cmd['Root Node Index'] !== undefined && cmd['Root Node Index'] >= 0) {
                 queue.push({ id: cmd['Root Node Index'], d: 1 });
             }
         });
 
-        // Fallback for orphaned nodes
-        nodes.forEach(n => { if (!depths.has(n['Node Index'])) queue.push({ id: n['Node Index'], d: 1 }); });
+        // 3. Queue implicitly orphaned nodes (nodes with 0 incoming connections)
+        nodes.forEach(n => { 
+            if (!inDegree.has(n['Node Index'])) {
+                queue.push({ id: n['Node Index'], d: 1 });
+            }
+        });
 
-        // Longest-path traversal
-        while (queue.length > 0) {
-            const { id, d } = queue.shift()!;
-            if ((depths.get(id) || 0) < d) {
+        // 4. Safe Traversal with Cycle Breaking
+        let head = 0;
+        while (head < queue.length) {
+            const { id, d } = queue[head++];
+            
+            // CYCLE BREAKER: Only process if we haven't assigned a depth yet
+            if (!depths.has(id)) {
                 depths.set(id, d);
-                (adj.get(id) || []).forEach(childId => queue.push({ id: childId, d: d + 1 }));
+                
+                (adj.get(id) || []).forEach(childId => {
+                    // Only push children we haven't locked in yet
+                    if (!depths.has(childId)) {
+                        queue.push({ id: childId, d: d + 1 });
+                    }
+                });
             }
         }
 
-        // Assign X and Y based on depth groupings
+        // 5. Catch-all for isolated cyclic islands (nodes trapped in a circle with no root)
+        nodes.forEach(n => {
+            if (!depths.has(n['Node Index'])) {
+                depths.set(n['Node Index'], 1);
+            }
+        });
+
+        // 6. Assign X and Y based on the calculated depths
         const layout = new Map<number, { x: number, y: number }>();
         const depthCounts = new Map<number, number>();
 
@@ -158,6 +183,8 @@ export class AinbNodeFormatAdapter implements NodeFormatAdapter {
 
             // 2. Process Parameters (Data Pins & Static Display)
             Object.entries(node.Parameters || {}).forEach(([paramType, params]) => {
+                if (!Array.isArray(params)) return; // <-- ADD THIS SAFEGUARD
+
                 const isOutput = paramType.toLowerCase().includes('output');
                 const cleanType = paramType.replace(/(Input|Output)/i, '').trim();
                 const displayEntries: string[] = [];
@@ -252,7 +279,9 @@ export class AinbNodeFormatAdapter implements NodeFormatAdapter {
 
             // Data Edges (Target Node polling Source Node)
             Object.entries(node.Parameters || {}).forEach(([paramType, params]) => {
+                if (!Array.isArray(params)) return; // <-- ADD THIS SAFEGUARD
                 if (paramType.toLowerCase().includes('output')) return; // Outputs don't establish edges themselves
+                
                 const cleanType = paramType.replace(/(Input|Output)/i, '').trim();
 
                 params.forEach((param, paramIndex) => {

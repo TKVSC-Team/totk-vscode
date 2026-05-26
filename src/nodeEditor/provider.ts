@@ -13,16 +13,21 @@ function getCachedPythonExecutable(): string {
     return vscode.workspace.getConfiguration('python').get<string>('defaultInterpreterPath') || 'python';
 }
 
-// Executes the Python RPC script and parses the JSON response
-async function runBridgeJson(pythonExe: string, args: string[]): Promise<any> {
-    const extDir = path.join(__dirname, '..', '..'); // Adjust depending on where provider.ts is relative to ainb_rpc.py
-    const scriptPath = path.join(extDir, args[0]);   // Assuming args[0] is the script name
-    
-    // Properly quote arguments to handle spaces and JSON strings in the shell
+async function runBridgeJson(extensionPath: string, pythonExe: string, args: string[]): Promise<any> {
+    const scriptPath = path.join(extensionPath, 'python', args[0]);   
     const commandArgs = [scriptPath, ...args.slice(1)].map(arg => `"${arg.replace(/"/g, '\\"')}"`).join(' ');
     
-    const { stdout } = await execPromise(`"${pythonExe}" ${commandArgs}`);
-    return JSON.parse(stdout.trim());
+    try {
+        const { stdout, stderr } = await execPromise(`"${pythonExe}" ${commandArgs}`);
+        if (stderr && stderr.trim()) {
+            console.warn("Python warning:", stderr);
+        }
+        return JSON.parse(stdout.trim());
+    } catch (execError: any) {
+        // --- NEW: Extract the actual Python traceback/stderr stream ---
+        const pythonError = execError.stderr ? execError.stderr.trim() : execError.message;
+        throw new Error(`Python Bridge Error:\n${pythonError}`);
+    }
 }
 
 type NodeEditorMessage =
@@ -48,11 +53,14 @@ export class AinbNodeEditorProvider implements vscode.CustomTextEditorProvider {
         });
     }
 
-    public async resolveCustomTextEditor(
+public async resolveCustomTextEditor(
         document: vscode.TextDocument,
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
+        
+        let isSaving = false; // <-- ADD THIS FLAG
+
         webviewPanel.webview.options = {
             enableScripts: true,
             localResourceRoots: [vscode.Uri.file(path.join(this.context.extensionPath, 'editors/node-editor/dist'))],
@@ -66,11 +74,47 @@ export class AinbNodeEditorProvider implements vscode.CustomTextEditorProvider {
 
         webviewPanel.webview.html = this.getWebviewHtml(webviewPanel.webview);
 
-        // Core parsing & dispatch function
-        const updateWebview = () => {
+        // Change updateWebview to be async
+        const updateWebview = async () => {
             try {
-                const result = adapter.parse(document.uri.fsPath, document.getText());
+                // START: 10%
+                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Reading document...', progress: 10 } });
+                const filePath = document.uri.fsPath;
+                let rawText = document.getText();
+
+                // 1. Intercept binary files
+                if (filePath.toLowerCase().endsWith('.ainb')) {
+                    // PYTHON RPC: 30%
+                    webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Decoding binary AINB via Python...', progress: 30 } });
+                    
+                    const commandString = JSON.stringify({ action: "to_json" });
+                    const result = await runBridgeJson(
+                        this.context.extensionPath,
+                        getCachedPythonExecutable(), [
+                        'ainb_rpc.py',
+                        '--file', filePath, 
+                        '--command', commandString
+                    ]);
+                    
+                    if (result.status !== 'success') {
+                        throw new Error(`Python RPC failed: ${result.message}`);
+                    }
+                    
+                    // JSON LOADED: 60%
+                    webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Parsing AINB JSON data...', progress: 60 } });
+                    rawText = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+                }
+
+                // 2. Run your adapter
+                // LAYOUT CALCULATION: 80%
+                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Calculating node layout...', progress: 80 } });
+                const result = adapter.parse(filePath, rawText);
+                
+                // 3. Send to React
+                // RENDERING: 95%
+                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Rendering graph...', progress: 95 } });
                 webviewPanel.webview.postMessage({ type: 'init', payload: result.model });
+
             } catch (err: any) {
                 webviewPanel.webview.postMessage({ type: 'error', payload: { message: err.message } });
             }
@@ -80,40 +124,61 @@ export class AinbNodeEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel.webview.onDidReceiveMessage(async (msg: any) => {
             switch (msg.type) {
                 case 'ready':
-                    updateWebview();
+                    await updateWebview();
                     break;
                 
                 // NEW: Intercept RPC commands from the React UI
                 case 'rpc_edit':
                     try {
-                        // msg.payload looks like: { action: "link_nodes", payload: { source: 0, target: 1 } }
+                        isSaving = true; // <-- Mute the file watcher
                         const commandString = JSON.stringify(msg.payload);
                         
-                        // Call your Python environment. Assuming runBridgeJson executes a python script:
                         const result = await runBridgeJson(
+                            this.context.extensionPath,
                             getCachedPythonExecutable(), 
                             ['ainb_rpc.py', '--file', document.uri.fsPath, '--command', commandString]
                         );
 
                         if (result.status === 'success') {
-                            // Python successfully edited the file! 
-                            // The VS Code file watcher (onDidChangeTextDocument) will automatically 
-                            // trigger updateWebview() because the file changed on disk!
                             vscode.window.showInformationMessage(`Successfully executed: ${msg.payload.action}`);
+                            
+                            // THE NATIVE DISK FIX: Use Node 'fs' to bypass VS Code's VFS locks.
+                            const buffer = Buffer.from(result.data, 'base64');
+                            const targetPath = document.uri.fsPath;
+                            
+                            try {
+                                // Attempt to write directly to the disk
+                                fs.writeFileSync(targetPath, buffer);
+                            } catch (writeErr: any) {
+                                // If the ROMFS file is locked as Read-Only, force it to be writable and try again
+                                if (writeErr.code === 'EPERM' || writeErr.code === 'EACCES') {
+                                    fs.chmodSync(targetPath, 0o666); 
+                                    fs.writeFileSync(targetPath, buffer);
+                                } else {
+                                    throw writeErr; // Rethrow if it's a different hard drive error
+                                }
+                            }
+
+                            await updateWebview(); // Manually refresh the graph
                         } else {
                             vscode.window.showErrorMessage(`Python Error: ${result.message}`);
                         }
                     } catch (err) {
                         vscode.window.showErrorMessage(`Failed to run Python API: ${err}`);
+                    } finally {
+                        // Unmute the watcher after the VS Code file events pass by
+                        setTimeout(() => { isSaving = false; }, 1000);
                     }
                     break;
             }
         });
 
         // Watch for raw JSON updates to live-refresh the webview graph
-        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
+        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(async (e) => {
+            if (isSaving) return; // <-- IGNORE EXTERNAL CHANGES TRIGGERED BY PYTHON
+
             if (e.document.uri.toString() === document.uri.toString()) {
-                updateWebview();
+                await updateWebview();
             }
         });
 

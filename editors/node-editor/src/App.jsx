@@ -561,27 +561,79 @@ function FlowInner({ model }) {
 // ---------------------------------------------------------------------------
 // Root
 // ---------------------------------------------------------------------------
+// App.jsx
 export default function App() {
   const [model, setModel] = useState(null);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('Initializing Editor...');
+  const [progress, setProgress] = useState(0); // <-- NEW STATE
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const onMessage = ({ data }) => {
       const { type, payload } = data || {};
-      if (type === 'init')  setModel(payload);
-      if (type === 'error') setError(String(payload?.message || 'Unknown error'));
+      if (type === 'init') {
+        setModel(payload);
+        setIsLoading(false);
+      }
+      if (type === 'error') {
+        setError(String(payload?.message || 'Unknown error'));
+        setIsLoading(false);
+      }
+      if (type === 'status') {
+        // Update to handle object payloads with progress
+        setStatus(payload.text || payload);
+        if (payload.progress) setProgress(payload.progress);
+      }
     };
     window.addEventListener('message', onMessage);
     vscode?.postMessage({ type: 'ready' });
     return () => window.removeEventListener('message', onMessage);
   }, []);
 
+  if (error) {
+    return (
+      <div className="fullscreen-overlay error-overlay">
+        <h2>Failed to Load Graph</h2>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  // --- UPDATED: Loading Screen with Bar ---
+  if (isLoading) {
+    return (
+      <div className="fullscreen-overlay loading-overlay">
+        <div className="spinner"></div>
+        <h3 style={{ marginTop: '20px' }}>{status}</h3>
+        
+        {/* NEW PROGRESS BAR */}
+        <div style={{ 
+          width: '300px', 
+          height: '6px', 
+          background: '#222', 
+          borderRadius: '4px', 
+          marginTop: '15px', 
+          overflow: 'hidden',
+          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
+        }}>
+          <div style={{ 
+            width: `${progress}%`, 
+            height: '100%', 
+            background: 'hsl(42, 85%, 68%)', // Matching your FLOW_PIN_COLOR
+            transition: 'width 0.2s ease-out' 
+          }}></div>
+        </div>
+
+      </div>
+    );
+  }
+
   return (
     <div className="node-editor-root">
       <div className="node-editor-toolbar">...</div>
       <div className="node-editor-title">...</div>
       
-      {/* NEW LAYOUT WRAPPER */}
       <div className="node-editor-main">
         <ReactFlowProvider style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <FlowInner model={model} />
@@ -627,6 +679,9 @@ const InspectorPanel = memo(function InspectorPanel({ model }) {
         </div>
 
         {Object.entries(rawNode.Parameters || {}).map(([paramGroup, params]) => {
+           // <-- ADD THIS SAFEGUARD
+           if (!Array.isArray(params)) return null; 
+
            // We only want to edit Inputs that are not linked
            if (paramGroup.toLowerCase().includes('output')) return null;
            

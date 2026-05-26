@@ -25,6 +25,9 @@
 - [x] organize repo
 - [x] abstract editable files into configs
 - [x] ainb file handling
+- [ ] loading bar instead of wheel
+- [ ] fix ainb loading, sorting, etc
+- [ ] blackboard/command menu
 
 ## Aster
 ### Icons
@@ -40,6 +43,6 @@
 ## Node Editor
 - [x] Node colouring
 - [x] Load all connections on AINB load and DONT cull them completely (impl frustum culling or pixel culling or something)
-- [ ] Loading screen if possible
+- [x] Loading screen if possible
 - [x] ~~No more "and x more..."~~ depr
 - [x] ~~Impl my auto sort algorithm~~ depr
