@@ -183,7 +183,7 @@ private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number,
 
             // 2. Process Parameters (Data Pins & Static Display)
             Object.entries(node.Parameters || {}).forEach(([paramType, params]) => {
-                if (!Array.isArray(params)) return; // <-- ADD THIS SAFEGUARD
+                if (!Array.isArray(params)) {return;} // <-- ADD THIS SAFEGUARD
 
                 const isOutput = paramType.toLowerCase().includes('output');
                 const cleanType = paramType.replace(/(Input|Output)/i, '').trim();
@@ -207,7 +207,7 @@ private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number,
                     }
                 });
 
-                if (displayEntries.length > 0) sections.push({ title: paramType, entries: displayEntries });
+                if (displayEntries.length > 0) {sections.push({ title: paramType, entries: displayEntries });}
             });
 
             // 3. Properties Section
@@ -279,8 +279,8 @@ private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number,
 
             // Data Edges (Target Node polling Source Node)
             Object.entries(node.Parameters || {}).forEach(([paramType, params]) => {
-                if (!Array.isArray(params)) return; // <-- ADD THIS SAFEGUARD
-                if (paramType.toLowerCase().includes('output')) return; // Outputs don't establish edges themselves
+                if (!Array.isArray(params)) {return;} // <-- ADD THIS SAFEGUARD
+                if (paramType.toLowerCase().includes('output')) {return;} // Outputs don't establish edges themselves
                 
                 const cleanType = paramType.replace(/(Input|Output)/i, '').trim();
 
