@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Bwav" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #23af30;
+        stroke-linecap: round;
+        stroke-width: 2.5px;
+      }
+    </style>
+  </defs>
+  <g id="Waveform">
+    <g>
+      <g id="Line7">
+        <line class="cls-1" x1="28" y1="23" x2="28" y2="9"/>
+        <line class="cls-1" x1="28" y1="23" x2="28" y2="9"/>
+      </g>
+      <g id="Line6">
+        <line class="cls-1" x1="24" y1="26" x2="24" y2="6"/>
+        <line class="cls-1" x1="24" y1="26" x2="24" y2="6"/>
+      </g>
+      <g>
+        <line class="cls-1" x1="20" y1="21" x2="20" y2="11"/>
+        <line class="cls-1" x1="20" y1="21" x2="20" y2="11"/>
+      </g>
+      <g id="Line4">
+        <line class="cls-1" x1="15.99996" y1="23.99994" x2="15.99996" y2="8"/>
+        <line class="cls-1" x1="15.99996" y1="23.99994" x2="15.99996" y2="8"/>
+      </g>
+      <g id="Line3">
+        <line class="cls-1" x1="11.99996" y1="19.99994" x2="11.99996" y2="12"/>
+        <line class="cls-1" x1="11.99996" y1="19.99994" x2="11.99996" y2="12"/>
+      </g>
+      <g id="Line2">
+        <line class="cls-1" x1="7.99996" y1="22.99994" x2="7.99996" y2="9"/>
+        <line class="cls-1" x1="7.99996" y1="22.99994" x2="7.99996" y2="9"/>
+      </g>
+      <g id="Line1">
+        <line class="cls-1" x1="3.99996" y1="25.99994" x2="3.99996" y2="6"/>
+        <line class="cls-1" x1="3.99996" y1="25.99994" x2="3.99996" y2="6"/>
+      </g>
+    </g>
+  </g>
+</svg>
