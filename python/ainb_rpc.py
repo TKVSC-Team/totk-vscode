@@ -1,8 +1,15 @@
 import argparse
 import json
 import sys
-from ainb import AINB
-from node import Node, NodeType
+from pathlib import Path
+
+# Add vendor ainb library to sys.path so we can import it directly.
+_VENDOR_AINB = str(Path(__file__).resolve().parent.parent / 'vendor' / 'ainb')
+if _VENDOR_AINB not in sys.path:
+    sys.path.insert(0, _VENDOR_AINB)
+
+from ainb.ainb import AINB
+from ainb.node import Node, NodeType
 
 def handle_rpc(file_path: str, command_str: str):
     try:

@@ -8,6 +8,11 @@ import tempfile
 import contextlib
 from pathlib import Path
 
+# Add vendor ainb library to sys.path so we can import it directly.
+_VENDOR_AINB = str(Path(__file__).resolve().parent.parent / 'vendor' / 'ainb')
+if _VENDOR_AINB not in sys.path:
+    sys.path.insert(0, _VENDOR_AINB)
+
 import oead
 from byml_editor_format import to_editor_text
 from byml_yaml_utils import format_byml_for_editor, normalize_byml_u64_literals
@@ -175,46 +180,14 @@ def read_msbt_content(file_data, logical_path='', romfs_path=''):
 
 
 def read_ainb_content(file_data: bytes, logical_path: str = '', romfs_path: str = '') -> str:
-    import shutil
-    import subprocess
+    from ainb.ainb import AINB as AINBFile
 
     payload, _, _ = decompress_container(file_data, logical_path, romfs_path)
     if len(payload) < 4:
         return f'<Invalid AINB: {len(payload)} bytes>'
 
-    stem = Path(logical_path).name.replace('\\', '/').split('/')[-1] or 'file.ainb'
-    with tempfile.TemporaryDirectory(prefix='totk-ainb-') as tmp_dir:
-        in_path = Path(tmp_dir) / stem
-        if in_path.suffix.lower() != '.ainb':
-            in_path = in_path.with_suffix('.ainb')
-        in_path.write_bytes(payload)
-
-        cmd = [shutil.which('ainb') or '', str(in_path)]
-        if not cmd[0]:
-            # Fallback when CLI entrypoint is not on PATH inside the extension environment.
-            cmd = [sys.executable, '-m', 'ainb', str(in_path)]
-
-        # Force converter output into temp space (not the extension's python folder).
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=tmp_dir)
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout or '').strip() or f'exit {result.returncode}'
-            raise ValueError(f'AINB conversion failed: {detail}')
-
-        stdout = (result.stdout or '').strip()
-        if stdout:
-            return stdout
-
-        # Some builds write a sibling .json file instead of stdout.
-        out_json = in_path.with_suffix('.json')
-        if out_json.is_file():
-            return out_json.read_text(encoding='utf-8')
-
-        # Some converter builds write JSON into cwd with various names.
-        json_outputs = sorted(Path(tmp_dir).glob('*.json'))
-        if json_outputs:
-            return json_outputs[0].read_text(encoding='utf-8')
-
-        raise ValueError('AINB conversion produced no output.')
+    ainb_obj = AINBFile.from_binary(payload)
+    return ainb_obj.to_json()
 
 
 def _parse_event_color(tags: list[str]) -> str | None:
