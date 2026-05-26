@@ -115,7 +115,9 @@
           ".sarc",
           ".sarc.zs",
           ".genvb",
-          ".genvb.zs"
+          ".genvb.zs",
+          ".bfarc",
+          ".bfarc.zs"
         ],
         "aliases": [
           "TOTK Archive"
@@ -189,7 +191,7 @@
     "commands": [
       {
         "command": "totk-editor.openPack",
-        "title": "TOTK: Open Archive (.pack, .sarc, .genvb, .blarc, .bntx)",
+        "title": "TOTK: Open Archive (.pack, .sarc, .genvb, .blarc, .bfarc, .bntx)",
         "icon": "$(package)"
       },
       {
@@ -325,7 +327,7 @@
     "viewsWelcome": [
       {
         "view": "totk-editor.archives",
-        "contents": "Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, and `.bntx` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Open Archive](command:totk-editor.openPack)\n\n[Browse Workspace Folder](command:totk-editor.addWorkspaceToArchives)"
+        "contents": "Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, `.bfarc`, and `.bntx` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Open Archive](command:totk-editor.openPack)\n\n[Browse Workspace Folder](command:totk-editor.addWorkspaceToArchives)"
       },
       {
         "view": "totk-editor.gameDump",
@@ -558,7 +560,9 @@
         "**.sarc": "package",
         "**.sarc.zs": "package",
         "**.genvb": "package",
-        "**.genvb.zs": "package"
+        "**.genvb.zs": "package",
+        "**.bfarc": "package",
+        "**.bfarc.zs": "package"
       },
       "[byml]": {
         "editor.insertSpaces": true,

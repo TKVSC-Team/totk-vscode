@@ -17,3 +17,6 @@ images/
 **/*.pyc
 **/.git/**
 icons/*.ai
+graphics/
+vendor/py-xlink2
+.github/

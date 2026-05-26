@@ -1,6 +1,6 @@
 /** SARC-based archives (.pack, .sarc, .genvb, .blarc, .bntx and optional .zs compression). */
 
-export const ARCHIVE_FILE_PATTERN = /\.(pack|sarc|genvb|blarc|bntx)(\.zs)?$/i;
+export const ARCHIVE_FILE_PATTERN = /\.(pack|sarc|genvb|blarc|bfarc|bntx)(\.zs)?$/i;
 
 const BNTX_PARENT_PATTERN = /\.bntx(\.zs)?[/\\]/i;
 
@@ -9,7 +9,7 @@ export function isBntxTextureUri(uri: { fsPath: string }): boolean {
     return BNTX_PARENT_PATTERN.test(uri.fsPath);
 }
 
-const DISK_ARCHIVE_PATTERN = /^(.+?\.(pack|sarc|genvb|blarc|bntx)(\.zs)?)(?=\\|\/|$)/i;
+const DISK_ARCHIVE_PATTERN = /^(.+?\.(pack|sarc|genvb|blarc|bfarc|bntx)(\.zs)?)(?=\\|\/|$)/i;
 
 export function isArchiveFileName(name: string): boolean {
     return ARCHIVE_FILE_PATTERN.test(name.replace(/\\/g, '/').split('/').pop() ?? name);
