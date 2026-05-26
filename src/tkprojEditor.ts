@@ -247,7 +247,7 @@ function buildHtml(data: TkprojData): string {
 </style>
 </head>
 <body>
-    <h1><span class="icon">📦</span> TKMM Project</h1>
+    <h1>TKMM Project</h1>
 
     <div class="section">
         <div class="section-header">Mod Info</div>

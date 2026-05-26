@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os'; // <-- WE NEED THIS NOW
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import * as util from 'util';
@@ -18,47 +19,89 @@ async function runBridgeJson(extensionPath: string, pythonExe: string, args: str
     
     try {
         const { stdout, stderr } = await execPromise(`"${pythonExe}" ${commandArgs}`);
-        if (stderr && stderr.trim()) {
-            console.warn("Python warning:", stderr);
-        }
+        if (stderr && stderr.trim()) console.warn("Python warning:", stderr);
         return JSON.parse(stdout.trim());
     } catch (execError: any) {
-        // --- NEW: Extract the actual Python traceback/stderr stream ---
         const pythonError = execError.stderr ? execError.stderr.trim() : execError.message;
         throw new Error(`Python Bridge Error:\n${pythonError}`);
     }
 }
 
-type NodeEditorMessage =
-    | { type: 'ready' }
-    | { type: 'requestSaveScaffold' };
+// 1. THE ARCHITECTURE SHIFT: Working OS-Level Temp Files
+class AinbDocument implements vscode.CustomDocument {
+    public readonly tmpPath: string;
+    
+    constructor(public readonly uri: vscode.Uri) {
+        // Give every open document a unique, hidden working file
+        const fileName = path.basename(uri.fsPath);
+        this.tmpPath = path.join(os.tmpdir(), `totk_${Date.now()}_${fileName}`);
+        
+        // Initialize the working copy with the original ROMFS data
+        fs.copyFileSync(uri.fsPath, this.tmpPath);
+    }
+    
+    dispose(): void {
+        // Clean up the temp file when you actually close the tab
+        if (fs.existsSync(this.tmpPath)) {
+            fs.unlinkSync(this.tmpPath);
+        }
+    }
+}
 
 const VIEW_TYPE = 'totk-editor.ainbNodeEditor';
 
-export class AinbNodeEditorProvider implements vscode.CustomTextEditorProvider {
+export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbDocument> {
     private readonly registry: NodeEditorAdapterRegistry;
 
+    private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<AinbDocument>>();
+    public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
+
     constructor(private readonly context: vscode.ExtensionContext) {
-        // Pass the extension path so registry adapters can load internal assets if needed
         this.registry = new NodeEditorAdapterRegistry(context.extensionPath);
     }
 
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         const provider = new AinbNodeEditorProvider(context);
         return vscode.window.registerCustomEditorProvider(VIEW_TYPE, provider, {
-            webviewOptions: {
-                retainContextWhenHidden: true,
-            },
+            webviewOptions: { retainContextWhenHidden: true },
         });
     }
 
-public async resolveCustomTextEditor(
-        document: vscode.TextDocument,
+    public async openCustomDocument(uri: vscode.Uri): Promise<AinbDocument> {
+        return new AinbDocument(uri);
+    }
+    
+    // 2. NATIVE SAVE LOGIC
+    public async saveCustomDocument(document: AinbDocument): Promise<void> {
+        const targetPath = document.uri.fsPath;
+        
+        // Break the ROMFS Read-Only Lock
+        try { fs.accessSync(targetPath, fs.constants.W_OK); } 
+        catch (e) { fs.chmodSync(targetPath, 0o666); }
+        
+        // Push from the Temp file back to the actual Hard Drive
+        fs.copyFileSync(document.tmpPath, targetPath);
+    }
+    
+    public async saveCustomDocumentAs(document: AinbDocument, destination: vscode.Uri): Promise<void> {
+        fs.copyFileSync(document.tmpPath, destination.fsPath);
+    }
+    
+    public async revertCustomDocument(document: AinbDocument): Promise<void> {
+        // If the user discards changes, overwrite the Temp file with original file
+        fs.copyFileSync(document.uri.fsPath, document.tmpPath);
+    }
+    
+    public async backupCustomDocument(document: AinbDocument, context: vscode.CustomDocumentBackupContext): Promise<vscode.CustomDocumentBackup> {
+        fs.copyFileSync(document.tmpPath, context.destination.fsPath);
+        return { id: context.destination.toString(), delete: () => {} };
+    }
+
+    public async resolveCustomEditor(
+        document: AinbDocument,
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
-        
-        let isSaving = false; // <-- ADD THIS FLAG
 
         webviewPanel.webview.options = {
             enableScripts: true,
@@ -67,71 +110,58 @@ public async resolveCustomTextEditor(
 
         const adapter = this.registry.getForUri(document.uri);
         if (!adapter) {
-            webviewPanel.webview.html = `<h3>Error: No format adapter registered for ${path.basename(document.uri.fsPath)}</h3>`;
+            webviewPanel.webview.html = `<h3>Error: No format adapter registered</h3>`;
             return;
         }
 
         webviewPanel.webview.html = this.getWebviewHtml(webviewPanel.webview);
 
-        // Change updateWebview to be async
         const updateWebview = async () => {
             try {
-                // START: 10%
                 webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Reading document...', progress: 10 } });
-                const filePath = document.uri.fsPath;
-                let rawText = document.getText();
+                
+                // 3. READ FROM THE TEMP FILE, NEVER THE REAL DISK!
+                const isBinary = document.uri.fsPath.toLowerCase().endsWith('.ainb');
+                let rawText = "";
 
-                // 1. Intercept binary files
-                if (filePath.toLowerCase().endsWith('.ainb')) {
-                    // PYTHON RPC: 30%
-                    webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Decoding binary AINB via Python...', progress: 30 } });
-                    
+                if (isBinary) {
+                    webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Decoding working data...', progress: 30 } });
                     const commandString = JSON.stringify({ action: "to_json" });
                     const result = await runBridgeJson(
                         this.context.extensionPath,
-                        getPython(), [
-                        'ainb_rpc.py',
-                        '--file', filePath, 
-                        '--command', commandString
-                    ]);
+                        getPython(),
+                        ['ainb_rpc.py', '--file', document.tmpPath, '--command', commandString]
+                    );
                     
-                    if (result.status !== 'success') {
-                        throw new Error(`Python RPC failed: ${result.message}`);
-                    }
-                    
-                    // JSON LOADED: 60%
-                    webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Parsing AINB JSON data...', progress: 60 } });
+                    if (result.status !== 'success') throw new Error(`Python RPC failed: ${result.message}`);
                     rawText = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+                } else {
+                    rawText = fs.readFileSync(document.tmpPath, 'utf8');
                 }
 
-                // 2. Run your adapter
-                // LAYOUT CALCULATION: 80%
-                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Calculating node layout...', progress: 80 } });
-                const result = adapter.parse(filePath, rawText);
+                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Calculating layout...', progress: 80 } });
                 
-                // 3. Send to React
-                // RENDERING: 95%
-                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Rendering graph...', progress: 95 } });
-                webviewPanel.webview.postMessage({ type: 'init', payload: result.model });
+                const parsed = adapter.parse(document.uri.fsPath, rawText);
+                
+                webviewPanel.webview.postMessage({ type: 'status', payload: { text: 'Rendering...', progress: 95 } });
+                webviewPanel.webview.postMessage({ type: 'init', payload: parsed.model });
 
             } catch (err: any) {
                 webviewPanel.webview.postMessage({ type: 'error', payload: { message: err.message } });
             }
         };
 
-        // Message receiver from React App
         webviewPanel.webview.onDidReceiveMessage(async (msg: any) => {
             switch (msg.type) {
                 case 'ready':
                     await updateWebview();
                     break;
                 
-                // NEW: Intercept RPC commands from the React UI
                 case 'rpc_edit':
                     try {
-                        isSaving = true; // <-- Mute the file watcher
                         const commandString = JSON.stringify(msg.payload);
                         
+                        // 4. PYTHON EDITS THE TEMP FILE
                         const result = await runBridgeJson(
                             this.context.extensionPath,
                             getPython(),
@@ -139,50 +169,29 @@ public async resolveCustomTextEditor(
                         );
 
                         if (result.status === 'success') {
-                            vscode.window.showInformationMessage(`Successfully executed: ${msg.payload.action}`);
-                            
-                            // THE NATIVE DISK FIX: Use Node 'fs' to bypass VS Code's VFS locks.
+                            // 5. WRITE PYTHON'S NEW BINARY BACK TO THE TEMP FILE
+                            // This ensures edits "stack" and Python doesn't overwrite your previous clicks!
                             const buffer = Buffer.from(result.data, 'base64');
-                            const targetPath = document.uri.fsPath;
+                            fs.writeFileSync(document.tmpPath, buffer);
                             
-                            try {
-                                // Attempt to write directly to the disk
-                                fs.writeFileSync(targetPath, buffer);
-                            } catch (writeErr: any) {
-                                // If the ROMFS file is locked as Read-Only, force it to be writable and try again
-                                if (writeErr.code === 'EPERM' || writeErr.code === 'EACCES') {
-                                    fs.chmodSync(targetPath, 0o666); 
-                                    fs.writeFileSync(targetPath, buffer);
-                                } else {
-                                    throw writeErr; // Rethrow if it's a different hard drive error
-                                }
-                            }
+                            // Tell VS Code we have unsaved changes (creates the white dot)
+                            this._onDidChangeCustomDocument.fire({
+                                document,
+                                undo: () => {},
+                                redo: () => {}
+                            });
 
-                            await updateWebview(); // Manually refresh the graph
+                            // 6. UPDATE REACT. Because it reads tmpPath now, the UI will 
+                            // perfectly match the edits instead of resetting!
+                            await updateWebview();
                         } else {
                             vscode.window.showErrorMessage(`Python Error: ${result.message}`);
                         }
                     } catch (err) {
                         vscode.window.showErrorMessage(`Failed to run Python API: ${err}`);
-                    } finally {
-                        // Unmute the watcher after the VS Code file events pass by
-                        setTimeout(() => { isSaving = false; }, 1000);
                     }
                     break;
             }
-        });
-
-        // Watch for raw JSON updates to live-refresh the webview graph
-        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(async (e) => {
-            if (isSaving) return; // <-- IGNORE EXTERNAL CHANGES TRIGGERED BY PYTHON
-
-            if (e.document.uri.toString() === document.uri.toString()) {
-                await updateWebview();
-            }
-        });
-
-        webviewPanel.onDidDispose(() => {
-            changeDocumentSubscription.dispose();
         });
     }
 
@@ -190,16 +199,12 @@ public async resolveCustomTextEditor(
         const distDir = path.join(this.context.extensionPath, 'editors', 'node-editor', 'dist');
         const indexPath = path.join(distDir, 'index.html');
         
-        if (!fs.existsSync(indexPath)) {
-            return `<!DOCTYPE html><html><body><h3>TOTK Node Editor</h3><p>Webview assets missing. Run <code>npm install && npm run build</code> in your React folder.</p></body></html>`;
-        }
+        if (!fs.existsSync(indexPath)) return `<!DOCTYPE html><html><body><h3>TOTK Node Editor</h3><p>Webview assets missing.</p></body></html>`;
 
         let html = fs.readFileSync(indexPath, 'utf-8');
         html = html.replace(/(src|href)="([^"]+)"/g, (_match, attr: string, assetPath: string) => {
-            if (assetPath.startsWith('http') || assetPath.startsWith('data:')) {
-                return `${attr}="${assetPath}"`;
-            }
-            const normalized = assetPath.replace(/^\.?\//, ''); // removes leading / or ./
+            if (assetPath.startsWith('http') || assetPath.startsWith('data:')) return `${attr}="${assetPath}"`;
+            const normalized = assetPath.replace(/^\.?\//, '');
             const diskAsset = path.join(distDir, normalized);
             const webUri = webview.asWebviewUri(vscode.Uri.file(diskAsset));
             return `${attr}="${webUri.toString()}"`;

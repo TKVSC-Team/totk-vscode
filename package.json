@@ -194,8 +194,8 @@
       },
       {
         "command": "totk-editor.addWorkspaceToArchives",
-        "title": "TOTK: Browse Workspace in Archives",
-        "icon": "$(folder-opened)"
+        "title": "Add workspace folder to Projects",
+        "icon": "$(repo-create)"
       },
       {
         "command": "totk-editor.refreshArchives",
