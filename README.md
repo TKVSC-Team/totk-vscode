@@ -19,7 +19,7 @@ TKVSC is a Visual Studio Code extension for editing and browsing **Tears of the 
 
 #### Node Editor
 
-- AINB
+- AINB (definitely works btw)
 
 ---
 
@@ -33,23 +33,14 @@ Preview and edit subfiles of SARC and BNTX archives
 **TotK Dump**
 - Browse your dump of TotK in Read-Only mode. Right click to add a file to the correct romfs path within a Project Folder of your choosing
 
-Additional capabilities:
+### Additional capabilities:
 
-- **Nested archives** - Archives within archives (e.g. a `.sarc` inside a `.pack`) can be browsed and edited.
-- **Export** - Right-click a file within an archive to export it to a Project Folder.
-- **File templates** - Rather than the classic method of copying and pasting an existing file to make a new file of the same format, TKVSC can create empty files of formats supported by the editor.
-
-### Texture Viewer
-
+- Archives within archives (e.g. a `.sarc` inside a `.pack`) can be browsed and edited
+- Right-click a file within an archive to export it to a Project Folder.
+- File templates: Rather than the typical method of copying, pasting, and wiping an existing file to make a new file of the same format, TKVSC can create empty files of formats supported by the editor.
 - Preview `.bntx` subfiles and `.txtg` files as PNGs
-
-### TKMM Project Editor (`.tkproj`)
-
-A visual editor for [TKMM](https://tkmm.org) project files
-
-### External Tool Integration
-
-For files TKVSC does not support, such as `.bfres`, the user can save programs to open them in.
+- Visual editor for [TKMM](https://tkmm.org) `.tkproj` files
+- For files TKVSC does not support, such as `.bfres`, the user can choose external programs to open them in by default (separate from similar features in the OS).
 
 ## Setup
 
