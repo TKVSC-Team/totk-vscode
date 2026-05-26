@@ -3,3 +3,5 @@ zstandard>=0.22.0
 pymsbt>=1.0.2
 mmh3>=4.0.0
 ainb
+Pillow>=10.0.0
+texture2ddecoder>=1.0.4

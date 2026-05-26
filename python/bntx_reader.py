@@ -49,12 +49,24 @@ def _read_cstring(data: bytes, offset: int) -> str:
 
 
 class BntxTexture:
-    """Minimal parsed texture metadata."""
+    """Parsed texture metadata matching Switch Toolbox's property set."""
     __slots__ = ('name', 'width', 'height', 'format_id', 'mip_count',
-                 'data_offset', 'data_size')
+                 'data_offset', 'data_size', 'tile_mode', 'block_height_log2',
+                 'depth', 'flags', 'dims', 'swizzle', 'sample_count',
+                 'access_flags', 'array_count', 'alignment',
+                 'channel_r', 'channel_g', 'channel_b', 'channel_a',
+                 'pitch', 'image_size')
 
     def __init__(self, name: str, width: int, height: int, format_id: int,
-                 mip_count: int, data_offset: int, data_size: int):
+                 mip_count: int, data_offset: int, data_size: int,
+                 tile_mode: int = 0, block_height_log2: int = 4,
+                 depth: int = 1, flags: int = 0, dims: int = 2,
+                 swizzle: int = 0, sample_count: int = 1,
+                 access_flags: int = 0, array_count: int = 1,
+                 alignment: int = 512,
+                 channel_r: int = 0, channel_g: int = 0,
+                 channel_b: int = 0, channel_a: int = 0,
+                 pitch: int = 0, image_size: int = 0):
         self.name = name
         self.width = width
         self.height = height
@@ -62,6 +74,22 @@ class BntxTexture:
         self.mip_count = mip_count
         self.data_offset = data_offset
         self.data_size = data_size
+        self.tile_mode = tile_mode
+        self.block_height_log2 = block_height_log2
+        self.depth = depth
+        self.flags = flags
+        self.dims = dims
+        self.swizzle = swizzle
+        self.sample_count = sample_count
+        self.access_flags = access_flags
+        self.array_count = array_count
+        self.alignment = alignment
+        self.channel_r = channel_r
+        self.channel_g = channel_g
+        self.channel_b = channel_b
+        self.channel_a = channel_a
+        self.pitch = pitch
+        self.image_size = image_size
 
 
 def _parse_textures(data: bytes) -> list[BntxTexture]:
@@ -108,17 +136,43 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
         # TextureInfo data starts after the 16-byte block header
         d = brti_abs + 0x10
 
+        flags = data[d + 0x00] if d < file_len else 0
+        dims = data[d + 0x01] if d + 1 < file_len else 2
+        tile_mode = _read_u16(data, d + 0x02, le)
+        swizzle = _read_u16(data, d + 0x04, le)
         mip_count = _read_u16(data, d + 0x06, le)
+        sample_count = _read_u16(data, d + 0x08, le)
         format_id = _read_u32(data, d + 0x0C, le)
+        access_flags = _read_u32(data, d + 0x10, le)
         width = _read_i32(data, d + 0x14, le)
         height = _read_i32(data, d + 0x18, le)
+        depth = _read_i32(data, d + 0x1C, le)
+        array_count = _read_i32(data, d + 0x20, le)
+        layout = _read_u32(data, d + 0x24, le)
+        block_height_log2 = layout & 0x07
         image_size = _read_u32(data, d + 0x40, le)
+        alignment = _read_u32(data, d + 0x44, le)
+
+        # Channel sources: 5 bytes at d+0x48 (R, G, B, A, padding)
+        ch_r = data[d + 0x48] if d + 0x48 < file_len else 0
+        ch_g = data[d + 0x49] if d + 0x49 < file_len else 0
+        ch_b = data[d + 0x4A] if d + 0x4A < file_len else 0
+        ch_a = data[d + 0x4B] if d + 0x4B < file_len else 0
+
+        pitch = 0
+        if tile_mode == 1 and width > 0:
+            bpp = (format_id >> 8) & 0xFF
+            fmt_bpp_lookup = {
+                0x01: 1, 0x02: 1, 0x03: 2, 0x04: 2, 0x05: 2, 0x06: 2,
+                0x07: 2, 0x08: 2, 0x09: 2, 0x0B: 4, 0x0C: 4, 0x0E: 4,
+            }
+            pixel_bpp = fmt_bpp_lookup.get(format_id >> 8, 4)
+            pitch = width * pixel_bpp
 
         name_addr = _read_i64(data, d + 0x50, le)
         _log(f'  Texture {i}: nameAddr=0x{name_addr:X}, {width}x{height}, fmt=0x{format_id:04X}')
 
         if 0 < name_addr < file_len:
-            # name_addr points to string-table entry: UInt16 length prefix + null-terminated string
             name = _read_cstring(data, name_addr + 2)
         else:
             name = f'texture_{i}'
@@ -140,6 +194,22 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
             mip_count=mip_count,
             data_offset=first_mip_offset,
             data_size=image_size,
+            tile_mode=tile_mode,
+            block_height_log2=block_height_log2,
+            depth=depth,
+            flags=flags,
+            dims=dims,
+            swizzle=swizzle,
+            sample_count=sample_count,
+            access_flags=access_flags,
+            array_count=array_count,
+            alignment=alignment,
+            channel_r=ch_r,
+            channel_g=ch_g,
+            channel_b=ch_b,
+            channel_a=ch_a,
+            pitch=pitch,
+            image_size=image_size,
         ))
 
     _log(f'Parsed {len(textures)} textures')

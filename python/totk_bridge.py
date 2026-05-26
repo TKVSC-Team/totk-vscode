@@ -63,6 +63,33 @@ def _json_read_payload(content: str) -> dict:
     return {'content': content}
 
 
+def _resolve_bntx_for_read(archive_path: str, internal_path: str, romfs_path: str):
+    """If this read targets a BNTX texture, return (bntx_bytes, texture_name). Else None."""
+    from archive_resolve import _resolve_bntx_data
+    result = _resolve_bntx_data(archive_path, internal_path, romfs_path)
+    if result is None:
+        return None
+    bntx_data, remainder, _ = result
+    if not remainder:
+        return None
+    return bntx_data, remainder
+
+
+def _read_bntx_texture_result(bntx_data: bytes, texture_name: str) -> dict:
+    """Return a dict with metadata + base64 PNG for a BNTX texture."""
+    from bntx_renderer import get_texture_metadata, render_texture_to_png
+    metadata = get_texture_metadata(bntx_data, texture_name)
+    result: dict = {'bntxTexture': True}
+    if metadata:
+        result['metadata'] = metadata
+    png_path = render_texture_to_png(bntx_data, texture_name)
+    if png_path:
+        png_bytes = Path(png_path).read_bytes()
+        result['pngBase64'] = base64.b64encode(png_bytes).decode('ascii')
+        os.unlink(png_path)
+    return result
+
+
 def export_archive_file_to_temp(archive_path: str, internal_path: str, romfs_path: str = '') -> str:
     file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
     file_name = Path(internal_path).name or 'file.bin'
@@ -541,14 +568,34 @@ def main():
 
             elif command == 'read':
                 internal_path = sys.argv[3]
-                file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
-                print(
-                    json.dumps(
-                        _json_read_payload(
-                            read_file_content(file_data, internal_path, None, romfs_path)
+                bntx_ctx = _resolve_bntx_for_read(archive_path, internal_path, romfs_path)
+                if bntx_ctx is not None:
+                    bntx_data, tex_name = bntx_ctx
+                    result = _read_bntx_texture_result(bntx_data, tex_name)
+                    print(json.dumps(result))
+                else:
+                    file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
+                    print(
+                        json.dumps(
+                            _json_read_payload(
+                                read_file_content(file_data, internal_path, None, romfs_path)
+                            )
                         )
                     )
-                )
+
+            elif command == 'render-bntx-texture':
+                internal_path = sys.argv[3]
+                bntx_ctx = _resolve_bntx_for_read(archive_path, internal_path, romfs_path)
+                if bntx_ctx is None:
+                    print(json.dumps({'error': 'Not a BNTX texture path'}))
+                else:
+                    bntx_data, tex_name = bntx_ctx
+                    from bntx_renderer import render_texture_to_png
+                    png_path = render_texture_to_png(bntx_data, tex_name)
+                    if png_path:
+                        print(json.dumps({'path': png_path}))
+                    else:
+                        print(json.dumps({'error': f'Failed to render texture: {tex_name}'}))
 
             elif command == 'export-temp':
                 internal_path = sys.argv[3]

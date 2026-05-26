@@ -1,0 +1,3 @@
+[submodule "vendor/ainb"]
+	path = vendor/ainb
+	url = git@github.com:TKVSC-Team/AINB.git

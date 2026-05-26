@@ -11,8 +11,12 @@
 - [x] export files from archive
 - [x] blarc support
 - [x] bntx archive support
+- [x] bntx texture viewer
+- [x] bntx multi channel
+- [x] bntx image render size
 - [ ] tkmm options
-- [ ] tkcl parser
+- [x] tkcl editor
+- [x] additional image metadata
 
 ## 5th
 - [x] organize repo
@@ -26,9 +30,9 @@
 - [x] ASB/BAEV
 - [x] XLINK
 - [ ] Material Animations
-- [ ] Node-Based formats
+- [X] Node-Based formats
 - [ ] BFRES Family (separate icons)
-- [ ] TKVSC Logo
+- [X] TKVSC Logo
 
 ## Node Editor
 - [x] Node colouring

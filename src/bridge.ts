@@ -36,6 +36,73 @@ export function runBridgeJson<T>(
 
 type BridgeReadPayload = { content?: string; contentPath?: string; error?: string };
 
+export interface BntxChannelInfo {
+    red: string;
+    green: string;
+    blue: string;
+    alpha: string;
+}
+
+export interface BntxImageInfo {
+    width: number;
+    height: number;
+    mipCount: number;
+    format: string;
+    formatId: string;
+    useSRGB: string;
+    name: string;
+    accessFlags: string;
+}
+
+export interface BntxMiscInfo {
+    depth: number;
+    tileMode: string;
+    swizzle: number;
+    alignment: number;
+    pitch: number;
+    dims: string;
+    surfaceShape: string;
+    flags: number;
+    imageSize: number;
+    sampleCount: number;
+}
+
+export interface BntxTextureResult {
+    bntxTexture: true;
+    metadata?: {
+        name: string;
+        channels: BntxChannelInfo;
+        imageInfo: BntxImageInfo;
+        misc: BntxMiscInfo;
+        width: number;
+        height: number;
+        format: string;
+        formatId: string;
+        mipCount: number;
+        dataSize: number;
+        tileMode: string;
+        blockH: number;
+        blockHLog2: number;
+    };
+    pngBase64?: string;
+}
+
+type BridgeReadResult = BridgeReadPayload | BntxTextureResult;
+
+export function isBntxTextureResult(result: BridgeReadResult): result is BntxTextureResult {
+    return 'bntxTexture' in result && result.bntxTexture === true;
+}
+
+/** Read file from bridge. Returns either text content or a BNTX texture result. */
+export function runBridgeRead(
+    pythonExecutable: string,
+    bridgePath: string,
+    args: string[],
+    env?: NodeJS.ProcessEnv,
+): BridgeReadResult {
+    return runBridgeJson<BridgeReadResult>(pythonExecutable, bridgePath, args, undefined, env);
+}
+
 /** Read editable file text from the bridge (supports spill files for large XLNK YAML). */
 export function runBridgeReadContent(
     pythonExecutable: string,
