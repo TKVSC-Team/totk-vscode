@@ -195,58 +195,15 @@ function parseAinbDefs(defText: string): Map<string, AinbDef> {
     return defs;
 }
 
-function computeDepthByNode(
-    nodes: AinbNode[],
-    edges: NodeEditorEdge[],
-): Map<string, number> {
-    const nodeIds = nodes.map((node, index) =>
-        String(typeof node['Node Index'] === 'number' ? node['Node Index'] : index),
-    );
-    const indegree = new Map<string, number>();
-    const outgoing = new Map<string, string[]>();
-    for (const id of nodeIds) {
-        indegree.set(id, 0);
-        outgoing.set(id, []);
-    }
-
-    for (const edge of edges) {
-        if (!indegree.has(edge.source) || !indegree.has(edge.target)) {
-            continue;
-        }
-        indegree.set(edge.target, (indegree.get(edge.target) ?? 0) + 1);
-        outgoing.get(edge.source)!.push(edge.target);
-    }
-
-    const depth = new Map<string, number>();
-    const queue: string[] = [];
-    for (const [id, value] of indegree.entries()) {
-        if (value === 0) {
-            queue.push(id);
-            depth.set(id, 0);
-        }
-    }
-
-    // Handles DAG-like graphs well; cycles fall back to depth 0 / relaxed propagation.
-    while (queue.length > 0) {
-        const current = queue.shift()!;
-        const currentDepth = depth.get(current) ?? 0;
-        for (const target of outgoing.get(current) ?? []) {
-            const nextDepth = Math.max(depth.get(target) ?? 0, currentDepth + 1);
-            depth.set(target, nextDepth);
-            indegree.set(target, (indegree.get(target) ?? 1) - 1);
-            if ((indegree.get(target) ?? 0) <= 0) {
-                queue.push(target);
-            }
-        }
-    }
-
-    return depth;
-}
+// ---------------------------------------------------------------------------
+// Command-aware layout helpers
+// ---------------------------------------------------------------------------
 
 function buildNodes(
     nodes: AinbNode[],
     defs: Map<string, AinbDef>,
     edges: NodeEditorEdge[],
+    commands: AinbCommand[],
 ): NodeEditorNode[] {
     const STARLIGHT_RED_NODE_TYPES = new Set([
         'Element_SplitTiming',
@@ -257,27 +214,9 @@ function buildNodes(
         'Element_F32Selector',
     ]);
 
-    const depthMap = computeDepthByNode(nodes, edges);
     const incomingFlowCount = new Map<string, number>();
     for (const edge of edges) {
         incomingFlowCount.set(edge.target, (incomingFlowCount.get(edge.target) ?? 0) + 1);
-    }
-    const nodesByDepth = new Map<number, string[]>();
-    const nodeDepth = new Map<string, number>();
-
-    for (let index = 0; index < nodes.length; index++) {
-        const nodeIndex = typeof nodes[index]!['Node Index'] === 'number' ? nodes[index]!['Node Index'] : index;
-        const id = String(nodeIndex);
-        const depth = depthMap.get(id) ?? 0;
-        nodeDepth.set(id, depth);
-        if (!nodesByDepth.has(depth)) {
-            nodesByDepth.set(depth, []);
-        }
-        nodesByDepth.get(depth)!.push(id);
-    }
-
-    for (const ids of nodesByDepth.values()) {
-        ids.sort((a, b) => Number(a) - Number(b));
     }
 
     const precomputed = new Map<string, {
@@ -290,31 +229,6 @@ function buildNodes(
         roleColor: NodeRoleColor;
     }>();
 
-    const estimateNodeHeight = (
-        sections: Array<{ title: string; entries: string[] }>,
-        inputPins: NodeEditorPin[],
-        outputPins: NodeEditorPin[],
-    ): number => {
-        // Header + per-section title + visible entries (viewer truncates to 10)
-        let height = 96;
-        const pinRows = Math.max(inputPins.length, outputPins.length);
-        if (pinRows > 0) {
-            height += 8; // top gap
-            height += pinRows * 20; // row height
-            height += 6; // bottom gap
-        }
-        for (const section of sections) {
-            const visibleEntries = Math.min(section.entries.length, 10);
-            height += 18; // section title + spacing
-            height += visibleEntries * 14;
-            if (section.entries.length > 10) {
-                height += 14;
-            }
-            height += 6;
-        }
-        return height;
-    };
-
     for (let index = 0; index < nodes.length; index++) {
         const node = nodes[index]!;
         const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
@@ -323,8 +237,6 @@ function buildNodes(
         const def = defs.get(nodeName) ?? defs.get(nodeType);
         const tags = def?.tags ?? [];
         const id = String(nodeIndex);
-        const depth = depthMap.get(id) ?? 0;
-        const lane = nodesByDepth.get(depth)?.indexOf(id) ?? 0;
 
         const sections: Array<{ title: string; entries: string[] }> = [];
         const addSection = (title: string, entries: string[]) => {
@@ -535,39 +447,287 @@ function buildNodes(
         });
     }
 
-    const yById = new Map<string, number>();
-    const xById = new Map<string, number>();
-    const columnGap = 520;
-    const rowGap = 34;
-    const sortedDepths = [...nodesByDepth.keys()].sort((a, b) => a - b);
-    for (const depth of sortedDepths) {
-        const ids = nodesByDepth.get(depth) ?? [];
-        let y = 0;
-        for (const id of ids) {
-            const data = precomputed.get(id);
-            const height = estimateNodeHeight(
-                data?.sections ?? [],
-                data?.inputPins ?? [],
-                data?.outputPins ?? [],
-            );
-            xById.set(id, depth * columnGap);
-            yById.set(id, y);
-            y += height + rowGap;
+    // -----------------------------------------------------------------------
+    // Layout — column-based placement for dual-flow (execution + data) graphs
+    //
+    // The recursive relY approach breaks on shared nodes (one provider feeding
+    // multiple consumers) because relY is a single value but the correct offset
+    // depends on which consumer is asking. Instead we:
+    //
+    //   1. Walk the graph from each root via BFS, assigning every node a column:
+    //      - flow children  → column + 1  (rightward)
+    //      - data providers → column - 1  (leftward)
+    //      A node's final column is the extreme value seen across all visits so
+    //      providers always end up left of every consumer and children always
+    //      right of every parent.
+    //
+    //   2. Within each column, sort nodes by the order they were first discovered
+    //      (BFS order ≈ tree order) and stack them top-to-bottom with NODE_SEP.
+    //
+    //   3. Run per-command: each command root seeds its own BFS. After all roots
+    //      are placed, orphans (no flow-parent, no data-consumer) get their own
+    //      subtree below, separated by GROUP_PAD.
+    //
+    // This is O(n) after adjacency is built, handles shared nodes cleanly, and
+    // never places a provider to the right of its consumer.
+    // -----------------------------------------------------------------------
+
+    const NODE_SEP  = 20;   // vertical gap between nodes in the same column
+    const RANK_SEP  = 820;  // horizontal distance per column step
+    const GROUP_PAD = 160;  // vertical gap between command groups / orphan blocks
+    const START_X   = 100;
+    const START_Y   = 100;
+
+    // ---- adjacency --------------------------------------------------------
+    const childrenOf  = new Map<string, string[]>();   // flow → right
+    const providersOf = new Map<string, string[]>();   // data → left
+    const parentsOf   = new Map<string, Set<string>>();
+    const consumersOf = new Map<string, Set<string>>();
+
+    for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index]!;
+        const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
+        const id = String(nodeIndex);
+        childrenOf.set(id, []);
+        providersOf.set(id, []);
+        parentsOf.set(id, new Set());
+        consumersOf.set(id, new Set());
+    }
+
+    for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index]!;
+        const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
+        const id = String(nodeIndex);
+
+        for (const [plugType, links] of Object.entries(node.Plugs ?? {})) {
+            if (plugType === 'Generic') continue;
+            for (const link of links) {
+                const ti = link['Node Index'];
+                if (typeof ti !== 'number') continue;
+                const tid = String(ti);
+                if (!childrenOf.has(tid)) continue;
+                childrenOf.get(id)!.push(tid);
+                parentsOf.get(tid)!.add(id);
+            }
         }
+
+        const addProvider = (id: string, provIdxRaw: unknown) => {
+            if (typeof provIdxRaw !== 'number' || provIdxRaw < 0) return;
+            const pid = String(provIdxRaw);
+            if (!providersOf.has(id)) return;
+            providersOf.get(id)!.push(pid);
+            consumersOf.get(pid)!.add(id);
+        };
+
+        const inputEntries = collectTypedParameterEntries(node, /input/i);
+        for (const entry of inputEntries) {
+            if (!entry.raw || typeof entry.raw !== 'object') continue;
+            const rawObj = entry.raw as Record<string, unknown>;
+            addProvider(id, rawObj['Node Index']);
+            const sources = rawObj.Sources;
+            if (Array.isArray(sources)) {
+                for (const src of sources) {
+                    if (src && typeof src === 'object')
+                        addProvider(id, (src as Record<string, unknown>)['Node Index']);
+                }
+            }
+        }
+
+        const genericLinks = (node.Plugs?.['Generic'] ?? []) as AinbPlug[];
+        for (const link of genericLinks) {
+            addProvider(id, link['Node Index']);
+        }
+    }
+
+    // Deduplicate provider lists
+    for (const [id, provs] of providersOf.entries()) {
+        const seen = new Set<string>();
+        providersOf.set(id, provs.filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; }));
+    }
+
+    // ---- height estimation ------------------------------------------------
+    const estimateNodeHeight = (id: string): number => {
+        const computed = precomputed.get(id);
+        let height = 96;
+        const pinRows = Math.max(
+            computed?.inputPins.length ?? 0,
+            computed?.outputPins.length ?? 0,
+        );
+        if (pinRows > 0) { height += 8 + pinRows * 20 + 6; }
+        for (const section of computed?.sections ?? []) {
+            const vis = Math.min(section.entries.length, 10);
+            height += 18 + vis * 14 + (section.entries.length > 10 ? 14 : 0) + 6;
+        }
+        return height;
+    };
+
+    const calcNodeWidth = (name: string): number =>
+        Math.max(320, Math.min(600, name.length * 8 + 80));
+
+    // ---- layout state -----------------------------------------------------
+    type LayoutState = { x: number; y: number; w: number; h: number };
+    const layoutState = new Map<string, LayoutState>();
+
+    for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index]!;
+        const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
+        const id = String(nodeIndex);
+        const computed = precomputed.get(id);
+        layoutState.set(id, {
+            x: 0, y: 0,
+            w: calcNodeWidth(computed?.nodeName ?? ''),
+            h: estimateNodeHeight(id),
+        });
+    }
+
+    // ---- BFS column assignment + placement --------------------------------
+    // columnOf: relative column index from root (root = 0, children = +1, providers = -1)
+    // discovery: BFS order within each column (used for vertical stacking)
+
+    const placed = new Set<string>();
+
+    /**
+     * Place a group of nodes rooted at `rootId`, starting at canvas position
+     * (groupStartX, groupStartY). Returns the bottom Y of the placed group.
+     */
+    function placeGroup(rootId: string, groupStartX: number, groupStartY: number): number {
+        if (!layoutState.has(rootId) || placed.has(rootId)) return groupStartY;
+
+        // BFS to assign columns and discovery order
+        const columnOf  = new Map<string, number>();
+        const orderOf   = new Map<string, number>();
+        const bfsQueue: string[] = [rootId];
+        columnOf.set(rootId, 0);
+        let orderCounter = 0;
+
+        while (bfsQueue.length > 0) {
+            const cur = bfsQueue.shift()!;
+            if (orderOf.has(cur)) continue;
+            orderOf.set(cur, orderCounter++);
+
+            const curCol = columnOf.get(cur) ?? 0;
+
+            // providers go left
+            for (const pid of providersOf.get(cur) ?? []) {
+                if (placed.has(pid)) continue;
+                const existing = columnOf.get(pid);
+                const desired  = curCol - 1;
+                // Take the most-left column seen (min) so a shared provider
+                // always ends up left of all its consumers.
+                if (existing === undefined || desired < existing) {
+                    columnOf.set(pid, desired);
+                    bfsQueue.push(pid);
+                }
+            }
+
+            // children go right
+            for (const cid of childrenOf.get(cur) ?? []) {
+                if (placed.has(cid)) continue;
+                const existing = columnOf.get(cid);
+                const desired  = curCol + 1;
+                // Take the most-right column (max) so a shared child stays
+                // right of all its parents.
+                if (existing === undefined || desired > existing) {
+                    columnOf.set(cid, desired);
+                    bfsQueue.push(cid);
+                }
+            }
+        }
+
+        // Sort nodes into columns
+        const columns = new Map<number, string[]>();
+        for (const [id, col] of columnOf.entries()) {
+            if (!columns.has(col)) columns.set(col, []);
+            columns.get(col)!.push(id);
+        }
+
+        // Sort within each column by BFS discovery order
+        for (const ids of columns.values()) {
+            ids.sort((a, b) => (orderOf.get(a) ?? 0) - (orderOf.get(b) ?? 0));
+        }
+
+        // Normalise column indices so minimum column = 0
+        const colNums = [...columns.keys()].sort((a, b) => a - b);
+        const minCol  = colNums[0] ?? 0;
+
+        // Place nodes: x = groupStartX + (col - minCol) * RANK_SEP
+        // y = stack top-to-bottom within each column, starting at groupStartY
+        let groupMaxY = groupStartY;
+
+        for (const col of colNums) {
+            const ids = columns.get(col) ?? [];
+            let y = groupStartY;
+            for (const id of ids) {
+                if (placed.has(id)) continue;
+                const state = layoutState.get(id)!;
+                state.x = groupStartX + (col - minCol) * RANK_SEP;
+                state.y = y;
+                placed.add(id);
+                y += state.h + NODE_SEP;
+            }
+            groupMaxY = Math.max(groupMaxY, y);
+        }
+
+        return groupMaxY;
+    }
+
+    // ---- root selection ---------------------------------------------------
+    const roots: string[] = [];
+
+    for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index]!;
+        if ((node.Flags ?? []).some((f) => /IsResidentNode|Is Root Node/i.test(f))) {
+            const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
+            roots.push(String(nodeIndex));
+        }
+    }
+
+    if (roots.length === 0) {
+        for (const cmd of commands) {
+            if (typeof cmd['Root Node Index'] === 'number')
+                roots.push(String(cmd['Root Node Index']));
+            if (typeof cmd['Secondary Root Node Index'] === 'number')
+                roots.push(String(cmd['Secondary Root Node Index']));
+        }
+    }
+
+    if (roots.length === 0 && nodes.length > 0) {
+        roots.push(String(typeof nodes[0]!['Node Index'] === 'number' ? nodes[0]!['Node Index'] : 0));
+    }
+
+    const rootsSeen = new Set<string>();
+    const uniqueRoots = roots.filter((r) => { if (rootsSeen.has(r)) return false; rootsSeen.add(r); return true; });
+
+    // ---- place command groups --------------------------------------------
+    let nextGroupTop = START_Y;
+    for (const rootId of uniqueRoots) {
+        const bottom = placeGroup(rootId, START_X, nextGroupTop);
+        if (bottom > nextGroupTop) nextGroupTop = bottom + GROUP_PAD;
+    }
+
+    // ---- orphan pass -----------------------------------------------------
+    for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index]!;
+        const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
+        const id = String(nodeIndex);
+        if (placed.has(id)) continue;
+        if ((parentsOf.get(id)?.size ?? 0) > 0) continue;
+        if ((consumersOf.get(id)?.size ?? 0) > 0) continue;
+        const bottom = placeGroup(id, START_X, nextGroupTop);
+        if (bottom > nextGroupTop) nextGroupTop = bottom + GROUP_PAD;
     }
 
     return nodes.map((node, index) => {
         const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
         const id = String(nodeIndex);
         const computed = precomputed.get(id);
-        const depth = nodeDepth.get(id) ?? 0;
-        const lane = nodesByDepth.get(depth)?.indexOf(id) ?? 0;
+        const state = layoutState.get(id);
         return {
             id,
             label: computed?.nodeName ?? `(Node ${id})`,
             typeLabel: computed?.nodeType ?? 'Unknown',
-            x: xById.get(id) ?? depth * columnGap,
-            y: yById.get(id) ?? lane * 240,
+            x: state?.x ?? START_X,
+            y: state?.y ?? START_Y,
             tags: computed?.tags ?? [],
             roleColor: computed?.roleColor ?? 'blue',
             inputPins: computed?.inputPins ?? [],
@@ -810,7 +970,7 @@ export class AinbNodeFormatAdapter implements NodeFormatAdapter {
         const dataEdges = buildEdges(ainbNodes);
         const allEdges = [...entryEdges, ...dataEdges];
 
-        const regularNodes = buildNodes(ainbNodes, defs, allEdges);
+        const regularNodes = buildNodes(ainbNodes, defs, allEdges, commands);
 
         // Position entry-point nodes to the left of column 0 (depth -1).
         // Spread them vertically to line up roughly with their root targets.
