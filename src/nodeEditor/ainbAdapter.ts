@@ -29,8 +29,16 @@ type AinbNode = {
     Plugs?: Record<string, AinbPlug[]>;
 };
 
+type AinbCommand = {
+    Name?: string;
+    GUID?: string;
+    'Root Node Index'?: number;
+    'Secondary Root Node Index'?: number;
+};
+
 type AinbJson = {
     Filename?: string;
+    Commands?: AinbCommand[];
     Nodes?: AinbNode[];
 };
 
@@ -304,7 +312,7 @@ function buildNodes(
             }
             height += 6;
         }
-        return Math.min(height, 420);
+        return height;
     };
 
     for (let index = 0; index < nodes.length; index++) {
@@ -428,9 +436,6 @@ function buildNodes(
         const flowOutputPinIds = new Set<string>();
         const inputParamEntries = collectTypedParameterEntries(node, /input/i);
         const outputParamEntries = collectTypedParameterEntries(node, /output/i);
-        const inputParamNameSet = new Set(
-            inputParamEntries.map((entry) => entry.name.trim().toLowerCase()),
-        );
 
         for (const entry of inputParamEntries) {
             const connected = isConnectedParam(entry.raw);
@@ -473,12 +478,12 @@ function buildNodes(
         }
 
         for (const [plugType, links] of Object.entries(node.Plugs ?? {})) {
+            // Generic plugs are data-input references, not flow outputs — skip.
+            if (plugType === 'Generic') {
+                continue;
+            }
             for (const link of links) {
                 const flowName = (link.Name?.trim() || plugType).trim();
-                if (inputParamNameSet.has(flowName.toLowerCase())) {
-                    // This is usually a data-parameter naming collision, not a true flow out pin.
-                    continue;
-                }
                 const pinId = makeFlowOutHandleId(plugType, flowName);
                 if (!flowOutputPinIds.has(pinId)) {
                     flowOutputPins.push({
@@ -490,7 +495,10 @@ function buildNodes(
                 }
             }
         }
-        if (flowOutputPins.length === 0 && Object.keys(node.Plugs ?? {}).length > 0) {
+        const nonGenericPlugCount = Object.entries(node.Plugs ?? {})
+            .filter(([pt]) => pt !== 'Generic')
+            .reduce((sum, [, links]) => sum + links.length, 0);
+        if (flowOutputPins.length === 0 && nonGenericPlugCount > 0) {
             flowOutputPins.push({
                 id: makeFlowOutHandleId('flow', 'default'),
                 label: 'Flow Out',
@@ -578,9 +586,12 @@ function buildEdges(nodes: AinbNode[]): NodeEditorEdge[] {
         const nodeId = String(typeof node['Node Index'] === 'number' ? node['Node Index'] : nodeIdx);
         const map = new Map<string, string>();
         const outputEntries = collectTypedParameterEntries(node, /output/i);
-        for (let i = 0; i < outputEntries.length; i++) {
-            const entry = outputEntries[i]!;
-            map.set(`${sanitizeHandlePart(entry.valueType)}:${i}`, entry.name);
+        const typeCounters = new Map<string, number>();
+        for (const entry of outputEntries) {
+            const typeKey = sanitizeHandlePart(entry.valueType);
+            const i = typeCounters.get(typeKey) ?? 0;
+            map.set(`${typeKey}:${i}`, entry.name);
+            typeCounters.set(typeKey, i + 1);
         }
         outputParamIndexMap.set(nodeId, map);
     }
@@ -590,11 +601,14 @@ function buildEdges(nodes: AinbNode[]): NodeEditorEdge[] {
         if (!sourceId) {
             continue;
         }
-        const inputParamNameSet = new Set(
-            collectTypedParameterEntries(node, /input/i).map((entry) => entry.name.trim().toLowerCase()),
-        );
         const plugs = node.Plugs ?? {};
         for (const [plugType, links] of Object.entries(plugs)) {
+            // Generic plugs are backwards data-input references (used by BoolSelector,
+            // F32Selector, Expression). They are not flow-control outputs — handle them
+            // separately below.
+            if (plugType === 'Generic') {
+                continue;
+            }
             for (let i = 0; i < links.length; i++) {
                 const link = links[i]!;
                 const targetIndex = link['Node Index'];
@@ -604,9 +618,6 @@ function buildEdges(nodes: AinbNode[]): NodeEditorEdge[] {
                 const targetId = String(targetIndex);
                 const plugName = link.Name?.trim() ?? '';
                 const flowName = plugName || plugType;
-                if (inputParamNameSet.has(flowName.toLowerCase())) {
-                    continue;
-                }
                 edges.push({
                     id: `${sourceId}-${targetId}-${plugType}-${i}`,
                     source: sourceId,
@@ -616,6 +627,46 @@ function buildEdges(nodes: AinbNode[]): NodeEditorEdge[] {
                     targetHandle: FLOW_IN_HANDLE_ID,
                 });
             }
+        }
+
+        // Generic plugs: each one is a backwards pointer from this node to the upstream
+        // node whose output provides this node's condition/input value.
+        // Edge direction: upstream source node -> this node (consumer).
+        const genericLinks = (plugs['Generic'] ?? []) as AinbPlug[];
+        for (let i = 0; i < genericLinks.length; i++) {
+            const link = genericLinks[i]!;
+            const upstreamIndex = link['Node Index'];
+            if (typeof upstreamIndex !== 'number' || upstreamIndex < 0) {
+                continue;
+            }
+            const upstreamId = String(upstreamIndex);
+            // The plug Name is the output param name on the upstream node.
+            const outputParamName = link.Name?.trim() ?? '';
+            // Find a matching output pin on the upstream node to get the value type.
+            const upstreamOutputNames = outputParamIndexMap.get(upstreamId);
+            let sourceHandle: string | undefined;
+            if (upstreamOutputNames && outputParamName) {
+                for (const [key, name] of upstreamOutputNames.entries()) {
+                    if (name === outputParamName) {
+                        const valueType = key.split(':')[0] ?? '';
+                        sourceHandle = makeParamHandleId('out', valueType, outputParamName);
+                        break;
+                    }
+                }
+            }
+            // Infer the target input pin type from node type.
+            const nodeType = node['Node Type'] ?? '';
+            const defaultType = nodeType === 'Element_F32Selector' ? 'float' : 'bool';
+            const targetParamName = outputParamName || 'input';
+            const targetHandle = makeParamHandleId('in', defaultType, targetParamName);
+            edges.push({
+                id: `${upstreamId}-${sourceId}-generic-${i}`,
+                source: upstreamId,
+                target: sourceId,
+                label: outputParamName || 'Generic',
+                sourceHandle,
+                targetHandle,
+            });
         }
 
         const inputEntries = collectTypedParameterEntries(node, /input/i);
@@ -630,7 +681,7 @@ function buildEdges(nodes: AinbNode[]): NodeEditorEdge[] {
                 continue;
             }
             const sourceNodeId = String(sourceNodeIndex);
-            const parameterIndex = rawObj['Parameter Index'];
+            const parameterIndex = rawObj['Output Index'];
             let sourceHandle: string | undefined;
             if (typeof parameterIndex === 'number' && parameterIndex >= 0) {
                 const outputNames = outputParamIndexMap.get(sourceNodeId);
@@ -653,6 +704,65 @@ function buildEdges(nodes: AinbNode[]): NodeEditorEdge[] {
         }
     }
     return edges;
+}
+
+// Entry-point ID space: negative integers so they never clash with real node indices.
+const ENTRY_NODE_ID_BASE = -1;
+
+function buildEntryPointNodes(
+    commands: AinbCommand[],
+): { nodes: NodeEditorNode[]; edges: NodeEditorEdge[] } {
+    const nodes: NodeEditorNode[] = [];
+    const edges: NodeEditorEdge[] = [];
+
+    for (let i = 0; i < commands.length; i++) {
+        const cmd = commands[i]!;
+        const entryId = String(ENTRY_NODE_ID_BASE - i);
+        const cmdName = cmd.Name?.trim() || `Command ${i}`;
+
+        // Collect which real nodes this entry point fires into.
+        const rootIndices: number[] = [];
+        if (typeof cmd['Root Node Index'] === 'number') {
+            rootIndices.push(cmd['Root Node Index']);
+        }
+        if (typeof cmd['Secondary Root Node Index'] === 'number') {
+            rootIndices.push(cmd['Secondary Root Node Index']);
+        }
+
+        // One output pin per root, labeled by slot role.
+        const outputPins: NodeEditorPin[] = rootIndices.map((_, slotIdx) => ({
+            id: makeFlowOutHandleId('entry', slotIdx === 0 ? 'root' : 'secondary_root'),
+            label: slotIdx === 0 ? 'Root' : 'Secondary Root',
+            linked: true,
+        }));
+
+        nodes.push({
+            id: entryId,
+            label: cmdName,
+            typeLabel: 'Entry Point',
+            x: 0,   // will be repositioned in buildNodes layout
+            y: 0,
+            tags: [],
+            roleColor: 'purple',
+            inputPins: [],
+            outputPins,
+            sections: [],
+        });
+
+        for (let slotIdx = 0; slotIdx < rootIndices.length; slotIdx++) {
+            const rootNodeIndex = rootIndices[slotIdx]!;
+            edges.push({
+                id: `entry-${i}-slot${slotIdx}-to-${rootNodeIndex}`,
+                source: entryId,
+                target: String(rootNodeIndex),
+                label: slotIdx === 0 ? 'Root' : 'Secondary Root',
+                sourceHandle: makeFlowOutHandleId('entry', slotIdx === 0 ? 'root' : 'secondary_root'),
+                targetHandle: FLOW_IN_HANDLE_ID,
+            });
+        }
+    }
+
+    return { nodes, edges };
 }
 
 export class AinbNodeFormatAdapter implements NodeFormatAdapter {
@@ -691,14 +801,36 @@ export class AinbNodeFormatAdapter implements NodeFormatAdapter {
     parse(filePath: string, rawText: string): AdapterParseResult {
         const parsed = JSON.parse(rawText) as AinbJson;
         const ainbNodes = parsed.Nodes ?? [];
+        const commands = parsed.Commands ?? [];
         const defs = this.getDefs();
-        const edges = buildEdges(ainbNodes);
+
+        // Build entry-point nodes/edges first so buildEdges can account for them
+        // in incomingFlowCount (root nodes will correctly show a flow-in pin).
+        const { nodes: entryNodes, edges: entryEdges } = buildEntryPointNodes(commands);
+        const dataEdges = buildEdges(ainbNodes);
+        const allEdges = [...entryEdges, ...dataEdges];
+
+        const regularNodes = buildNodes(ainbNodes, defs, allEdges);
+
+        // Position entry-point nodes to the left of column 0 (depth -1).
+        // Spread them vertically to line up roughly with their root targets.
+        const columnGap = 520;
+        for (let i = 0; i < entryNodes.length; i++) {
+            const node = entryNodes[i]!;
+            // Find the y-position of the root target node, if present.
+            const rootEdge = allEdges.find((e) => e.source === node.id);
+            const rootTarget = rootEdge
+                ? regularNodes.find((n) => n.id === rootEdge.target)
+                : undefined;
+            node.x = -columnGap;
+            node.y = rootTarget ? rootTarget.y : i * 160;
+        }
 
         const model: NodeEditorModel = {
             formatId: this.id,
             fileName: path.basename(filePath),
-            nodes: buildNodes(ainbNodes, defs, edges),
-            edges,
+            nodes: [...entryNodes, ...regularNodes],
+            edges: allEdges,
         };
 
         return {
