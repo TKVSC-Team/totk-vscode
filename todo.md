@@ -17,6 +17,9 @@
 - [ ] tkmm options
 - [x] tkcl editor
 - [x] additional image metadata
+- [ ] .txtg (TexToGo) support
+- [ ] Texture metadata editing
+- [ ] Cleanup useless settings and commands
 
 ## 5th
 - [x] organize repo
@@ -38,5 +41,5 @@
 - [x] Node colouring
 - [x] Load all connections on AINB load and DONT cull them completely (impl frustum culling or pixel culling or something)
 - [ ] Loading screen if possible
-~~- [x] No more "and x more..."~~ depr
-~~- [x] Impl my auto sort algorithm~~ depr
+- [x] ~~No more "and x more..."~~ depr
+- [x] ~~Impl my auto sort algorithm~~ depr

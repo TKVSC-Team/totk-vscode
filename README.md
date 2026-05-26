@@ -1,90 +1,66 @@
-# totk-vscode
+# totk-vscode [TKVSC]
 
-VS Code / Cursor extension for editing and browsing **Tears of the Kingdom** game files.
+TKVSC is a Visual Studio Code extension for editing and browsing **Tears of the Kingdom** (**TotK**) game files.
 
 ## Features
 
-### File Editors
 
-- **BYML / BGYML** — Binary YAML files are converted to editable text. Unsigned 64-bit values (hashes, placement IDs) use NX Editor–compatible `!ul 0x…` notation.
-- **AAMP** — Parameter files (`.baglenv`, `.bptcl`, `.bphhb`, and [many other extensions](aamp-extensions.json)) are converted to editable YAML via [oead](https://github.com/TotkMods/oead). Custom extensions can be added via settings.
-- **MSBT** — Message files are shown as `label: text` lines with inline control-tag highlighting.
-- **ASB / BAEV** — Animation state binaries are shown as JSON. Opening an `.asb` automatically merges the sibling `.baev` when present; saving writes both back.
-- **XLNK (.belnk / .bslnk)** — Sound/effect link databases are converted to YAML via bundled [xlink_tool](https://github.com/dt-12345/xlink2). These files can be very large (600k+ lines).
+### Supported Filetypes 
 
-### AINB Node Editor
 
-A graphical node editor for `.ainb` and `.ainb.zs` files, built with React Flow.
+#### Text Editor
+- BYML
+- BGYML
+- AAMP
+- MSBT
+- ASB (Changes automatically applied to corresponding BAEV)
+- BAEV (Changes automatically applied to corresponding ASB)
+- XLINK
 
-- Nodes are color-coded by role (matching Starlight-Dev conventions)
-- Each node shows its ID, parameters (name, type, value), and input/output pins
-- Parameters connected to other nodes show `[linked]` instead of a value
-- Click an edge to highlight it; bezier curves reduce visual clutter
-- Node definitions load dynamically from your game dump (`AI/NodeDefinition/Node.Product.*.aidefn.byml.zs`)
-- Architected to support additional node-based formats in the future
+#### Node Editor
 
-### Archive Browser
+- AINB
 
-Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, and `.bntx` archives (including `.zs` compressed) as expandable folder trees in two dedicated sidebar panels:
+---
 
-- **Your Mods** — Add mod folders or individual archives. Full CRUD support: create, rename, delete files and folders inside archives. Copy/cut/paste and multi-select (Shift/Ctrl+click) are supported. Archives are sorted alphabetically.
-- **Game Dump (TotK Dump)** — Read-only view of your extracted RomFS. Select files to add them to a mod project. Multi-select supported.
+### Activity Bar Tabs
 
-Additional archive capabilities:
+Preview and edit subfiles of SARC and BNTX archives
 
-- **Nested archives** — Archives within archives (e.g. a `.sarc` inside a `.pack`) can be browsed and edited.
-- **Export** — Right-click any file inside an archive (in either sidebar) and export it to disk. Works with multi-select.
-- **New file templates** — Creating files inside archives generates valid templates for known formats (`.byml`, `.bgyml`, `.msbt`, `.baev`, `.asb`, etc.) so they open correctly.
+**Your Mods**
+- Add the current folder open in VS Code to a list of Project Folders.
 
-### BNTX Texture Viewer
+**TotK Dump**
+- Browse your dump of TotK in Read-Only mode. Right click to add a file to the correct romfs path within a Project Folder of your choosing
 
-`.bntx` (Binary NX Texture) containers are browsed like archives. Clicking a texture opens a dedicated viewer:
+Additional capabilities:
 
-- Renders textures to PNG inline, supporting formats including BC1, BC3, BC4, BC5, BC6, BC7, ASTC, and uncompressed (R8, RG8, RGBA8, etc.)
-- Single-channel textures (BC4) display as grayscale; dual-channel textures (BC5) display as normal maps
-- Metadata panel shows dimensions, format, mip levels, tile mode, and data size (similar to Switch Toolbox)
-- Images default to 256×256 preview with a toggle to show original size
-- Uses hardware-accelerated deswizzling via `py-tegra-swizzle` when available, with a pure Python fallback
+- **Nested archives** - Archives within archives (e.g. a `.sarc` inside a `.pack`) can be browsed and edited.
+- **Export** - Right-click a file within an archive to export it to a Project Folder.
+- **File templates** - Rather than the classic method of copying and pasting an existing file to make a new file of the same format, TKVSC can create empty files of formats supported by the editor.
+
+### Texture Viewer
+
+- Preview `.bntx` subfiles and `.txtg` files as PNGs
 
 ### TKMM Project Editor (`.tkproj`)
 
-A form-based editor for [TKMM](https://tkmm.org) project files:
-
-- Edit mod name, author, version, and description (Markdown supported)
-- Manage contributors — each with a name and contribution description
-- Browse for a thumbnail image
-- The internal GUID is hidden from the UI as requested by the TKMM developer
+A visual editor for [TKMM](https://tkmm.org) project files
 
 ### External Tool Integration
 
-Files that the extension cannot edit natively (e.g. `.bfres`) show a CodeLens prompt to open them in an associated external tool (such as Switch Toolbox). The extension extracts archive files to a temp location and launches the configured tool.
+For files TKVSC does not support, such as `.bfres`, the user can save programs to open them in.
 
-### Additional Features
+## Setup
 
-- **Syntax highlighting** — TextMate grammars for BYML and MSBT with optional custom color settings
-- **Custom file icons** — Bundled icon theme for TOTK file types (designed to layer on top of your preferred icon theme)
-- **ZSTD decompression** — Transparent handling of `.zs` compressed files using Nintendo dictionaries from your game dump
-- **Auto Python setup** — On first activation, creates a private venv and installs all required Python packages (`oead`, `zstandard`, `pymsbt`, `Pillow`, `texture2ddecoder`)
+### Requirements
+* [Python 3.12](https://www.python.org/downloads/release/python-31213/)
+* Valid TotK dump
 
-## Install and use
-
+### Steps
 1. Install the extension (VSIX).
-2. On first activation, the extension creates a private Python virtual environment and installs dependencies automatically.
-3. **Requirement:** [Python 3.12](https://www.python.org/downloads/release/python-31213/) must be installed and discoverable (`python` / `python3` on PATH, or Windows `py` launcher).
-4. Set **TOTK Editor → Romfs Path** to your extracted game dump.
-5. Open your extracted game folder as a normal workspace folder, or run **TOTK: Open Archive (.pack, .sarc, .genvb, .blarc, .bntx)** to browse one archive.
+2. Follow the prompt to select your romfs dump path.
 
-**Tip:** Leave **Virtual RomFS Workspace** disabled (default) so Explorer delete/rename work on real files. Enable it only if you want `.pack` files to expand inline in a full-folder workspace.
-
-### Where files can be opened
-
-| Location | How it works |
-|----------|----------------|
-| **Inside archives** (via `sarc://` workspace) | Browse the archive like a folder; editable files are converted automatically. |
-| **Loose files on disk** (extracted RomFS tree) | Open normally from the explorer — the extension reopens them as editable JSON/text. |
-| **Single file** | Command **TOTK: Open File (BYML, AAMP, MSBT, ASB, BAEV, belnk, bslnk)** |
-
-Files opened as plain `file://` binary (garbled text) means Python setup failed or the extension did not activate — run **TOTK: Set Up Python Environment** and reload.
 
 ### Python troubleshooting
 
@@ -96,45 +72,7 @@ Files opened as plain `file://` binary (garbled text) means Python setup failed 
 
 If setup fails, run **TOTK: Set Up Python Environment** from the Command Palette.
 
-### `.zs` compressed files
-
-Most TOTK assets use Nintendo ZSTD dictionaries from `Pack/ZsDic.pack.zs` in your game dump. Set **TOTK Editor → Romfs Path** to the root of your extracted **RomFS** (the folder that contains `Pack/ZsDic.pack.zs`). Without this, `.pack.zs` archives and files like `.byml.zs` fail with *dictionary mismatch*.
-
-The extension picks the correct dictionary per file type (pack, bcett BYML, generic `.zs`, etc.) using the bundled [asb-toolkit](https://github.com/dt-12345/asb) ZSTD helpers.
-
-### AAMP notes
-
-Many TOTK files use different extensions but share the same **AAMP** binary format (magic `AAMP`). The extension converts them to editable YAML via [oead](https://github.com/TotkMods/oead). Syntax highlighting uses VS Code's built-in **YAML** mode (not the custom BYML colors).
-
-- Built-in extensions are listed in [`aamp-extensions.json`](aamp-extensions.json) (TOTK + common BotW-style names).
-- Add more with **TOTK Editor → Extra Aamp Extensions** (extension name only, e.g. `bcustom`).
-- Inside archives, files with unknown extensions are still opened if their data starts with `AAMP`.
-
-### ASB / BAEV notes
-
-- Opening an `.asb` file loads the matching `.baev` from the same folder in the archive when it exists (AsNode BAEV).
-- Saving an `.asb` writes both `.asb` and `.baev` if the JSON contains BAEV event data.
-- Animation BAEV files (paired with `.anim.bfres`) can be opened as standalone `.baev` files.
-
-### XLNK (.belnk / .bslnk) notes
-
-- Binary files use the `XLNK` magic header. The editor shows them as YAML text (often very large — hundreds of thousands of lines).
-- Conversion uses `vendor/xlink2/xlink_tool.exe` on Windows (from [dt-12345/xlink2](https://github.com/dt-12345/xlink2)). On Linux/macOS, place `xlink_tool` there or set **TOTK Editor → Xlink Tool Path** / env `TOTK_XLINK_TOOL`.
-- `.belnk.zs` / `.bslnk.zs` need **Romfs Path** set (same as other `.zs` assets) so ZSTD dictionaries apply.
-
-## Keyboard shortcuts
-
-| Shortcut | Action | Context |
-|----------|--------|---------|
-| `Delete` | Delete selected file(s) | Your Mods sidebar |
-| `F2` | Rename | Your Mods sidebar |
-| `Ctrl+C` | Copy | Your Mods sidebar |
-| `Ctrl+X` | Cut | Your Mods sidebar |
-| `Ctrl+V` | Paste | Your Mods sidebar |
-
-Standard Shift+click and Ctrl+click multi-selection works in both sidebar trees.
-
-## Bundle and share (`.vsix`)
+## Build Instructions
 
 A VSIX file is the installable extension package. Build it from the project root:
 
@@ -143,14 +81,8 @@ npm install
 npm run package:vsix
 ```
 
-That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`). This can be used in VS Code or Cursor.
+That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`).
 
-**Install on another machine**
-
-1. Install [Python 3.10+](https://www.python.org/downloads/) (add to PATH on Windows).
-2. In VS Code / Cursor: Extensions view → `...` menu → **Install from VSIX...** → pick the `.vsix` file.
-3. Reload the window when prompted.
-4. First run will download Python libraries into a private venv (one-time setup notification).
 
 ## Development
 

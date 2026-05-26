@@ -28,8 +28,6 @@
     "onCommand:totk-editor.setupPython",
     "onCommand:totk-editor.pickPython",
     "onCommand:totk-editor.browsePython",
-    "onCommand:totk-editor.resetColors",
-    "onCommand:totk-editor.applyColors",
     "onFileSystem:totk-disk",
     "onCommand:totk-editor.openEditableFile",
     "onCommand:totk-editor.refreshArchives",
@@ -285,18 +283,6 @@
         "title": "TOTK: Browse for python.exe"
       },
       {
-        "command": "totk-editor.applyColors",
-        "title": "TOTK: Apply Syntax Colors"
-      },
-      {
-        "command": "totk-editor.resetColors",
-        "title": "TOTK: Reset Syntax Colors to Defaults"
-      },
-      {
-        "command": "totk-editor.clearColorOverrides",
-        "title": "TOTK: Clear Syntax Color Overrides"
-      },
-      {
         "command": "totk-editor.useTotkIcons",
         "title": "TOTK: File Icon Theme Help"
       },
@@ -496,53 +482,6 @@
           "type": "string",
           "default": "",
           "markdownDescription": "Optional path to [xlink_tool](https://github.com/dt-12345/xlink2) for `.belnk` / `.bslnk` (XLNK) conversion. Windows builds bundle `vendor/xlink2/xlink_tool.exe`; leave empty to use that default."
-        },
-        "totk-editor.colors.enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Apply optional custom TextMate colors to BYML, BGYML, and MSBT. When off, your theme’s default highlighting is used."
-        },
-        "totk-editor.colors.tag": {
-          "type": "string",
-          "default": "#2778D6",
-          "description": "Keys and labels (text before the colon).",
-          "format": "color"
-        },
-        "totk-editor.colors.string": {
-          "type": "string",
-          "default": "#CE9178",
-          "description": "String values.",
-          "format": "color"
-        },
-        "totk-editor.colors.number": {
-          "type": "string",
-          "default": "#B5CEA8",
-          "description": "Numeric values.",
-          "format": "color"
-        },
-        "totk-editor.colors.boolean": {
-          "type": "string",
-          "default": "#569CD6",
-          "description": "Boolean and null literals.",
-          "format": "color"
-        },
-        "totk-editor.colors.punctuation": {
-          "type": "string",
-          "default": "#D4D4D4",
-          "description": "Colons, list dashes, and other punctuation.",
-          "format": "color"
-        },
-        "totk-editor.colors.msbtCommand": {
-          "type": "string",
-          "default": "#C586C0",
-          "description": "Inline MSBT control tags ({cmd:...}).",
-          "format": "color"
-        },
-        "totk-editor.colors.comment": {
-          "type": "string",
-          "default": "#6A9955",
-          "description": "Line comments (# ...).",
-          "format": "color"
         }
       }
     },

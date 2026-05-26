@@ -11,7 +11,6 @@ import {
     browseForPython,
     pickDetectedPython,
 } from './pythonEnv';
-import { registerSyntaxColorSync } from './syntaxColors';
 import { isEditableFile, toTotkDiskUri } from './editableFiles';
 import { TotkDiskFileSystemProvider } from './totkDiskFs';
 import {
@@ -528,7 +527,6 @@ export async function activate(context: vscode.ExtensionContext) {
     initCoreFsExtensions(context.extensionPath);
     console.log('TOTK Editor is now active!');
 
-    registerSyntaxColorSync(context);
     registerDocumentLanguageModes(context);
     context.subscriptions.push(AinbNodeEditorProvider.register(context));
     context.subscriptions.push(TkprojEditorProvider.register(context));
