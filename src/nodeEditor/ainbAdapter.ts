@@ -500,35 +500,35 @@ function buildNodes(
         const id = String(nodeIndex);
 
         for (const [plugType, links] of Object.entries(node.Plugs ?? {})) {
-            if (plugType === 'Generic') continue;
+            if (plugType === 'Generic') {continue;}
             for (const link of links) {
                 const ti = link['Node Index'];
-                if (typeof ti !== 'number') continue;
+                if (typeof ti !== 'number') {continue;}
                 const tid = String(ti);
-                if (!childrenOf.has(tid)) continue;
+                if (!childrenOf.has(tid)) {continue;}
                 childrenOf.get(id)!.push(tid);
                 parentsOf.get(tid)!.add(id);
             }
         }
 
         const addProvider = (id: string, provIdxRaw: unknown) => {
-            if (typeof provIdxRaw !== 'number' || provIdxRaw < 0) return;
+            if (typeof provIdxRaw !== 'number' || provIdxRaw < 0) {return;}
             const pid = String(provIdxRaw);
-            if (!providersOf.has(id)) return;
+            if (!providersOf.has(id)) {return;}
             providersOf.get(id)!.push(pid);
             consumersOf.get(pid)!.add(id);
         };
 
         const inputEntries = collectTypedParameterEntries(node, /input/i);
         for (const entry of inputEntries) {
-            if (!entry.raw || typeof entry.raw !== 'object') continue;
+            if (!entry.raw || typeof entry.raw !== 'object') {continue;}
             const rawObj = entry.raw as Record<string, unknown>;
             addProvider(id, rawObj['Node Index']);
             const sources = rawObj.Sources;
             if (Array.isArray(sources)) {
                 for (const src of sources) {
                     if (src && typeof src === 'object')
-                        addProvider(id, (src as Record<string, unknown>)['Node Index']);
+                        {addProvider(id, (src as Record<string, unknown>)['Node Index']);}
                 }
             }
         }
@@ -542,7 +542,7 @@ function buildNodes(
     // Deduplicate provider lists
     for (const [id, provs] of providersOf.entries()) {
         const seen = new Set<string>();
-        providersOf.set(id, provs.filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; }));
+        providersOf.set(id, provs.filter((p) => { if (seen.has(p)) {return false;} seen.add(p); return true; }));
     }
 
     // ---- height estimation ------------------------------------------------
@@ -591,7 +591,7 @@ function buildNodes(
      * (groupStartX, groupStartY). Returns the bottom Y of the placed group.
      */
     function placeGroup(rootId: string, groupStartX: number, groupStartY: number): number {
-        if (!layoutState.has(rootId) || placed.has(rootId)) return groupStartY;
+        if (!layoutState.has(rootId) || placed.has(rootId)) {return groupStartY;}
 
         // BFS to assign columns and discovery order
         const columnOf  = new Map<string, number>();
@@ -602,14 +602,14 @@ function buildNodes(
 
         while (bfsQueue.length > 0) {
             const cur = bfsQueue.shift()!;
-            if (orderOf.has(cur)) continue;
+            if (orderOf.has(cur)) {continue;}
             orderOf.set(cur, orderCounter++);
 
             const curCol = columnOf.get(cur) ?? 0;
 
             // providers go left
             for (const pid of providersOf.get(cur) ?? []) {
-                if (placed.has(pid)) continue;
+                if (placed.has(pid)) {continue;}
                 const existing = columnOf.get(pid);
                 const desired  = curCol - 1;
                 // Take the most-left column seen (min) so a shared provider
@@ -622,7 +622,7 @@ function buildNodes(
 
             // children go right
             for (const cid of childrenOf.get(cur) ?? []) {
-                if (placed.has(cid)) continue;
+                if (placed.has(cid)) {continue;}
                 const existing = columnOf.get(cid);
                 const desired  = curCol + 1;
                 // Take the most-right column (max) so a shared child stays
@@ -637,7 +637,7 @@ function buildNodes(
         // Sort nodes into columns
         const columns = new Map<number, string[]>();
         for (const [id, col] of columnOf.entries()) {
-            if (!columns.has(col)) columns.set(col, []);
+            if (!columns.has(col)) {columns.set(col, []);}
             columns.get(col)!.push(id);
         }
 
@@ -658,7 +658,7 @@ function buildNodes(
             const ids = columns.get(col) ?? [];
             let y = groupStartY;
             for (const id of ids) {
-                if (placed.has(id)) continue;
+                if (placed.has(id)) {continue;}
                 const state = layoutState.get(id)!;
                 state.x = groupStartX + (col - minCol) * RANK_SEP;
                 state.y = y;
@@ -685,9 +685,9 @@ function buildNodes(
     if (roots.length === 0) {
         for (const cmd of commands) {
             if (typeof cmd['Root Node Index'] === 'number')
-                roots.push(String(cmd['Root Node Index']));
+                {roots.push(String(cmd['Root Node Index']));}
             if (typeof cmd['Secondary Root Node Index'] === 'number')
-                roots.push(String(cmd['Secondary Root Node Index']));
+                {roots.push(String(cmd['Secondary Root Node Index']));}
         }
     }
 
@@ -696,13 +696,13 @@ function buildNodes(
     }
 
     const rootsSeen = new Set<string>();
-    const uniqueRoots = roots.filter((r) => { if (rootsSeen.has(r)) return false; rootsSeen.add(r); return true; });
+    const uniqueRoots = roots.filter((r) => { if (rootsSeen.has(r)) {return false;} rootsSeen.add(r); return true; });
 
     // ---- place command groups --------------------------------------------
     let nextGroupTop = START_Y;
     for (const rootId of uniqueRoots) {
         const bottom = placeGroup(rootId, START_X, nextGroupTop);
-        if (bottom > nextGroupTop) nextGroupTop = bottom + GROUP_PAD;
+        if (bottom > nextGroupTop) {nextGroupTop = bottom + GROUP_PAD;}
     }
 
     // ---- orphan pass -----------------------------------------------------
@@ -710,11 +710,11 @@ function buildNodes(
         const node = nodes[index]!;
         const nodeIndex = typeof node['Node Index'] === 'number' ? node['Node Index'] : index;
         const id = String(nodeIndex);
-        if (placed.has(id)) continue;
-        if ((parentsOf.get(id)?.size ?? 0) > 0) continue;
-        if ((consumersOf.get(id)?.size ?? 0) > 0) continue;
+        if (placed.has(id)) {continue;}
+        if ((parentsOf.get(id)?.size ?? 0) > 0) {continue;}
+        if ((consumersOf.get(id)?.size ?? 0) > 0) {continue;}
         const bottom = placeGroup(id, START_X, nextGroupTop);
-        if (bottom > nextGroupTop) nextGroupTop = bottom + GROUP_PAD;
+        if (bottom > nextGroupTop) {nextGroupTop = bottom + GROUP_PAD;}
     }
 
     return nodes.map((node, index) => {
