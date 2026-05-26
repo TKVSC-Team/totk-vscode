@@ -10,7 +10,7 @@ import type {
 } from './types';
 
 // --- STRICT AINB JSON TYPES ---
-type AinbSource = { 'Node Index'?: number; 'Parameter Index'?: number; 'Blackboard Index'?: number };
+type AinbSource = { 'Node Index'?: number; 'Parameter Index'?: number; 'Output Index'?: number; 'Blackboard Index'?: number };
 type AinbParam = { Name?: string; Value?: any; 'Default Value'?: any; 'Source Node Index'?: number; Source?: AinbSource; 'Blackboard Index'?: number };
 type AinbPlug = { 'Node Index'?: number; Name?: string; 'Transition Type'?: number };
 type AinbNode = { 'Node Index': number; Name?: string; 'Node Type'?: string; Flags?: string[]; Properties?: Record<string, any>; Parameters?: Record<string, AinbParam[]>; Plugs?: Record<string, AinbPlug[]> };
@@ -26,6 +26,22 @@ export class AinbNodeFormatAdapter implements NodeFormatAdapter {
         private readonly extensionPath: string,
         private readonly getRuntimeDefs?: () => Map<string, AinbDef> | undefined
     ) {}
+
+    private extractParamSources(param: AinbParam): AinbSource[] {
+        // Newer ainb lib emits multi-links as `Sources`, single as `Source`.
+        // Keep legacy fallback for `Source Node Index`.
+        const p = param as AinbParam & { Sources?: AinbSource[] };
+        if (Array.isArray(p.Sources) && p.Sources.length > 0) {
+            return p.Sources;
+        }
+        if (p.Source) {
+            return [p.Source];
+        }
+        if (typeof p['Source Node Index'] === 'number' && p['Source Node Index'] >= 0) {
+            return [{ 'Node Index': p['Source Node Index'], 'Output Index': 0 }];
+        }
+        return [];
+    }
 
     supports(filePath: string): boolean {
         const lowerPath = filePath.toLowerCase();
@@ -198,13 +214,18 @@ private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number,
                             linked: false 
                         });
                     } else {
-                        const srcIdx = param['Source Node Index'] ?? param.Source?.['Node Index'] ?? -1;
-                        const bbIdx = param['Blackboard Index'] ?? param.Source?.['Blackboard Index'] ?? -1;
+                        const sources = this.extractParamSources(param);
+                        const hasNodeSource = sources.some((s) => (s['Node Index'] ?? -1) >= 0);
+                        const hasBlackboardSource = sources.some((s) => (s['Blackboard Index'] ?? -1) >= 0)
+                            || (param['Blackboard Index'] ?? -1) >= 0;
 
-                        if (srcIdx >= 0) {
+                        if (hasNodeSource) {
                             inputPins.push({ id: `in-param-${cleanType}-${paramIndex}`, label: paramName, linked: true });
-                        } else if (bbIdx >= 0) {
-                            displayEntries.push(`${paramName} (BB: ${bbIdx})`);
+                        } else if (hasBlackboardSource) {
+                            const bb = sources.find((s) => (s['Blackboard Index'] ?? -1) >= 0)?.['Blackboard Index']
+                                ?? param['Blackboard Index']
+                                ?? -1;
+                            displayEntries.push(`${paramName} (BB: ${bb})`);
                         } else {
                             displayEntries.push(`${paramName}: ${param.Value ?? param['Default Value'] ?? 'null'}`);
                         }
@@ -289,12 +310,15 @@ private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number,
                 const cleanType = paramType.replace(/(Input|Output)/i, '').trim();
 
                 params.forEach((param, paramIndex) => {
-                    const sourceNodeIdx = param['Source Node Index'] ?? param.Source?.['Node Index'] ?? -1;
-                    const sourceParamIdx = param.Source?.['Parameter Index'] ?? 0; // Default to first output if not specified
-
-                    if (sourceNodeIdx >= 0) {
+                    const sources = this.extractParamSources(param);
+                    for (const src of sources) {
+                        const sourceNodeIdx = src['Node Index'] ?? -1;
+                        const sourceParamIdx = src['Output Index'] ?? src['Parameter Index'] ?? 0;
+                        if (sourceNodeIdx < 0) {
+                            continue;
+                        }
                         edges.push({
-                            id: `e-data-${sourceNodeIdx}-${srcIdx}-${paramIndex}`,
+                            id: `e-data-${sourceNodeIdx}-${srcIdx}-${paramIndex}-${sourceParamIdx}`,
                             source: `node-${sourceNodeIdx}`,
                             target: `node-${srcIdx}`,
                             label: 'Data',

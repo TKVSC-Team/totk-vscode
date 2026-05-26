@@ -333,6 +333,7 @@ function FlowInner({ model }) {
   const [selectedEdgeId, setSelectedEdgeId] = useState('');
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ w: 1920, h: 1080 });
+  const [edges, setEdges] = useState([]);
 
   // Track container size for accurate frustum AABB
   useEffect(() => {
@@ -346,27 +347,75 @@ function FlowInner({ model }) {
     return () => ro.disconnect();
   }, []);
 
+  // ---- All edges (base, never culled source-of-truth) ----------------------
+  const allBaseEdges = useMemo(() => {
+    if (!model?.edges) return [];
+    return model.edges.map((edge) => ({
+      id:           edge.id,
+      source:       String(edge.source),
+      target:       String(edge.target),
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      type:         'gradient',
+      data:         buildEdgeData(edge),
+      interactionWidth: 24,
+      zIndex:       0,
+    }));
+  }, [model]);
+
+  // Local edge state - seeded from model, but accepts optimistic additions
+  // until the model refreshes from Python.
+  useEffect(() => { setEdges(allBaseEdges); }, [allBaseEdges]);
+
 
   
-  // Classify a handle ID as 'flow', 'param', or 'unknown'.
-  // flow-in           → 'flow'
-  // out-flow-Child-0  → 'flow'
-  // in-param-F32-1    → 'param'
-  // out-param-F32-0   → 'param'
-  const handleKind = (id) => {
-    if (!id) return 'unknown';
-    if (id === 'flow-in' || id.startsWith('out-flow-') || id.startsWith('in-flow-')) return 'flow';
-    if (id.startsWith('in-param-') || id.startsWith('out-param-')) return 'param';
-    return 'unknown';
-  };
-
-  // Reject connections that mix flow and data ports.
-  const isValidConnection = useCallback((connection) => {
-    const srcKind = handleKind(connection.sourceHandle);
-    const tgtKind = handleKind(connection.targetHandle);
-    // Both must be the same pin family; also block self-loops.
-    return srcKind !== 'unknown' && srcKind === tgtKind && connection.source !== connection.target;
+  const parseHandle = useCallback((id) => {
+    if (!id) return { kind: 'unknown' };
+    if (id === 'flow-in') return { kind: 'flow', dir: 'in' };
+    if (id === 'flow-out') return { kind: 'flow', dir: 'out' }; // command start node
+    if (id.startsWith('out-flow-')) {
+      const parts = id.split('-');
+      return { kind: 'flow', dir: 'out', plugType: parts[2], plugIndex: parseInt(parts[3] || '0', 10) };
+    }
+    if (id.startsWith('in-flow-')) return { kind: 'flow', dir: 'in' };
+    if (id.startsWith('out-param-')) {
+      const parts = id.split('-');
+      return { kind: 'param', dir: 'out', paramType: parts[2], paramIndex: parseInt(parts[3] || '0', 10) };
+    }
+    if (id.startsWith('in-param-')) {
+      const parts = id.split('-');
+      return { kind: 'param', dir: 'in', paramType: parts[2], paramIndex: parseInt(parts[3] || '0', 10) };
+    }
+    return { kind: 'unknown' };
   }, []);
+
+  const isExactDuplicateConnection = useCallback((connection) => {
+    return edges.some((e) =>
+      e.source === connection.source &&
+      e.target === connection.target &&
+      e.sourceHandle === connection.sourceHandle &&
+      e.targetHandle === connection.targetHandle
+    );
+  }, [edges]);
+
+  // Reject cross-family links (flow<->data), mismatched param types,
+  // and exact duplicate links only.
+  const isValidConnection = useCallback((connection) => {
+    const src = parseHandle(connection.sourceHandle);
+    const tgt = parseHandle(connection.targetHandle);
+
+    if (src.kind === 'unknown' || tgt.kind === 'unknown') return false;
+    if (src.kind !== tgt.kind) return false;
+    if (src.dir !== 'out' || tgt.dir !== 'in') return false;
+    if (connection.source === connection.target) return false;
+
+    if (src.kind === 'param') {
+      if (src.paramType !== tgt.paramType) return false;
+    }
+
+    if (isExactDuplicateConnection(connection)) return false;
+    return true;
+  }, [parseHandle, isExactDuplicateConnection]);
 
   const onConnect = useCallback((connection) => {
     const { sourceHandle, targetHandle, source, target } = connection;
@@ -374,9 +423,9 @@ function FlowInner({ model }) {
     // Guard (belt-and-suspenders; isValidConnection already runs in RF)
     if (!isValidConnection(connection)) return;
 
-    const isFlow = handleKind(sourceHandle) === 'flow';
-    const sourceParts = sourceHandle.split('-');
-    const targetParts = targetHandle.split('-');
+    const src = parseHandle(sourceHandle);
+    const tgt = parseHandle(targetHandle);
+    const isFlow = src.kind === 'flow';
 
     // --- Optimistic edge: add it visually before Python confirms ----------
     const optimisticEdge = {
@@ -398,21 +447,21 @@ function FlowInner({ model }) {
       payload: {
         action: isFlow ? 'link_flow_plugs' : 'link_node_params',
         payload: {
-          sourceId: parseInt(source.replace('node-', ''), 10),
-          targetId: parseInt(target.replace('node-', ''), 10),
+          sourceId: source,
+          targetId: target,
 
-          // Flow: plug type name (e.g. "Child") and its index on the source node
-          plugType:  isFlow ? sourceParts[2] : undefined,
-          plugIndex: isFlow ? parseInt(sourceParts[3] || '0', 10) : undefined,
+          // Flow: connect an existing plug only (never create a new one).
+          plugType:  isFlow ? src.plugType : undefined,
+          plugIndex: isFlow ? src.plugIndex : undefined,
 
-          // Data: value type (e.g. "F32"), output-param index on source, input-param index on target
-          paramType: !isFlow ? targetParts[2] : undefined,
-          sourceIdx: !isFlow ? parseInt(sourceParts[3] || '0', 10) : undefined,
-          targetIdx: !isFlow ? parseInt(targetParts[3] || '0', 10) : undefined,
+          // Data: link existing output/input param pins by index.
+          paramType: !isFlow ? tgt.paramType : undefined,
+          sourceIdx: !isFlow ? src.paramIndex : undefined,
+          targetIdx: !isFlow ? tgt.paramIndex : undefined,
         }
       }
     });
-  }, [isValidConnection]);
+  }, [isValidConnection, parseHandle]);
 
   // 2. Handle Node Deletion (Backspace / Delete key)
   const onNodesDelete = useCallback((deletedNodes) => {
@@ -535,27 +584,6 @@ function FlowInner({ model }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, gridVersion, visCells]);
 
-  // ---- All edges (base, never culled source-of-truth) ----------------------
-  const allBaseEdges = useMemo(() => {
-    if (!model?.edges) return [];
-    return model.edges.map((edge) => ({
-      id:           edge.id,
-      source:       String(edge.source),
-      target:       String(edge.target),
-      sourceHandle: edge.sourceHandle,
-      targetHandle: edge.targetHandle,
-      type:         'gradient',
-      data:         buildEdgeData(edge),
-      interactionWidth: 24,
-      zIndex:       0,
-    }));
-  }, [model]);
-
-  // Local edge state — seeded from model, but accepts optimistic additions
-  // until the model refreshes from Python.
-  const [edges, setEdges] = useState([]);
-  useEffect(() => { setEdges(allBaseEdges); }, [allBaseEdges]);
-
   const onEdgesChange = useCallback(
     (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
     [],
@@ -673,9 +701,19 @@ export default function App() {
         if (payload.progress) setProgress(payload.progress);
       }
     };
+    const onKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        vscode?.postMessage({ type: 'explicit_save' });
+      }
+    };
     window.addEventListener('message', onMessage);
+    window.addEventListener('keydown', onKeyDown);
     vscode?.postMessage({ type: 'ready' });
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.removeEventListener('keydown', onKeyDown);
+    };
   }, []);
 
   if (error) {

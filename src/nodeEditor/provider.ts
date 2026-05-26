@@ -55,6 +55,8 @@ class AinbDocument implements vscode.CustomDocument {
     public nodePositions: Record<string, { x: number; y: number }> = {};
     /** Whether unsaved structural edits have been made (via rpc_edit). */
     public isDirty = false;
+    /** Guard to block Auto Save; set true only for explicit save requests. */
+    public allowDiskWrite = false;
 
     constructor(public readonly uri: vscode.Uri) {
         this.currentBinary = fs.readFileSync(uri.fsPath);
@@ -89,11 +91,17 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
     }
 
     public async saveCustomDocument(document: AinbDocument): Promise<void> {
+        // Keep edits in-memory until an explicit save is requested by the user.
+        // This blocks VS Code Auto Save from writing on every graph mutation.
+        if (!document.allowDiskWrite) {
+            return;
+        }
         const targetPath = document.uri.fsPath;
         try { fs.accessSync(targetPath, fs.constants.W_OK); }
         catch { fs.chmodSync(targetPath, 0o666); }
         fs.writeFileSync(targetPath, document.currentBinary);
         document.isDirty = false;
+        document.allowDiskWrite = false;
     }
 
     public async saveCustomDocumentAs(document: AinbDocument, destination: vscode.Uri): Promise<void> {
@@ -137,14 +145,16 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
             const rawText = typeof jsonModel === 'string' ? jsonModel : JSON.stringify(jsonModel);
             const parsed = adapter.parse(document.uri.fsPath, rawText);
 
-            // Overlay saved node positions so layout survives reloads.
-            if (Object.keys(document.nodePositions).length > 0) {
-                for (const node of parsed.model.nodes) {
-                    const saved = document.nodePositions[String(node.id)];
-                    if (saved) {
-                        node.x = saved.x;
-                        node.y = saved.y;
-                    }
+            // Seed + overlay node positions so topology edits do not trigger re-layout sorting.
+            // We treat parsed coordinates as initial defaults only, then keep stable positions in-memory.
+            for (const node of parsed.model.nodes) {
+                const key = String(node.id);
+                const saved = document.nodePositions[key];
+                if (saved) {
+                    node.x = saved.x;
+                    node.y = saved.y;
+                } else {
+                    document.nodePositions[key] = { x: node.x, y: node.y };
                 }
             }
 
@@ -185,6 +195,19 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
                 // and written into the JSON on explicit Ctrl+S save.
                 case 'node_positions':
                     document.nodePositions = { ...document.nodePositions, ...msg.payload };
+                    if (!document.isDirty) {
+                        document.isDirty = true;
+                        this._onDidChangeCustomDocument.fire({
+                            document,
+                            undo: () => {},
+                            redo: () => {},
+                        });
+                    }
+                    break;
+
+                case 'explicit_save':
+                    document.allowDiskWrite = true;
+                    await vscode.commands.executeCommand('workbench.action.files.save');
                     break;
 
                 case 'rpc_edit':
