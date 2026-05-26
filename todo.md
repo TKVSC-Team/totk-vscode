@@ -1,7 +1,6 @@
 # TODO
 
 ## Mind
-
 - [x] CTRL & Shift Click
 - [x] Nested archives
 - [ ] Look into playing audio
@@ -14,7 +13,6 @@
 - [x] bntx archive support
 - [ ] tkmm options
 - [ ] tkcl parser
-
 
 ## 5th
 - [x] organize repo
