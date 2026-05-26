@@ -67,7 +67,7 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
         try {
             const entries = await vscode.workspace.fs.readDirectory(parentUri);
             return entries
-                .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+                .sort(compareEntriesFoldersFirstKeepingArchivesMixed)
                 .map(([name, fileType]) => {
                     const childUri = vscode.Uri.joinPath(parentUri, name);
                     const isDirectory = fileType === vscode.FileType.Directory;
@@ -92,6 +92,20 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
             return [];
         }
     }
+}
+
+function compareEntriesFoldersFirstKeepingArchivesMixed(
+    [nameA, fileTypeA]: [string, vscode.FileType],
+    [nameB, fileTypeB]: [string, vscode.FileType],
+): number {
+    const isNormalDirectoryA = fileTypeA === vscode.FileType.Directory && !isArchiveFile(nameA);
+    const isNormalDirectoryB = fileTypeB === vscode.FileType.Directory && !isArchiveFile(nameB);
+
+    if (isNormalDirectoryA !== isNormalDirectoryB) {
+        return isNormalDirectoryA ? -1 : 1;
+    }
+
+    return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
 }
 
 function contextValueForEntry(
