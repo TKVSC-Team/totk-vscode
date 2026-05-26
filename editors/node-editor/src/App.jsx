@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow, MiniMap, Controls, Background,
   Handle, Position, getBezierPath, ReactFlowProvider,
-  applyNodeChanges, useViewport,
+  applyNodeChanges, applyEdgeChanges, addEdge, useViewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useOnSelectionChange } from '@xyflow/react';
@@ -348,34 +348,71 @@ function FlowInner({ model }) {
 
 
   
+  // Classify a handle ID as 'flow', 'param', or 'unknown'.
+  // flow-in           → 'flow'
+  // out-flow-Child-0  → 'flow'
+  // in-param-F32-1    → 'param'
+  // out-param-F32-0   → 'param'
+  const handleKind = (id) => {
+    if (!id) return 'unknown';
+    if (id === 'flow-in' || id.startsWith('out-flow-') || id.startsWith('in-flow-')) return 'flow';
+    if (id.startsWith('in-param-') || id.startsWith('out-param-')) return 'param';
+    return 'unknown';
+  };
+
+  // Reject connections that mix flow and data ports.
+  const isValidConnection = useCallback((connection) => {
+    const srcKind = handleKind(connection.sourceHandle);
+    const tgtKind = handleKind(connection.targetHandle);
+    // Both must be the same pin family; also block self-loops.
+    return srcKind !== 'unknown' && srcKind === tgtKind && connection.source !== connection.target;
+  }, []);
+
   const onConnect = useCallback((connection) => {
-    // Flow handles look like 'out-flow-Child-0' or 'flow-in'
-    // Data handles look like 'out-param-F32-0' or 'in-param-F32-1'
-    const isFlow = connection.sourceHandle.startsWith('out-flow') || connection.targetHandle === 'flow-in';
-    
-    const sourceParts = connection.sourceHandle.split('-'); 
-    const targetParts = connection.targetHandle.split('-');
-    
+    const { sourceHandle, targetHandle, source, target } = connection;
+
+    // Guard (belt-and-suspenders; isValidConnection already runs in RF)
+    if (!isValidConnection(connection)) return;
+
+    const isFlow = handleKind(sourceHandle) === 'flow';
+    const sourceParts = sourceHandle.split('-');
+    const targetParts = targetHandle.split('-');
+
+    // --- Optimistic edge: add it visually before Python confirms ----------
+    const optimisticEdge = {
+      id: `e-optimistic-${source}-${target}-${Date.now()}`,
+      source: String(source),
+      target: String(target),
+      sourceHandle,
+      targetHandle,
+      type: 'gradient',
+      animated: !isFlow,
+      data: buildEdgeData({ sourceHandle, targetHandle }),
+      interactionWidth: 24,
+      zIndex: 0,
+    };
+    setEdges((eds) => addEdge(optimisticEdge, eds));
+
     vscode?.postMessage({
       type: 'rpc_edit',
       payload: {
         action: isFlow ? 'link_flow_plugs' : 'link_node_params',
         payload: {
-          sourceId: parseInt(connection.source.replace('node-', ''), 10),
-          targetId: parseInt(connection.target.replace('node-', ''), 10),
-          
-          // Flow: Extract type and index from the source handle
-          plugType: isFlow ? sourceParts[2] : undefined,
+          sourceId: parseInt(source.replace('node-', ''), 10),
+          targetId: parseInt(target.replace('node-', ''), 10),
+
+          // Flow: plug type name (e.g. "Child") and its index on the source node
+          plugType:  isFlow ? sourceParts[2] : undefined,
           plugIndex: isFlow ? parseInt(sourceParts[3] || '0', 10) : undefined,
-          
-          // Data: Extract type, source index, and target index
+
+          // Data: value type (e.g. "F32"), output-param index on source, input-param index on target
           paramType: !isFlow ? targetParts[2] : undefined,
           sourceIdx: !isFlow ? parseInt(sourceParts[3] || '0', 10) : undefined,
-          targetIdx: !isFlow ? parseInt(targetParts[3] || '0', 10) : undefined
+          targetIdx: !isFlow ? parseInt(targetParts[3] || '0', 10) : undefined,
         }
       }
     });
-  }, []);
+  }, [isValidConnection]);
 
   // 2. Handle Node Deletion (Backspace / Delete key)
   const onNodesDelete = useCallback((deletedNodes) => {
@@ -447,6 +484,10 @@ function FlowInner({ model }) {
       for (const change of changes) {
         if (change.type !== 'position' || !change.position) continue;
         const { x, y } = change.position;
+
+        // Record position for save
+        nodePositionsRef.current.set(change.id, { x, y });
+
         const oldKey = nodeCell.get(change.id);
         const [cx, cy] = nodeToCell(x, y);
         const newKey = cellKey(cx, cy);
@@ -510,16 +551,37 @@ function FlowInner({ model }) {
     }));
   }, [model]);
 
+  // Local edge state — seeded from model, but accepts optimistic additions
+  // until the model refreshes from Python.
+  const [edges, setEdges] = useState([]);
+  useEffect(() => { setEdges(allBaseEdges); }, [allBaseEdges]);
+
+  const onEdgesChange = useCallback(
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    [],
+  );
+
   // ---- Edges - no culling, just selection state layered on top ------------
   // Edges are SVG <path> elements and are cheap at any count.
   // Culling them causes broken/missing connections with no meaningful perf gain.
   const visibleEdges = useMemo(() => {
-    if (!selectedEdgeId) return allBaseEdges;
-    return allBaseEdges.map((edge) => {
+    if (!selectedEdgeId) return edges;
+    return edges.map((edge) => {
       if (edge.id !== selectedEdgeId) return edge;
       return { ...edge, selected: true, zIndex: 6 };
     });
-  }, [allBaseEdges, selectedEdgeId]);
+  }, [edges, selectedEdgeId]);
+
+  // ---- Node position tracking - kept in a ref so we never re-render just for positions ----
+  // Updated on every drag; flushed to the extension on Ctrl+S.
+  const nodePositionsRef = useRef(new Map()); // nodeId → {x, y}
+
+  // Seed positions from allRfNodes whenever the model reloads
+  useEffect(() => {
+    const map = new Map();
+    for (const n of allRfNodes) map.set(n.id, { ...n.position });
+    nodePositionsRef.current = map;
+  }, [allRfNodes]);
 
   // ---- Handlers ------------------------------------------------------------
   const onEdgeClick = useCallback((_evt, edge) => {
@@ -534,18 +596,28 @@ function FlowInner({ model }) {
     setSelectedEdgeId('');
   }, []);
 
+  // After a drag ends, push the full position map to the extension.
+  // provider.ts stores this and injects it on every save — no async handshake needed.
+  const onNodeDragStop = useCallback(() => {
+    const positions = Object.fromEntries(nodePositionsRef.current);
+    vscode?.postMessage({ type: 'node_positions', payload: positions });
+  }, []);
+
   return (
     <div ref={containerRef} style={{ flex: 1, minHeight: 0 }}>
     <ReactFlow
         nodes={culledNodes}
         edges={visibleEdges}
-        onConnect={onConnect}             // NEW
-        onNodesDelete={onNodesDelete}     // NEW
-        nodesConnectable={true}           // CHANGED: allow drawing edges
+        onConnect={onConnect}
+        isValidConnection={isValidConnection}
+        onNodesDelete={onNodesDelete}
+        nodesConnectable={true}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={DEFAULT_EDGE_OPTS}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeDragStop={onNodeDragStop}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
 

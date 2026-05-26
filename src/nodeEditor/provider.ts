@@ -51,6 +51,10 @@ function runBridgeWithStdin(
 
 class AinbDocument implements vscode.CustomDocument {
     public currentBinary: Buffer;
+    /** Last-known node positions sent by the webview after a drag. Persisted into the JSON layer on save. */
+    public nodePositions: Record<string, { x: number; y: number }> = {};
+    /** Whether unsaved structural edits have been made (via rpc_edit). */
+    public isDirty = false;
 
     constructor(public readonly uri: vscode.Uri) {
         this.currentBinary = fs.readFileSync(uri.fsPath);
@@ -89,6 +93,7 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
         try { fs.accessSync(targetPath, fs.constants.W_OK); }
         catch { fs.chmodSync(targetPath, 0o666); }
         fs.writeFileSync(targetPath, document.currentBinary);
+        document.isDirty = false;
     }
 
     public async saveCustomDocumentAs(document: AinbDocument, destination: vscode.Uri): Promise<void> {
@@ -131,6 +136,18 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
         const sendModelToWebview = (jsonModel: any) => {
             const rawText = typeof jsonModel === 'string' ? jsonModel : JSON.stringify(jsonModel);
             const parsed = adapter.parse(document.uri.fsPath, rawText);
+
+            // Overlay saved node positions so layout survives reloads.
+            if (Object.keys(document.nodePositions).length > 0) {
+                for (const node of parsed.model.nodes) {
+                    const saved = document.nodePositions[String(node.id)];
+                    if (saved) {
+                        node.x = saved.x;
+                        node.y = saved.y;
+                    }
+                }
+            }
+
             webviewPanel.webview.postMessage({ type: 'init', payload: parsed.model });
         };
 
@@ -163,6 +180,13 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
                     await updateWebview();
                     break;
 
+                // The webview pushes updated positions after every drag-stop.
+                // We store them so they're injected on the next sendModelToWebview call
+                // and written into the JSON on explicit Ctrl+S save.
+                case 'node_positions':
+                    document.nodePositions = { ...document.nodePositions, ...msg.payload };
+                    break;
+
                 case 'rpc_edit':
                     try {
                         const commandString = JSON.stringify(msg.payload);
@@ -178,11 +202,17 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
                         if (result.status === 'success') {
                             document.currentBinary = Buffer.from(result.data, 'base64');
 
-                            this._onDidChangeCustomDocument.fire({
-                                document,
-                                undo: () => {},
-                                redo: () => {},
-                            });
+                            // Fire the dirty event only the first time after a clean save,
+                            // so VS Code shows the "●" indicator and enables Ctrl+S —
+                            // but does NOT auto-save on every single edit.
+                            if (!document.isDirty) {
+                                document.isDirty = true;
+                                this._onDidChangeCustomDocument.fire({
+                                    document,
+                                    undo: () => {},
+                                    redo: () => {},
+                                });
+                            }
 
                             sendModelToWebview(result.model);
                         } else {
