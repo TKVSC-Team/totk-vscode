@@ -43,27 +43,65 @@ def handle_rpc(file_path: str | None, command_str: str, use_stdin: bool = False)
 
         ainb_file, is_binary = _load_ainb(file_path, use_stdin)
 
-        if action == "link_nodes":
-            src_str = payload["source"]
-            tgt_str = payload["target"]
-
+        # --- FLOW WIRING ---
+        if action == "link_flow_plugs":
+            src_str = str(payload.get("sourceId", ""))
+            tgt_str = str(payload.get("targetId", ""))
+            
             tgt_idx = int(tgt_str.replace("node-", ""))
             tgt_node = ainb_file.get_node(tgt_idx)
 
             if src_str.startswith("cmd-"):
                 cmd_idx = int(src_str.replace("cmd-", ""))
-                command = ainb_file.get_command(cmd_idx)
-                if command and tgt_node:
-                    command.root_node_index = tgt_node.index
+                command_obj = ainb_file.get_command(cmd_idx)
+                if command_obj and tgt_node:
+                    command_obj.root_node_index = tgt_node.index
 
-            elif src_str.startswith("node-"):
+            else:
                 src_idx = int(src_str.replace("node-", ""))
                 src_node = ainb_file.get_node(src_idx)
+                
+                # Extract the plug name from the handle (e.g. out-flow-Child-0 -> Child)
+                source_handle = payload.get("sourceHandle", "")
+                parts = source_handle.split("-")
+                conn_name = parts[2] if len(parts) >= 3 else "Linked"
+                
                 if src_node and tgt_node:
-                    src_node.link_child(tgt_node, connection_name="Linked")
+                    src_node.link_child(tgt_node, connection_name=conn_name)
 
+        # --- DATA/PARAM WIRING ---
+        elif action == "link_node_params":
+            src_idx = int(str(payload.get("sourceId", "")).replace("node-", ""))
+            tgt_idx = int(str(payload.get("targetId", "")).replace("node-", ""))
+            
+            param_group = payload.get("paramType", "")
+            source_idx = payload.get("sourceIdx", 0)
+            target_idx = payload.get("targetIdx", 0)
+
+            src_node = ainb_file.get_node(src_idx)
+            tgt_node = ainb_file.get_node(tgt_idx)
+
+            if src_node and tgt_node:
+                from ainb.param_common import ParamType
+                clean_type = param_group.lower().split(" ")[0]
+                type_map = {
+                    "bool": ParamType.Bool,
+                    "float": ParamType.Float,
+                    "int": ParamType.Int,
+                    "string": ParamType.String,
+                    "vec3f": ParamType.Vec3f,
+                }
+                p_type = type_map.get(clean_type)
+                if p_type:
+                    target_inputs = tgt_node.params.get_inputs(p_type)
+                    if 0 <= target_idx < len(target_inputs):
+                        target_param = target_inputs[target_idx]
+                        # Correctly assign the source pointer to the existing parameter
+                        tgt_node.set_input_from_node(p_type, target_param.name, src_node, source_idx)
+
+        # --- OTHER ACTIONS ---
         elif action == "remove_node":
-            node_idx = int(payload["nodeId"].replace("node-", ""))
+            node_idx = int(payload.get("nodeId", "").replace("node-", ""))
             ainb_file.remove_node(node_idx)
 
         elif action == "add_node":
@@ -74,7 +112,7 @@ def handle_rpc(file_path: str | None, command_str: str, use_stdin: bool = False)
 
         elif action == "edit_node_param":
             node_idx = payload.get("nodeId")
-            param_group = payload.get("paramType")
+            param_group = payload.get("paramType", "")
             param_name = payload.get("paramName")
             new_val = payload.get("newValue")
 
@@ -92,6 +130,25 @@ def handle_rpc(file_path: str | None, command_str: str, use_stdin: bool = False)
                 p_type = type_map.get(clean_type)
                 if p_type:
                     node.update_input_default(p_type, param_name, new_val)
+
+        if action == "link_flow_plugs":
+            source_node = ainb_file.get_node(payload["sourceId"])
+            # Uses the new index-based method
+            source_node.set_plug_target(
+                plug_type_name=payload["plugType"], 
+                plug_index=payload["plugIndex"], 
+                target_node_index=payload["targetId"]
+            )
+            
+        elif action == "link_node_params":
+            target_node = ainb_file.get_node(payload["targetId"])
+            # Uses the new index-based method
+            target_node.set_input_from_node_by_index(
+                param_type_name=payload["paramType"],
+                param_index=payload["targetIdx"],
+                source_node_index=payload["sourceId"],
+                source_output_index=payload["sourceIdx"]
+            )
 
         else:
             raise ValueError(f"Unknown RPC action: {action}")

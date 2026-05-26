@@ -346,13 +346,33 @@ function FlowInner({ model }) {
     return () => ro.disconnect();
   }, []);
 
-  // 1. Handle Wire Connections
+
+  
   const onConnect = useCallback((connection) => {
+    // Flow handles look like 'out-flow-Child-0' or 'flow-in'
+    // Data handles look like 'out-param-F32-0' or 'in-param-F32-1'
+    const isFlow = connection.sourceHandle.startsWith('out-flow') || connection.targetHandle === 'flow-in';
+    
+    const sourceParts = connection.sourceHandle.split('-'); 
+    const targetParts = connection.targetHandle.split('-');
+    
     vscode?.postMessage({
       type: 'rpc_edit',
       payload: {
-        action: 'link_nodes',
-        payload: { source: connection.source, target: connection.target }
+        action: isFlow ? 'link_flow_plugs' : 'link_node_params',
+        payload: {
+          sourceId: parseInt(connection.source.replace('node-', ''), 10),
+          targetId: parseInt(connection.target.replace('node-', ''), 10),
+          
+          // Flow: Extract type and index from the source handle
+          plugType: isFlow ? sourceParts[2] : undefined,
+          plugIndex: isFlow ? parseInt(sourceParts[3] || '0', 10) : undefined,
+          
+          // Data: Extract type, source index, and target index
+          paramType: !isFlow ? targetParts[2] : undefined,
+          sourceIdx: !isFlow ? parseInt(sourceParts[3] || '0', 10) : undefined,
+          targetIdx: !isFlow ? parseInt(targetParts[3] || '0', 10) : undefined
+        }
       }
     });
   }, []);

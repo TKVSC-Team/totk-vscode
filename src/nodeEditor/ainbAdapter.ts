@@ -192,7 +192,11 @@ private calculateDepths(commands: AinbCommand[], nodes: AinbNode[]): Map<number,
                 params.forEach((param, paramIndex) => {
                     const paramName = param.Name || 'Unk';
                     if (isOutput) {
-                        outputPins.push({ id: `out-param-${cleanType}-${paramIndex}`, label: paramName, linked: false });
+                        outputPins.push({ 
+                            id: `out-param-${cleanType}-${paramIndex}`, 
+                            label: paramName, 
+                            linked: false 
+                        });
                     } else {
                         const srcIdx = param['Source Node Index'] ?? param.Source?.['Node Index'] ?? -1;
                         const bbIdx = param['Blackboard Index'] ?? param.Source?.['Blackboard Index'] ?? -1;
