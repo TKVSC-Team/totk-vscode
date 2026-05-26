@@ -194,7 +194,7 @@ def _decode_pixels(linear_data: bytes, width: int, height: int,
     try:
         import texture2ddecoder as t2d
     except ImportError:
-        _log('texture2ddecoder not installed — cannot decode compressed texture')
+        _log('texture2ddecoder not installed - cannot decode compressed texture')
         return None, 'BGRA'
 
     decoded: bytes | None = None
@@ -395,7 +395,7 @@ def render_texture_to_png(bntx_data: bytes, texture_name: str) -> str | None:
     try:
         from PIL import Image
     except ImportError:
-        _log('Pillow not installed — cannot save PNG')
+        _log('Pillow not installed - cannot save PNG')
         return None
 
     img = Image.frombytes('RGBA', (tex.width, tex.height), pixels, 'raw', raw_mode)

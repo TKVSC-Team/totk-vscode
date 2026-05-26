@@ -57,8 +57,8 @@ Preview and edit subfiles of SARC and BNTX archives
 
 **`python3` works in CMD but the extension cannot find Python?** Cursor and VS Code are often launched without your full user PATH (unlike a terminal you opened yourself). Fix:
 
-1. **TOTK: Select Python (from detected installs)** — scans `where python3`, common install folders, and `py`.
-2. **TOTK: Browse for python.exe** — point at the real interpreter (e.g. `%LocalAppData%\Programs\Python\Python312\python.exe`).
+1. **TOTK: Select Python (from detected installs)** - scans `where python3`, common install folders, and `py`.
+2. **TOTK: Browse for python.exe** - point at the real interpreter (e.g. `%LocalAppData%\Programs\Python\Python312\python.exe`).
 3. Or set **TOTK Editor → Python Path** to that full path, then **TOTK: Set Up Python Environment** again.
 
 If setup fails, run **TOTK: Set Up Python Environment** from the Command Palette.

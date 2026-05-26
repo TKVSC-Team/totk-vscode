@@ -56,7 +56,7 @@ class AinbDocument implements vscode.CustomDocument {
         this.currentBinary = fs.readFileSync(uri.fsPath);
     }
 
-    dispose(): void { /* nothing to clean up — it's all in memory */ }
+    dispose(): void { /* nothing to clean up - it's all in memory */ }
 }
 
 const VIEW_TYPE = 'totk-editor.ainbNodeEditor';

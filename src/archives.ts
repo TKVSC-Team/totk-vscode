@@ -59,7 +59,7 @@ export function getLocatorInsideDiskArchive(fsPath: string, diskArchive: string)
     return rest.replace(/\\/g, '/');
 }
 
-/** @deprecated Use getDiskArchivePath — kept for callers expecting the old name. */
+/** @deprecated Use getDiskArchivePath - kept for callers expecting the old name. */
 export function getArchivePhysicalPath(fsPath: string): string {
     return getDiskArchivePath(fsPath);
 }

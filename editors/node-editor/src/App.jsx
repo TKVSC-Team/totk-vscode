@@ -20,7 +20,7 @@ const vscode = typeof acquireVsCodeApi === 'function' ? acquireVsCodeApi() : und
 //   out-param-{valuetype}-{paramname}
 //
 // For connected pins to share a color, we derive the color from the
-// *semantic key* — the value-type + param-name — stripped of direction prefix.
+// *semantic key* - the value-type + param-name - stripped of direction prefix.
 // Flow pins get a fixed gold color so they're visually distinct from data pins.
 // ---------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ function pinColorFromSemanticKey(key) {
   return `hsl(${hue}, 58%, 70%)`;
 }
 
-// Module-level cache — pin IDs are static strings, so this never needs
+// Module-level cache - pin IDs are static strings, so this never needs
 // clearing. Eliminates the hash loop + regex on every node render.
 const _pinColorCache = new Map();
 function pinColor(handleId) {
@@ -103,7 +103,7 @@ function lerpRgb(a, b, t) {
 function toRgba([r, g, b], a) { return `rgba(${r},${g},${b},${a})`; }
 
 // ---------------------------------------------------------------------------
-// Gradient edge — color lerps from source handle color to target handle color.
+// Gradient edge - color lerps from source handle color to target handle color.
 // When both ends share the same semantic key (connected param pair), the wire
 // is a uniform color. When they differ (cross-type or flow→param), it lerps.
 // ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ const GradientEdge = memo(function GradientEdge({
   const [edgePath] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
   const gradId = `eg-${id}`;
 
-  // srcRgb/tgtRgb are pre-parsed in buildEdgeData — no color work on render.
+  // srcRgb/tgtRgb are pre-parsed in buildEdgeData - no color work on render.
   const srcRgb = data?.srcRgb ?? [255, 196, 87];
   const tgtRgb = data?.tgtRgb ?? [255, 196, 87];
   const midRgb = lerpRgb(srcRgb, tgtRgb, 0.5);
@@ -260,7 +260,7 @@ function buildEdgeData(edge) {
 }
 
 // ---------------------------------------------------------------------------
-// Spatial grid — world-space bucketing for frustum culling
+// Spatial grid - world-space bucketing for frustum culling
 //
 // The canvas layout uses columnGap=520, rowGap=34, nodes ~220-340px wide,
 // height varies. 1500 nodes across ~30 depth columns → up to ~15k × ~50k
@@ -278,7 +278,7 @@ function buildEdgeData(edge) {
 const CELL_SIZE = 3000;   // world units per cell side
 const CELL_PAD  = 1;      // extra cells of margin to prevent pop-in
 
-// Integer cell key — Map/Set lookups on integers are faster than strings in V8.
+// Integer cell key - Map/Set lookups on integers are faster than strings in V8.
 // Multiplier is a large prime; coords realistically stay well within ±100 000.
 function cellKey(cx, cy) { return cx * 1_000_003 + cy; }
 
@@ -326,7 +326,7 @@ function visibleCellKeys(viewport, w, h) {
 }
 
 // ---------------------------------------------------------------------------
-// FlowInner — owns ReactFlow state + incremental spatial culling
+// FlowInner - owns ReactFlow state + incremental spatial culling
 // ---------------------------------------------------------------------------
 function FlowInner({ model }) {
   const selectedEdgeIdRef = useRef('');
@@ -404,10 +404,10 @@ function FlowInner({ model }) {
   const [nodes, setNodes] = useState([]);
   useEffect(() => { setNodes(allRfNodes); }, [allRfNodes]);
 
-  // ---- Spatial grid — ref so patches don't trigger re-renders --------------
+  // ---- Spatial grid - ref so patches don't trigger re-renders --------------
   // gridRef.current = { grid: Map<cellKey, Set<nodeId>>, nodeCell: Map<nodeId, cellKey> }
   // gridVersion increments only when a node crosses a cell boundary, which is
-  // what the cull memos depend on — not every pixel of drag.
+  // what the cull memos depend on - not every pixel of drag.
   const gridRef = useRef({ grid: new Map(), nodeCell: new Map() });
   const [gridVersion, setGridVersion] = useState(0);
 
@@ -417,7 +417,7 @@ function FlowInner({ model }) {
     setGridVersion((v) => v + 1);
   }, [allRfNodes]);
 
-  // Incremental patch on drag — only touches moved nodes, only bumps version
+  // Incremental patch on drag - only touches moved nodes, only bumps version
   // when a node actually crosses into a new cell.
   const onNodesChange = useCallback((changes) => {
     setNodes((nds) => {
@@ -430,7 +430,7 @@ function FlowInner({ model }) {
         const oldKey = nodeCell.get(change.id);
         const [cx, cy] = nodeToCell(x, y);
         const newKey = cellKey(cx, cy);
-        if (newKey === oldKey) continue; // same cell — no work needed
+        if (newKey === oldKey) continue; // same cell - no work needed
         // Remove from old cell
         if (oldKey !== undefined) {
           const oldSet = grid.get(oldKey);
@@ -450,24 +450,24 @@ function FlowInner({ model }) {
     });
   }, []);
 
-  // ---- Visible cell keys — recomputed on viewport/size change --------------
+  // ---- Visible cell keys - recomputed on viewport/size change --------------
   const visCells = useMemo(
     () => visibleCellKeys(viewport, containerSize.w, containerSize.h),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [viewport.x, viewport.y, viewport.zoom, containerSize.w, containerSize.h],
   );
 
-  // ---- Cull nodes via hidden prop — NOT by filtering the array --------------
+  // ---- Cull nodes via hidden prop - NOT by filtering the array --------------
   // ReactFlow must receive every node to resolve handle positions for edges.
   // Filtering the array breaks connections to off-screen nodes (known RF bug).
-  // Instead, set hidden:true on off-screen nodes — RF skips their DOM subtree
+  // Instead, set hidden:true on off-screen nodes - RF skips their DOM subtree
   // but keeps them in its internal store so edge anchoring still works.
   const culledNodes = useMemo(() => {
     if (nodes.length === 0) return nodes;
     const { nodeCell } = gridRef.current;
     return nodes.map((n) => {
       const inView = visCells.has(nodeCell.get(n.id));
-      // Keep object identity when nothing changed — avoids unnecessary RF re-renders
+      // Keep object identity when nothing changed - avoids unnecessary RF re-renders
       if (n.hidden === !inView) return n;
       return { ...n, hidden: !inView };
     });
@@ -490,7 +490,7 @@ function FlowInner({ model }) {
     }));
   }, [model]);
 
-  // ---- Edges — no culling, just selection state layered on top ------------
+  // ---- Edges - no culling, just selection state layered on top ------------
   // Edges are SVG <path> elements and are cheap at any count.
   // Culling them causes broken/missing connections with no meaningful perf gain.
   const visibleEdges = useMemo(() => {

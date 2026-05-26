@@ -224,7 +224,7 @@ function discoverInstalledPythonExecutables(): string[] {
 function launcherLabel(launcher: PythonLauncher, version?: [number, number]): string {
     const versionText = version ? `Python ${version[0]}.${version[1]}` : 'Python';
     const args = launcher.prefixArgs.length ? ` ${launcher.prefixArgs.join(' ')}` : '';
-    return `${versionText} — ${launcher.executable}${args}`;
+    return `${versionText} - ${launcher.executable}${args}`;
 }
 
 export function getSystemPythonCandidates(): PythonLauncher[] {
@@ -346,7 +346,7 @@ export async function pickDetectedPython(context: vscode.ExtensionContext): Prom
 
     const choice = await vscode.window.showQuickPick(supported, {
         title: 'Select Python for TOTK Editor',
-        placeHolder: 'CMD may list python3 on PATH even when Cursor cannot see it — pick the full path below.',
+        placeHolder: 'CMD may list python3 on PATH even when Cursor cannot see it - pick the full path below.',
     });
     if (!choice) {
         return;
@@ -460,7 +460,7 @@ export function ensurePythonEnvironment(
             .catch((error: unknown) => {
                 cachedPython = undefined;
                 const message = error instanceof Error ? error.message : String(error);
-                void vscode.window.showErrorMessage(`TOTK Editor: Python setup failed — ${message}`);
+                void vscode.window.showErrorMessage(`TOTK Editor: Python setup failed - ${message}`);
                 return undefined;
             });
     }
@@ -470,7 +470,7 @@ export function ensurePythonEnvironment(
 
 export async function promptPythonSetup(context: vscode.ExtensionContext): Promise<void> {
     const choice = await vscode.window.showErrorMessage(
-        'TOTK Editor could not find Python 3.10+. Cursor/VS Code often use a different PATH than CMD — set the full path to python.exe, or pick from detected installs.',
+        'TOTK Editor could not find Python 3.10+. Cursor/VS Code often use a different PATH than CMD - set the full path to python.exe, or pick from detected installs.',
         'Pick Python',
         'Browse for python.exe',
         'Retry Setup',

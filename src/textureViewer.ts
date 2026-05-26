@@ -67,7 +67,7 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
         : '<p style="color:#888;">No metadata available</p>';
 
     const errorNote = !result.pngBase64
-        ? '<p style="color:#e8a040;margin-top:12px;">Rendering failed — check the developer console for details.</p>'
+        ? '<p style="color:#e8a040;margin-top:12px;">Rendering failed - check the developer console for details.</p>'
         : '';
 
     return /* html */ `<!DOCTYPE html>

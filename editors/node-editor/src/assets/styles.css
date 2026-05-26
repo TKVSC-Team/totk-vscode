@@ -1,5 +1,5 @@
 /* =========================================================
-   AINB Node Editor — styles
+   AINB Node Editor - styles
    ========================================================= */
 
 /* Root layout */
@@ -46,7 +46,7 @@
 }
 
 /* =========================================================
-   Node card — full detail
+   Node card - full detail
    ========================================================= */
 .ainb-node-card {
   min-width: 220px;
@@ -55,11 +55,11 @@
   border: 1.5px solid #30363d;
   border-radius: 8px;
   font-size: 11px;
-  /* Let height grow with content — no overflow, no max-height */
+  /* Let height grow with content - no overflow, no max-height */
   overflow: visible;
 }
 
-/* Role colors — border accent */
+/* Role colors - border accent */
 .ainb-node-blue   { border-color: #388bfd; }
 .ainb-node-red    { border-color: #f85149; }
 .ainb-node-green  { border-color: #3fb950; }
@@ -138,7 +138,7 @@
   color: #c9d1d9;
 }
 
-/* Handles — let ReactFlow keep position:absolute and its own transform/top.
+/* Handles - let ReactFlow keep position:absolute and its own transform/top.
    We only override size, color, and border. */
 .ainb-handle {
   width: 10px !important;
@@ -150,7 +150,7 @@
 
 /* =========================================================
    Sections (metadata / parameters)
-   No overflow, no max-height — height is always content-driven
+   No overflow, no max-height - height is always content-driven
    ========================================================= */
 .ainb-sections {
   border-top: 1px solid #21262d;
@@ -187,7 +187,7 @@
 }
 
 /* =========================================================
-   LOD node card — stripped down, zoomed-out view
+   LOD node card - stripped down, zoomed-out view
    ========================================================= */
 .ainb-node-lod {
   min-width: 120px;
@@ -206,7 +206,7 @@
 .react-flow__renderer { outline: none; }
 
 .react-flow__node {
-  /* Nodes use content sizing — let them grow */
+  /* Nodes use content sizing - let them grow */
   width: auto !important;
 }
 

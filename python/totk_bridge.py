@@ -438,7 +438,7 @@ def read_file_content(file_data: bytes, logical_path: str, sarc=None, romfs_path
     return (
         f'<Binary Data: {len(file_data)} bytes. '
         'Editable types: .byml, .bgyml, .msbt, .asb, .baev, .belnk, .bslnk, '
-        'AAMP (many extensions — see aamp-extensions.json)>'
+        'AAMP (many extensions - see aamp-extensions.json)>'
     )
 
 
