@@ -2,6 +2,13 @@
 
 export const ARCHIVE_FILE_PATTERN = /\.(pack|sarc|genvb|blarc|bntx)(\.zs)?$/i;
 
+const BNTX_PARENT_PATTERN = /\.bntx(\.zs)?[/\\]/i;
+
+/** True when the URI path indicates a file inside a BNTX container. */
+export function isBntxTextureUri(uri: { fsPath: string }): boolean {
+    return BNTX_PARENT_PATTERN.test(uri.fsPath);
+}
+
 const DISK_ARCHIVE_PATTERN = /^(.+?\.(pack|sarc|genvb|blarc|bntx)(\.zs)?)(?=\\|\/|$)/i;
 
 export function isArchiveFileName(name: string): boolean {

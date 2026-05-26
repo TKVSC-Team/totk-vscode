@@ -348,30 +348,12 @@ class SarcProvider implements vscode.FileSystemProvider {
 
         try {
             console.log(`Reading: ${diskArchive} / ${filePath}`);
-            const raw = runBridgeRead(
+            const content = runBridgeReadContent(
                 this.requirePython(),
                 this.bridgePath,
                 ['read', diskArchive, filePath],
                 getBridgeEnv(),
             );
-
-            if (isBntxTextureResult(raw)) {
-                const texName = raw.metadata?.name ?? filePath.split('/').pop() ?? 'texture';
-                void openTextureViewer(texName, raw);
-                return new TextEncoder().encode('');
-            }
-
-            const content = (() => {
-                const r = raw as { content?: string; contentPath?: string };
-                if (r.contentPath) {
-                    try {
-                        return fs.readFileSync(r.contentPath, 'utf-8');
-                    } finally {
-                        try { fs.unlinkSync(r.contentPath); } catch { /* best-effort */ }
-                    }
-                }
-                return r.content ?? '';
-            })();
 
             if (shouldOfferExternalToolPrompt(content)) {
                 const reason = content.startsWith('Error reading file:')
@@ -569,6 +551,30 @@ export async function activate(context: vscode.ExtensionContext) {
                 isReadonly: true,
             },
         ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('totk-editor.openBntxTexture', (uri: vscode.Uri) => {
+            const python = getPython();
+            if (!python) {
+                void vscode.window.showErrorMessage('Python not configured.');
+                return;
+            }
+            try {
+                const diskArchive = getDiskArchivePath(uri.fsPath);
+                const filePath = getLocatorInsideDiskArchive(uri.fsPath, diskArchive);
+                const raw = runBridgeRead(python, bridgePath, ['read', diskArchive, filePath], getBridgeEnv());
+                if (isBntxTextureResult(raw)) {
+                    const texName = raw.metadata?.name ?? filePath.split('/').pop() ?? 'texture';
+                    openTextureViewer(texName, raw);
+                } else {
+                    void vscode.window.showErrorMessage('Failed to load BNTX texture.');
+                }
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                void vscode.window.showErrorMessage(`BNTX texture error: ${msg}`);
+            }
+        }),
     );
 
     const totkDiskProvider = new TotkDiskFileSystemProvider(bridgePath, getPython, getBridgeEnv);

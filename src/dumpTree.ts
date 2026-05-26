@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { addDumpEntryToProject, pickProjectRoot } from './addToProject';
-import { isArchiveFile, isPathInsideArchive } from './archives';
+import { isArchiveFile, isBntxTextureUri, isPathInsideArchive } from './archives';
 import type { ArchiveTreeProvider } from './archiveTree';
 import { resolveRomfsPath } from './romfs';
 
@@ -28,11 +28,9 @@ export class DumpTreeItem extends vscode.TreeItem {
         this.contextValue = contextValue;
 
         if (collapsibleState === vscode.TreeItemCollapsibleState.None) {
-            this.command = {
-                command: 'vscode.open',
-                title: 'Open',
-                arguments: [resourceUri, { preview: true }],
-            };
+            this.command = isBntxTextureUri(resourceUri)
+                ? { command: 'totk-editor.openBntxTexture', title: 'View Texture', arguments: [resourceUri] }
+                : { command: 'vscode.open', title: 'Open', arguments: [resourceUri, { preview: true }] };
         }
 
         if (isArchiveFile(entryName)) {

@@ -195,20 +195,47 @@ def _decode_pixels(linear_data: bytes, width: int, height: int,
         _log('texture2ddecoder not installed — cannot decode compressed texture')
         return None, 'BGRA'
 
-    decoders = {
-        'bc1': t2d.decode_bc1,
-        'bc3': t2d.decode_bc3,
-        'bc4': t2d.decode_bc4,
-        'bc5': t2d.decode_bc5,
-        'bc7': t2d.decode_bc7,
-    }
-    if decoder_key in decoders:
-        return decoders[decoder_key](linear_data, width, height), 'BGRA'
-    if decoder_key == 'bc6':
-        return t2d.decode_bc6(linear_data, width, height), 'BGRA'
-    if decoder_key == 'astc':
-        return t2d.decode_astc(linear_data, width, height, blk_w, blk_h), 'BGRA'
+    decoded: bytes | None = None
+    if decoder_key == 'bc1':
+        decoded = t2d.decode_bc1(linear_data, width, height)
+    elif decoder_key == 'bc3':
+        decoded = t2d.decode_bc3(linear_data, width, height)
+    elif decoder_key == 'bc4':
+        decoded = _bc4_to_grayscale(t2d.decode_bc4(linear_data, width, height), pixel_count)
+        return decoded, 'RGBA'
+    elif decoder_key == 'bc5':
+        decoded = _bc5_to_normal(t2d.decode_bc5(linear_data, width, height), pixel_count)
+        return decoded, 'RGBA'
+    elif decoder_key == 'bc6':
+        decoded = t2d.decode_bc6(linear_data, width, height)
+    elif decoder_key == 'bc7':
+        decoded = t2d.decode_bc7(linear_data, width, height)
+    elif decoder_key == 'astc':
+        decoded = t2d.decode_astc(linear_data, width, height, blk_w, blk_h)
+
+    if decoded is not None:
+        return decoded, 'BGRA'
     return None, 'BGRA'
+
+
+def _bc4_to_grayscale(bgra: bytes, pixel_count: int) -> bytes:
+    """BC4 decodes to a single channel in BGRA. Map it to grayscale RGBA."""
+    out = bytearray(pixel_count * 4)
+    for i in range(min(pixel_count, len(bgra) // 4)):
+        v = bgra[i * 4 + 2]  # red channel in BGRA layout (B=0, G=1, R=2, A=3)
+        off = i * 4
+        out[off] = v; out[off + 1] = v; out[off + 2] = v; out[off + 3] = 255
+    return bytes(out)
+
+
+def _bc5_to_normal(bgra: bytes, pixel_count: int) -> bytes:
+    """BC5 decodes to RG channels. Show as normal-map style RGB."""
+    out = bytearray(pixel_count * 4)
+    for i in range(min(pixel_count, len(bgra) // 4)):
+        b, g, r, a = bgra[i*4], bgra[i*4+1], bgra[i*4+2], bgra[i*4+3]
+        off = i * 4
+        out[off] = r; out[off + 1] = g; out[off + 2] = 255; out[off + 3] = 255
+    return bytes(out)
 
 
 # ---------------------------------------------------------------------------

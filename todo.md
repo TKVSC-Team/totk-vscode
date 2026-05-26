@@ -12,6 +12,8 @@
 - [x] blarc support
 - [x] bntx archive support
 - [x] bntx texture viewer
+- [x] bntx multi channel
+- [x] bntx image render size
 - [ ] tkmm options
 - [ ] tkcl parser
 

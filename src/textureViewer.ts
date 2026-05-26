@@ -19,7 +19,7 @@ export function openTextureViewer(
         'totkTextureViewer',
         `Texture: ${textureName}`,
         vscode.ViewColumn.Active,
-        { enableScripts: false, retainContextWhenHidden: false },
+        { enableScripts: true, retainContextWhenHidden: false },
     );
 
     panel.webview.html = buildHtml(result);
@@ -69,15 +69,18 @@ function buildHtml(result: BntxTextureResult): string {
     .image-panel {
         flex: 0 0 auto;
         display: flex;
-        align-items: flex-start;
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
     }
     .image-panel img {
-        max-width: 512px;
-        max-height: 512px;
         image-rendering: pixelated;
         background: repeating-conic-gradient(#333 0% 25%, #222 0% 50%) 0 0 / 16px 16px;
         border: 1px solid var(--vscode-panel-border, #444);
+    }
+    .image-panel img.scaled {
+        width: 256px;
+        height: 256px;
     }
     .no-image {
         width: 256px;
@@ -88,6 +91,19 @@ function buildHtml(result: BntxTextureResult): string {
         background: #222;
         border: 1px solid #444;
         color: #888;
+    }
+    .size-toggle {
+        background: var(--vscode-button-background, #0e639c);
+        color: var(--vscode-button-foreground, #fff);
+        border: none;
+        padding: 4px 12px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+    }
+    .size-toggle:hover {
+        background: var(--vscode-button-hoverBackground, #1177bb);
     }
     .props-panel { flex: 1 1 auto; min-width: 250px; }
     .props-panel h2 {
@@ -117,13 +133,34 @@ function buildHtml(result: BntxTextureResult): string {
 </head>
 <body>
     <div class="image-panel">
-        ${imgSrc ? `<img src="${imgSrc}" alt="${meta?.name ?? 'texture'}" />` : '<div class="no-image">No preview</div>'}
+        ${imgSrc
+            ? `<img id="texImg" class="scaled" src="${imgSrc}" alt="${meta?.name ?? 'texture'}" />`
+            : '<div class="no-image">No preview</div>'}
+        ${imgSrc
+            ? `<button class="size-toggle" id="sizeBtn" onclick="toggleSize()">Show Original Size</button>`
+            : ''}
     </div>
     <div class="props-panel">
         <h2>Image Info</h2>
         <table>${metaRows}</table>
         ${errorNote}
     </div>
+    <script>
+        let scaled = true;
+        function toggleSize() {
+            const img = document.getElementById('texImg');
+            const btn = document.getElementById('sizeBtn');
+            if (!img || !btn) return;
+            scaled = !scaled;
+            if (scaled) {
+                img.classList.add('scaled');
+                btn.textContent = 'Show Original Size';
+            } else {
+                img.classList.remove('scaled');
+                btn.textContent = 'Show 256x256';
+            }
+        }
+    </script>
 </body>
 </html>`;
 }

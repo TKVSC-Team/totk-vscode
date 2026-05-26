@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { isArchiveFile, isPathInsideArchive } from './archives';
+import { isArchiveFile, isBntxTextureUri, isPathInsideArchive } from './archives';
 import { registerArchiveFileCommands, ArchiveTreeDragDrop, setArchiveTreeView } from './archiveFsCommands';
 
 const STORAGE_KEY = 'totk-editor.archiveRoots';
@@ -30,11 +30,9 @@ export class ArchiveTreeItem extends vscode.TreeItem {
             this.description = path.dirname(resourceUri.fsPath);
             this.tooltip = resourceUri.fsPath;
         } else if (collapsibleState === vscode.TreeItemCollapsibleState.None) {
-            this.command = {
-                command: 'vscode.open',
-                title: 'Open',
-                arguments: [resourceUri],
-            };
+            this.command = isBntxTextureUri(resourceUri)
+                ? { command: 'totk-editor.openBntxTexture', title: 'View Texture', arguments: [resourceUri] }
+                : { command: 'vscode.open', title: 'Open', arguments: [resourceUri] };
         }
         if (isArchiveFile(entryName)) {
             this.iconPath = new vscode.ThemeIcon('package');
