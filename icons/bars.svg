@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Bars" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #a7eaa7;
+      }
+
+      .cls-2 {
+        fill: none;
+        stroke: #a7eaa7;
+        stroke-linecap: round;
+        stroke-width: 2px;
+      }
+
+      .cls-3 {
+        fill: #23af30;
+      }
+    </style>
+  </defs>
+  <path class="cls-3" d="M26.5,5V27c0,1.65997-1.34003,3-3,3H8.5c-1.65997,0-3-1.34003-3-3V10.73999c0-.06,0-.12,.01001-.16998,.03998-.73004,.34998-1.42999,.87-1.95001L12.12,2.88c.56-.56,1.33002-.88,2.12-.88h9.26001c1.65997,0,3,1.33997,3,3Z"/>
+  <path class="cls-1" d="M14.23999,2V7.57001c0,1.64996-1.34998,3-3,3H5.51001c.03998-.73004,.34998-1.42999,.87-1.95001L12.12,2.88c.56-.56,1.33002-.88,2.12-.88Z"/>
+  <g id="Waveform">
+    <g>
+      <g>
+        <line class="cls-2" x1="12" y1="24" x2="12" y2="14"/>
+        <line class="cls-2" x1="12" y1="24" x2="12" y2="14"/>
+      </g>
+      <g>
+        <line class="cls-2" x1="16" y1="22" x2="16" y2="16"/>
+        <line class="cls-2" x1="16" y1="22" x2="16" y2="16"/>
+      </g>
+      <g>
+        <line class="cls-2" x1="20" y1="21" x2="20" y2="17"/>
+        <line class="cls-2" x1="20" y1="21" x2="20" y2="17"/>
+      </g>
+      <g>
+        <line class="cls-2" x1="8" y1="23" x2="8" y2="15"/>
+        <line class="cls-2" x1="8" y1="23" x2="8" y2="15"/>
+      </g>
+      <g>
+        <line class="cls-2" x1="24" y1="24" x2="24" y2="14"/>
+        <line class="cls-2" x1="24" y1="24" x2="24" y2="14"/>
+      </g>
+    </g>
+  </g>
+</svg>
