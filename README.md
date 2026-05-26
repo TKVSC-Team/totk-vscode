@@ -5,7 +5,7 @@ VS Code support for editing **Tears of the Kingdom** game files.
 ## Features
 
 - Syntax highlighting for BYML / MSBT
-- Browse `.pack` / `.sarc` / `.genvb` archives (including `.zs` compressed) as folders
+- Browse `.pack` / `.sarc` / `.genvb` / `.blarc` / `.bntx` archives (including `.zs` compressed) as folders
 - Edit `.byml` / `.bgyml` as text
 - Edit **AAMP** parameter files (`.baglenv`, `.bptcl`, `.bphhb`, and [many other extensions](aamp-extensions.json)) as YAML
 - Edit `.msbt` message files as `label: text` lines
@@ -22,7 +22,7 @@ Works with a compressed or decompressed game dump. A game dump **MUST** be provi
 2. On first activation, the extension creates a private Python virtual environment and installs `oead`, `zstandard`, and `pymsbt` automatically.
 3. **Requirement:** [Python 3.10+](https://www.python.org/downloads/) must be installed and discoverable (`python` / `python3` on PATH, or Windows `py` launcher).
 4. Set **TOTK Editor → Romfs Path** to your extracted game dump (folder containing `Pack/ZsDic.pack.zs`) if you work with `.zs` files.
-5. Open your extracted game folder as a normal workspace folder (`file://`), or run **TOTK: Open Archive (.pack, .sarc, .genvb)** to browse one archive.
+5. Open your extracted game folder as a normal workspace folder (`file://`), or run **TOTK: Open Archive (.pack, .sarc, .genvb, .blarc, .bntx)** to browse one archive.
 
 **Tip:** Leave **Virtual RomFS Workspace** disabled (default) so Explorer delete/rename work on real files. Enable it only if you want `.pack` files to expand inline in a full-folder workspace.
 
@@ -30,7 +30,7 @@ Works with a compressed or decompressed game dump. A game dump **MUST** be provi
 
 | Location | How it works |
 |----------|----------------|
-| **Inside `.pack` / `.sarc` / `.genvb`** (via `sarc://` workspace) | Browse the archive like a folder; editable files are converted automatically. |
+| **Inside `.pack` / `.sarc` / `.genvb` / `.blarc` / `.bntx`** (via `sarc://` workspace) | Browse the archive like a folder; editable files are converted automatically. |
 | **Loose files on disk** (extracted RomFS tree) | Open normally from the explorer — the extension reopens them as editable JSON/text. Or use **TOTK: Open File**. |
 | **Single file** | Command **TOTK: Open File (BYML, AAMP, MSBT, ASB, BAEV, belnk, bslnk)** |
 

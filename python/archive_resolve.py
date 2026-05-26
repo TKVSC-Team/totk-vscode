@@ -1,18 +1,24 @@
-"""Resolve nested .pack / .sarc / .genvb paths to an open SARC and in-archive prefix."""
+"""Resolve nested .pack / .sarc / .genvb / .blarc / .bntx paths to an open SARC and in-archive prefix."""
 
 import re
 from pathlib import Path
 
 import oead
 
+from bntx_reader import is_bntx, list_textures, read_texture_data
 from zstd_totk import compress_container, decompress_container
 
-_ARCHIVE_SEGMENT = re.compile(r'\.(pack|sarc|genvb)(\.zs)?$', re.IGNORECASE)
+_ARCHIVE_SEGMENT = re.compile(r'\.(pack|sarc|genvb|blarc|bntx)(\.zs)?$', re.IGNORECASE)
+_BNTX_SEGMENT = re.compile(r'\.bntx(\.zs)?$', re.IGNORECASE)
 _ZSTD_MAGIC = b'\x28\xb5\x2f\xfd'
 
 
 def _is_archive_name(name: str) -> bool:
     return bool(_ARCHIVE_SEGMENT.search(name.replace('\\', '/')))
+
+
+def _is_bntx_name(name: str) -> bool:
+    return bool(_BNTX_SEGMENT.search(name.replace('\\', '/')))
 
 
 def _normalize_path(path: str) -> str:
@@ -26,6 +32,12 @@ def load_sarc_file(archive_path: str, romfs_path: str):
     is_compressed = data.startswith(_ZSTD_MAGIC)
     if is_compressed:
         data, _, _ = decompress_container(data, archive_path, romfs_path)
+
+    if is_bntx(data):
+        raise ValueError(
+            f'Cannot open BNTX file as SARC: {archive_path}. '
+            'Use the BNTX reader instead.'
+        )
 
     return oead.Sarc(data), is_compressed
 
@@ -200,6 +212,8 @@ def resolve_sarc_view(disk_archive_path: str, locator_path: str, romfs_path: str
       (after nested archives)
     - consumed_archive_prefix is the virtual path from the disk archive root to
       the current innermost open archive (e.g. "A.sarc" or "dir/A.sarc/B.sarc")
+
+    BNTX segments are treated as opaque files (not opened as SARC).
     """
     locator_path = _normalize_path(locator_path)
     sarc, is_compressed = load_sarc_file(disk_archive_path, romfs_path)
@@ -212,10 +226,9 @@ def resolve_sarc_view(disk_archive_path: str, locator_path: str, romfs_path: str
     consumed_archive_segments: list[str] = []
 
     for index, segment in enumerate(segments):
-        if not _is_archive_name(segment):
+        if not _is_archive_name(segment) or _is_bntx_name(segment):
             continue
 
-        # Relative to the currently open SARC, not always the disk archive root.
         entry_path = '/'.join(segments[after_archive: index + 1])
         file_data = _get_file_bytes(sarc, entry_path)
         file_data, _, _ = decompress_container(file_data, entry_path, romfs_path)
@@ -228,7 +241,58 @@ def resolve_sarc_view(disk_archive_path: str, locator_path: str, romfs_path: str
     return sarc, path_prefix, is_compressed, consumed_archive_prefix
 
 
+def _load_disk_bytes(disk_archive_path: str, romfs_path: str) -> tuple[bytes, bool]:
+    """Read a disk file and decompress if ZSTD-compressed. Returns (data, was_compressed)."""
+    raw = Path(disk_archive_path).read_bytes()
+    is_compressed = raw.startswith(_ZSTD_MAGIC)
+    if is_compressed:
+        raw, _, _ = decompress_container(raw, disk_archive_path, romfs_path)
+    return raw, is_compressed
+
+
+def _resolve_bntx_data(disk_archive_path: str, locator_path: str, romfs_path: str):
+    """If the path targets a BNTX container, return (bntx_bytes, remainder_path, bntx_prefix).
+
+    Returns None if no BNTX boundary is found in the path."""
+    if _is_bntx_name(disk_archive_path):
+        data, _ = _load_disk_bytes(disk_archive_path, romfs_path)
+        if is_bntx(data):
+            return data, _normalize_path(locator_path), ''
+
+    if not locator_path:
+        return None
+
+    normalized = _normalize_path(locator_path)
+    segments = normalized.split('/')
+    for i, seg in enumerate(segments):
+        if not _is_bntx_name(seg):
+            continue
+        # Walk SARC chain up to (but NOT including) the .bntx segment
+        parent_locator = '/'.join(segments[:i]) if i > 0 else ''
+        sarc, prefix, _, _ = resolve_sarc_view(
+            disk_archive_path, parent_locator, romfs_path,
+        )
+        # The .bntx file path inside the innermost SARC
+        bntx_entry = f'{prefix}/{seg}'.strip('/') if prefix else seg
+        bntx_bytes = _get_file_bytes(sarc, bntx_entry)
+        if bntx_bytes[:4] == _ZSTD_MAGIC[:4]:
+            bntx_bytes, _, _ = decompress_container(bntx_bytes, seg, romfs_path)
+        if is_bntx(bntx_bytes):
+            remainder = '/'.join(segments[i + 1:]).strip('/')
+            bntx_prefix = '/'.join(segments[:i + 1])
+            return bntx_bytes, remainder, bntx_prefix
+    return None
+
+
 def list_archive_files(disk_archive_path: str, locator_path: str, romfs_path: str) -> list[str]:
+    bntx = _resolve_bntx_data(disk_archive_path, locator_path, romfs_path)
+    if bntx is not None:
+        bntx_data, remainder, bntx_prefix = bntx
+        names = list_textures(bntx_data)
+        if bntx_prefix:
+            return [f'{bntx_prefix}/{n}' for n in names]
+        return names
+
     sarc, prefix, _, consumed_archive_prefix = resolve_sarc_view(
         disk_archive_path, locator_path, romfs_path
     )
@@ -250,8 +314,20 @@ def read_archive_file_bytes(disk_archive_path: str, file_path: str, romfs_path: 
     if _is_archive_name(leaf):
         raise IsADirectoryError(file_path)
 
+    bntx = _resolve_bntx_data(disk_archive_path, file_path, romfs_path)
+    if bntx is not None:
+        bntx_data, remainder, _ = bntx
+        if not remainder:
+            raise IsADirectoryError(file_path)
+        return read_texture_data(bntx_data, remainder)
+
     sarc, lookup, _, _ = resolve_sarc_view(disk_archive_path, file_path, romfs_path)
     return _get_file_bytes(sarc, lookup)
+
+
+def _reject_bntx_mutation(disk_archive_path: str, operation: str) -> None:
+    if _is_bntx_name(disk_archive_path):
+        raise PermissionError(f'Cannot {operation} inside a BNTX texture container (read-only)')
 
 
 def write_archive_file_bytes(
@@ -260,6 +336,7 @@ def write_archive_file_bytes(
     data: bytes,
     romfs_path: str,
 ) -> None:
+    _reject_bntx_mutation(disk_archive_path, 'write')
     file_path = _normalize_path(file_path)
     if not file_path:
         raise ValueError('Missing file path')
@@ -283,6 +360,7 @@ def delete_archive_entry(
     target_path: str,
     romfs_path: str,
 ) -> None:
+    _reject_bntx_mutation(disk_archive_path, 'delete')
     target_path = _normalize_path(target_path)
     if not target_path:
         raise ValueError('Missing target path')
@@ -299,6 +377,7 @@ def rename_archive_entry(
     new_path: str,
     romfs_path: str,
 ) -> None:
+    _reject_bntx_mutation(disk_archive_path, 'rename')
     old_path = _normalize_path(old_path)
     new_path = _normalize_path(new_path)
     if not old_path or not new_path:
