@@ -29,9 +29,9 @@
 - [x] ASB/BAEV
 - [x] XLINK
 - [ ] Material Animations
-- [ ] Node-Based formats
+- [X] Node-Based formats
 - [ ] BFRES Family (separate icons)
-- [ ] TKVSC Logo
+- [X] TKVSC Logo
 
 ## Node Editor
 - [x] Node colouring

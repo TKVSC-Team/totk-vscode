@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Armatures" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #2e3191;
+      }
+
+      .cls-2 {
+        stroke-linejoin: round;
+      }
+
+      .cls-2, .cls-3 {
+        fill: none;
+        stroke: #d8935b;
+        stroke-width: 3px;
+      }
+    </style>
+  </defs>
+  <rect class="cls-1" x="2" y="2" width="23" height="11" rx="3" ry="3"/>
+  <rect class="cls-1" x="2" y="20" width="12" height="10" rx="3" ry="3"/>
+  <rect class="cls-1" x="18" y="20" width="12" height="10" rx="3" ry="3"/>
+  <line class="cls-3" x1="8" y1="13" x2="8" y2="20"/>
+  <polyline class="cls-2" points="24 20 24 17 16 17 16 13"/>
+</svg>
