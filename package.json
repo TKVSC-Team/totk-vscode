@@ -55,6 +55,16 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "totk-editor.tkprojEditor",
+        "displayName": "TKMM Project Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.tkproj"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "iconThemes": [

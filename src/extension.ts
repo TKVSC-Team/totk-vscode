@@ -45,6 +45,7 @@ import {
 } from './externalTools';
 import { getCoreExtensions, initCoreFsExtensions } from './coreFsExtensions';
 import { AinbNodeEditorProvider } from './nodeEditor/provider';
+import { TkprojEditorProvider } from './tkprojEditor';
 
 function shouldOfferExternalToolPrompt(content: string): boolean {
     return content.startsWith('<Binary Data:') || content.startsWith('Error reading file:');
@@ -530,6 +531,7 @@ export async function activate(context: vscode.ExtensionContext) {
     registerSyntaxColorSync(context);
     registerDocumentLanguageModes(context);
     context.subscriptions.push(AinbNodeEditorProvider.register(context));
+    context.subscriptions.push(TkprojEditorProvider.register(context));
 
     const bridgePath = path.join(context.extensionPath, 'python', 'totk_bridge.py');
     const getPython = () => getCachedPythonExecutable() ?? '';
