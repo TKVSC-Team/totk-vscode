@@ -1,8 +1,8 @@
-/** SARC-based archives (.pack, .sarc, .genvb and optional .zs compression). */
+/** SARC-based archives (.pack, .sarc, .genvb, .blarc, .bntx and optional .zs compression). */
 
-export const ARCHIVE_FILE_PATTERN = /\.(pack|sarc|genvb)(\.zs)?$/i;
+export const ARCHIVE_FILE_PATTERN = /\.(pack|sarc|genvb|blarc|bntx)(\.zs)?$/i;
 
-const DISK_ARCHIVE_PATTERN = /^(.+?\.(pack|sarc|genvb)(\.zs)?)(?=\\|\/|$)/i;
+const DISK_ARCHIVE_PATTERN = /^(.+?\.(pack|sarc|genvb|blarc|bntx)(\.zs)?)(?=\\|\/|$)/i;
 
 export function isArchiveFileName(name: string): boolean {
     return ARCHIVE_FILE_PATTERN.test(name.replace(/\\/g, '/').split('/').pop() ?? name);

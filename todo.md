@@ -10,8 +10,8 @@
 - [x] alphabetical sorting
 - [x] CRUD files within archive
 - [x] export files from archive
-- [ ] blarc support
-- [ ] bntx support
+- [x] blarc support
+- [x] bntx archive support
 - [ ] tkmm options
 - [ ] tkcl parser
 

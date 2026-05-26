@@ -192,7 +192,7 @@
     "commands": [
       {
         "command": "totk-editor.openPack",
-        "title": "TOTK: Open Archive (.pack, .sarc, .genvb)",
+        "title": "TOTK: Open Archive (.pack, .sarc, .genvb, .blarc, .bntx)",
         "icon": "$(package)"
       },
       {
@@ -336,7 +336,7 @@
     "viewsWelcome": [
       {
         "view": "totk-editor.archives",
-        "contents": "Browse `.pack`, `.sarc`, and `.genvb` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Open Archive](command:totk-editor.openPack)\n\n[Browse Workspace Folder](command:totk-editor.addWorkspaceToArchives)"
+        "contents": "Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, and `.bntx` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Open Archive](command:totk-editor.openPack)\n\n[Browse Workspace Folder](command:totk-editor.addWorkspaceToArchives)"
       },
       {
         "view": "totk-editor.gameDump",
