@@ -20,6 +20,7 @@
 - [ ] .txtg (TexToGo) support
 - [ ] Texture metadata editing
 - [ ] Cleanup useless settings and commands
+- [ ] Fix other languages not opening (Mal)
 
 ## 5th
 - [x] organize repo
