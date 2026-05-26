@@ -20,3 +20,5 @@ icons/*.ai
 graphics/
 vendor/py-xlink2
 .github/
+/editors/node-editor/node_modules/**
+.venv/**
