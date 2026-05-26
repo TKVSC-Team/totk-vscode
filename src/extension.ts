@@ -9,7 +9,7 @@ import {
     runBridgeReadAsync,
     runBridgeReadContentAsync,
 } from './bridge';
-import { openTextureViewer } from './textureViewer';
+import { openTextureViewer, initTextureViewer } from './textureViewer';
 import {
     ensurePythonEnvironment,
     getCachedPythonExecutable,
@@ -529,6 +529,7 @@ class SarcProvider implements vscode.FileSystemProvider {
 export async function activate(context: vscode.ExtensionContext) {
     initAampExtensions(context.extensionPath);
     initCoreFsExtensions(context.extensionPath);
+    initTextureViewer(context.extensionUri);
     console.log('TOTK Editor is now active!');
 
     registerDocumentLanguageModes(context);

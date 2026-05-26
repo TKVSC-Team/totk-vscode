@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import type { BntxTextureResult, BntxChannelInfo, BntxImageInfo, BntxMiscInfo } from './bridge';
 
 const panels = new Map<string, vscode.WebviewPanel>();
+let extensionUri: vscode.Uri | undefined;
+
+export function initTextureViewer(extUri: vscode.Uri): void {
+    extensionUri = extUri;
+}
 
 export function openTextureViewer(
     textureName: string,
@@ -11,26 +16,34 @@ export function openTextureViewer(
     const existing = panels.get(key);
     if (existing) {
         existing.reveal();
-        existing.webview.html = buildHtml(result);
+        existing.webview.html = buildHtml(result, existing.webview);
         return;
     }
+
+    const localRoots = extensionUri
+        ? [vscode.Uri.joinPath(extensionUri, 'icons')]
+        : [];
 
     const panel = vscode.window.createWebviewPanel(
         'totkTextureViewer',
         `Texture: ${textureName}`,
         vscode.ViewColumn.Active,
-        { enableScripts: true, retainContextWhenHidden: false },
+        { enableScripts: true, retainContextWhenHidden: false, localResourceRoots: localRoots },
     );
 
-    panel.webview.html = buildHtml(result);
+    panel.webview.html = buildHtml(result, panel.webview);
     panels.set(key, panel);
     panel.onDidDispose(() => panels.delete(key));
 }
 
-function buildHtml(result: BntxTextureResult): string {
+function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
     const meta = result.metadata;
     const imgSrc = result.pngBase64
         ? `data:image/png;base64,${result.pngBase64}`
+        : '';
+
+    const resizeIconUri = extensionUri
+        ? webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'icons', 'resize.svg'))
         : '';
 
     const channelsSection = meta?.channels
@@ -70,8 +83,36 @@ function buildHtml(result: BntxTextureResult): string {
         flex: 0 0 auto;
         display: flex;
         flex-direction: column;
+        gap: 0;
+    }
+    .image-toolbar {
+        display: flex;
         align-items: center;
         gap: 8px;
+        padding: 0 0 6px 0;
+    }
+    .size-toggle {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--vscode-toolbar-hoverBackground, rgba(90,93,94,.31));
+        color: var(--vscode-foreground, #ccc);
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 0;
+    }
+    .size-toggle:hover {
+        background: var(--vscode-toolbar-activeBackground, rgba(99,102,103,.31));
+        border-color: var(--vscode-panel-border, #444);
+    }
+    .size-toggle img { width: 16px; height: 16px; }
+    .size-label {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground, #999);
+        user-select: none;
     }
     .image-panel img {
         image-rendering: pixelated;
@@ -91,19 +132,6 @@ function buildHtml(result: BntxTextureResult): string {
         background: #222;
         border: 1px solid #444;
         color: #888;
-    }
-    .size-toggle {
-        background: var(--vscode-button-background, #0e639c);
-        color: var(--vscode-button-foreground, #fff);
-        border: none;
-        padding: 4px 12px;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 12px;
-        font-family: inherit;
-    }
-    .size-toggle:hover {
-        background: var(--vscode-button-hoverBackground, #1177bb);
     }
     .props-panel {
         flex: 1 1 auto;
@@ -151,12 +179,15 @@ function buildHtml(result: BntxTextureResult): string {
 </head>
 <body>
     <div class="image-panel">
+        ${imgSrc ? `<div class="image-toolbar">
+            <button class="size-toggle" id="sizeBtn" onclick="toggleSize()" title="Toggle size">
+                <img src="${resizeIconUri}" alt="resize" width="16" height="16" />
+            </button>
+            <span class="size-label" id="sizeLabel">256\u00d7256</span>
+        </div>` : ''}
         ${imgSrc
             ? `<img id="texImg" class="scaled" src="${imgSrc}" alt="${meta?.name ?? 'texture'}" />`
             : '<div class="no-image">No preview</div>'}
-        ${imgSrc
-            ? `<button class="size-toggle" id="sizeBtn" onclick="toggleSize()">Show Original Size</button>`
-            : ''}
     </div>
     <div class="props-panel">
         ${metaSections}
@@ -166,15 +197,15 @@ function buildHtml(result: BntxTextureResult): string {
         let scaled = true;
         function toggleSize() {
             const img = document.getElementById('texImg');
-            const btn = document.getElementById('sizeBtn');
-            if (!img || !btn) return;
+            const label = document.getElementById('sizeLabel');
+            if (!img || !label) return;
             scaled = !scaled;
             if (scaled) {
                 img.classList.add('scaled');
-                btn.textContent = 'Show Original Size';
+                label.textContent = '256\u00d7256';
             } else {
                 img.classList.remove('scaled');
-                btn.textContent = 'Show 256x256';
+                label.textContent = 'Original';
             }
         }
     </script>

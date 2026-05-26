@@ -313,6 +313,41 @@ def get_texture_metadata(bntx_data: bytes, texture_name: str) -> dict | None:
     return None
 
 
+def _apply_channel_swizzle(
+    pixels: bytes, raw_mode: str, width: int, height: int,
+    ch_r: int, ch_g: int, ch_b: int, ch_a: int,
+) -> tuple[bytes, str]:
+    """Remap decoded pixels according to the BNTX channel source metadata.
+
+    Channel values: 0=Zero, 1=One, 2=Red, 3=Green, 4=Blue, 5=Alpha.
+    Standard mapping (R=2, G=3, B=4, A=5) is a no-op.
+    """
+    if ch_r == 2 and ch_g == 3 and ch_b == 4 and ch_a == 5:
+        return pixels, raw_mode
+
+    pixel_count = width * height
+    if raw_mode == 'BGRA':
+        src_off = {2: 2, 3: 1, 4: 0, 5: 3}
+    else:
+        src_off = {2: 0, 3: 1, 4: 2, 5: 3}
+
+    out = bytearray(pixel_count * 4)
+    mapping = [(ch_r, 0), (ch_g, 1), (ch_b, 2), (ch_a, 3)]
+    n = min(pixel_count, len(pixels) // 4)
+
+    for i in range(n):
+        base = i * 4
+        for ch_val, dst in mapping:
+            if ch_val == 0:
+                out[base + dst] = 0
+            elif ch_val == 1:
+                out[base + dst] = 255
+            elif ch_val in src_off:
+                out[base + dst] = pixels[base + src_off[ch_val]]
+
+    return bytes(out), 'RGBA'
+
+
 def render_texture_to_png(bntx_data: bytes, texture_name: str) -> str | None:
     """Render a BNTX texture to a temp PNG file. Returns the path, or None on failure."""
     textures = _parse_textures(bntx_data)
@@ -351,6 +386,11 @@ def render_texture_to_png(bntx_data: bytes, texture_name: str) -> str | None:
     if pixels is None:
         _log('Decode failed')
         return None
+
+    pixels, raw_mode = _apply_channel_swizzle(
+        pixels, raw_mode, tex.width, tex.height,
+        tex.channel_r, tex.channel_g, tex.channel_b, tex.channel_a,
+    )
 
     try:
         from PIL import Image
