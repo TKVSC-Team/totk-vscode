@@ -91,8 +91,8 @@
         ],
         "configuration": "./config/language-configuration.json",
         "icon": {
-          "light": "./icons/bgyml.svg",
-          "dark": "./icons/bgyml.svg"
+          "light": "./icons/byml.svg",
+          "dark": "./icons/byml.svg"
         }
       },
       {
