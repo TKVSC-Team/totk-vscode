@@ -1,3 +1,6 @@
 [submodule "vendor/ainb"]
 	path = vendor/ainb
 	url = https://github.com/TKVSC-Team/AINB.git
+[submodule "vendor/asb"]
+	path = vendor/asb
+	url = https://github.com/TKVSC-Team/asb.git
