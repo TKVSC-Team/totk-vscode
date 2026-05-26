@@ -4,5 +4,6 @@ node_modules
 .vscode-test/
 *.vsix
 __pycache__
+.venv/
 editors/node-editor/context/
 context/
