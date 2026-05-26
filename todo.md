@@ -15,7 +15,7 @@
 - [x] bntx multi channel
 - [x] bntx image render size
 - [ ] tkmm options
-- [ ] tkcl parser
+- [x] tkcl editor
 
 ## 5th
 - [x] organize repo
