@@ -6,6 +6,12 @@ import { isArchiveFile } from './archives';
 import { createDiskDirectory, deleteDiskPath, renameDiskPath } from './diskFsOps';
 import { isEditableFile } from './editableFiles';
 
+export interface DiskWriteNotification {
+    diskPath: string;
+    content: Uint8Array;
+    textContent?: string;
+}
+
 export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
     private readonly _onDidChangeFile = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     readonly onDidChangeFile = this._onDidChangeFile.event;
@@ -14,6 +20,7 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
         private readonly bridgePath: string,
         private readonly getPython: () => string,
         private readonly getBridgeEnv: () => NodeJS.ProcessEnv,
+        private readonly onDidWriteFile?: (info: DiskWriteNotification) => Promise<void>,
     ) {}
 
     private requirePython(): string {
@@ -90,11 +97,13 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
 
         if (!isEditableFile(diskPath)) {
             fs.writeFileSync(diskPath, content);
+            await this.onDidWriteFile?.({ diskPath, content });
             return;
         }
 
         if (!fs.existsSync(diskPath)) {
             fs.writeFileSync(diskPath, content);
+            await this.onDidWriteFile?.({ diskPath, content, textContent: text });
             return;
         }
 
@@ -106,6 +115,7 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
                 text,
                 this.getBridgeEnv(),
             );
+            await this.onDidWriteFile?.({ diskPath, content, textContent: text });
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             vscode.window.showErrorMessage(`Failed to save: ${message}`);

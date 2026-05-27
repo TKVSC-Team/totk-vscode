@@ -53,6 +53,13 @@ import { getCoreExtensions, initCoreFsExtensions } from './coreFsExtensions';
 import { AinbNodeEditorProvider } from './nodeEditor/provider';
 import { TkprojEditorProvider } from './tkprojEditor';
 import { setExtensionPath } from './romfsIndex';
+import {
+    invalidateCanonicalPathIndex,
+    setCanonicalIndexExtensionPath,
+} from './canonicalPathIndex';
+import { propagateCanonicalSave } from './canonicalSavePropagation';
+import { normalizePath, pathsEqual } from './projectPaths';
+import type { DiskWriteNotification } from './totkDiskFs';
 
 function shouldOfferExternalToolPrompt(content: string): boolean {
     return content.startsWith('<Binary Data:') || content.startsWith('Error reading file:');
@@ -126,6 +133,12 @@ class SarcProvider implements vscode.FileSystemProvider {
     constructor(
         private readonly bridgePath: string,
         private readonly getPython: () => string,
+        private readonly onDidWriteArchive?: (info: {
+            diskArchivePath: string;
+            internalPath: string;
+            content: Uint8Array;
+            textContent?: string;
+        }) => Promise<void>,
     ) {}
 
     private requirePython(): string {
@@ -445,6 +458,12 @@ class SarcProvider implements vscode.FileSystemProvider {
                     yamlContent,
                     getBridgeEnv(),
                 );
+                await this.onDidWriteArchive?.({
+                    diskArchivePath: diskArchive,
+                    internalPath: filePath,
+                    content,
+                    textContent: yamlContent,
+                });
             } else {
                 const encoded = Buffer.from(content).toString('base64');
                 await runBridgeJsonAsync<{ success: boolean }>(
@@ -454,6 +473,11 @@ class SarcProvider implements vscode.FileSystemProvider {
                     encoded,
                     getBridgeEnv(),
                 );
+                await this.onDidWriteArchive?.({
+                    diskArchivePath: diskArchive,
+                    internalPath: filePath,
+                    content,
+                });
             }
 
             for (const key of [...this.fileCache.keys()]) {
@@ -533,25 +557,110 @@ export async function activate(context: vscode.ExtensionContext) {
     initCoreFsExtensions(context.extensionPath);
     initTextureViewer(context.extensionUri);
     setExtensionPath(context.extensionPath);
+    setCanonicalIndexExtensionPath(context.extensionPath);
     console.log('TOTK Editor is now active!');
+    const output = vscode.window.createOutputChannel('TOTK Editor');
+    context.subscriptions.push(output);
 
     registerDocumentLanguageModes(context);
-    context.subscriptions.push(AinbNodeEditorProvider.register(context));
     context.subscriptions.push(TkprojEditorProvider.register(context));
 
     const bridgePath = path.join(context.extensionPath, 'python', 'totk_bridge.py');
     const getPython = () => getCachedPythonExecutable() ?? '';
     const romfsIndexPath = path.join(context.globalStorageUri.fsPath, 'romfs-index.sqlite');
+    const canonicalIndexPath = path.join(context.globalStorageUri.fsPath, 'canonical-paths.sqlite');
+    const romfsIndexStatePath = path.join(context.globalStorageUri.fsPath, 'romfs-index.state.json');
+    const canonicalIndexStatePath = path.join(context.globalStorageUri.fsPath, 'canonical-paths.state.json');
+    const ROMFS_INDEX_STATE_KEY = 'totk-editor.romfsIndexState';
+    const CANONICAL_INDEX_STATE_KEY = 'totk-editor.canonicalIndexState';
+    const ROMFS_INDEX_SCHEMA_VERSION = 3;
+    const CANONICAL_INDEX_SCHEMA_VERSION = 3;
     let romfsIndexBuildPromise: Promise<void> | undefined;
+    let canonicalIndexBuildPromise: Promise<void> | undefined;
     let gameDumpTree: ReturnType<typeof registerGameDumpTree> | undefined;
+    let archiveTree: ReturnType<typeof registerArchiveTree> | undefined;
 
-    const buildRomfsIndex = async (): Promise<void> => {
+    const shouldPropagateCanonicalSaves = (): boolean => {
+        const config = vscode.workspace.getConfiguration('totk-editor');
+        return config.get<boolean>('enableCanonicalSavePropagation', true);
+    };
+
+    type IndexState = { romfsPath: string; schemaVersion: number };
+
+    const readIndexState = (
+        key: string,
+    ): IndexState | undefined =>
+        context.globalState.get<IndexState>(key);
+
+    const readIndexStateFromFile = (statePath: string): IndexState | undefined => {
+        try {
+            if (!fs.existsSync(statePath)) {
+                return undefined;
+            }
+            const parsed = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Partial<IndexState>;
+            if (typeof parsed.romfsPath !== 'string' || typeof parsed.schemaVersion !== 'number') {
+                return undefined;
+            }
+            return {
+                romfsPath: normalizePath(parsed.romfsPath),
+                schemaVersion: parsed.schemaVersion,
+            };
+        } catch {
+            return undefined;
+        }
+    };
+
+    const writeIndexState = async (
+        key: string,
+        statePath: string,
+        romfsPath: string,
+        schemaVersion: number,
+    ): Promise<void> => {
+        const state: IndexState = {
+            romfsPath: normalizePath(romfsPath),
+            schemaVersion,
+        };
+        await context.globalState.update(key, state);
+        await fs.promises.mkdir(path.dirname(statePath), { recursive: true });
+        await fs.promises.writeFile(statePath, JSON.stringify(state), 'utf-8');
+    };
+
+    const shouldRebuildIndex = (
+        dbPath: string,
+        romfsPath: string,
+        schemaVersion: number,
+        stateKey: string,
+        statePath: string,
+    ): boolean => {
+        if (!fs.existsSync(dbPath)) {
+            return true;
+        }
+        const state = readIndexStateFromFile(statePath) ?? readIndexState(stateKey);
+        if (!state) {
+            return true;
+        }
+        if (state.schemaVersion !== schemaVersion) {
+            return true;
+        }
+        return !pathsEqual(state.romfsPath, romfsPath);
+    };
+
+    const buildRomfsIndex = async (force = false): Promise<void> => {
         if (romfsIndexBuildPromise) {
             return romfsIndexBuildPromise;
         }
         const romfsPath = resolveRomfsPath();
         const pythonExe = getPython();
         if (!romfsPath || !pythonExe || !gameDumpTree) {
+            return;
+        }
+        if (!force && !shouldRebuildIndex(
+            romfsIndexPath,
+            romfsPath,
+            ROMFS_INDEX_SCHEMA_VERSION,
+            ROMFS_INDEX_STATE_KEY,
+            romfsIndexStatePath,
+        )) {
             return;
         }
 
@@ -566,6 +675,12 @@ export async function activate(context: vscode.ExtensionContext) {
                     undefined,
                     getBridgeEnv(),
                 );
+                await writeIndexState(
+                    ROMFS_INDEX_STATE_KEY,
+                    romfsIndexStatePath,
+                    romfsPath,
+                    ROMFS_INDEX_SCHEMA_VERSION,
+                );
                 gameDumpTree?.onExternalIndexUpdated();
             } catch {
                 // Keep search functional with TypeScript fallback indexing.
@@ -577,7 +692,82 @@ export async function activate(context: vscode.ExtensionContext) {
         return romfsIndexBuildPromise;
     };
 
-    const sarcProvider = new SarcProvider(bridgePath, getPython);
+    const buildCanonicalIndex = async (force = false): Promise<void> => {
+        if (canonicalIndexBuildPromise) {
+            return canonicalIndexBuildPromise;
+        }
+        const romfsPath = resolveRomfsPath();
+        const pythonExe = getPython();
+        if (!romfsPath || !pythonExe) {
+            return;
+        }
+        if (!force && !shouldRebuildIndex(
+            canonicalIndexPath,
+            romfsPath,
+            CANONICAL_INDEX_SCHEMA_VERSION,
+            CANONICAL_INDEX_STATE_KEY,
+            canonicalIndexStatePath,
+        )) {
+            return;
+        }
+
+        canonicalIndexBuildPromise = (async () => {
+            try {
+                await fs.promises.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+                await runBridgeJsonAsync<{ path: string; count: number }>(
+                    pythonExe,
+                    bridgePath,
+                    ['build-canonical-path-index', canonicalIndexPath],
+                    undefined,
+                    getBridgeEnv(),
+                );
+                await writeIndexState(
+                    CANONICAL_INDEX_STATE_KEY,
+                    canonicalIndexStatePath,
+                    romfsPath,
+                    CANONICAL_INDEX_SCHEMA_VERSION,
+                );
+                output.appendLine('[canonical-save] Canonical path index rebuilt.');
+                invalidateCanonicalPathIndex();
+            } catch {
+                output.appendLine('[canonical-save] Failed to build canonical path index.');
+            } finally {
+                canonicalIndexBuildPromise = undefined;
+            }
+        })();
+        return canonicalIndexBuildPromise;
+    };
+
+    const runCanonicalPropagation = async (info: {
+        diskArchivePath: string;
+        internalPath: string;
+        content: Uint8Array;
+        textContent?: string;
+    }): Promise<void> => {
+        const pythonExe = getPython();
+        const romfsPath = resolveRomfsPath();
+        if (!pythonExe || !romfsPath) {
+            return;
+        }
+        await propagateCanonicalSave({
+            enabled: shouldPropagateCanonicalSaves(),
+            romfsPath,
+            canonicalIndexPath,
+            bridgePath,
+            pythonExecutable: pythonExe,
+            bridgeEnv: getBridgeEnv(),
+            projectRoots: archiveTree?.getProjectRoots() ?? [],
+            writeInput: {
+                diskArchivePath: normalizePath(info.diskArchivePath),
+                internalPath: info.internalPath,
+                textContent: info.textContent,
+                rawContent: info.textContent === undefined ? info.content : undefined,
+            },
+            output,
+        });
+    };
+
+    const sarcProvider = new SarcProvider(bridgePath, getPython, runCanonicalPropagation);
     context.subscriptions.push(
         vscode.workspace.registerFileSystemProvider('sarc', sarcProvider, {
             isCaseSensitive: true,
@@ -628,7 +818,24 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
     );
 
-    const totkDiskProvider = new TotkDiskFileSystemProvider(bridgePath, getPython, getBridgeEnv);
+    const totkDiskProvider = new TotkDiskFileSystemProvider(
+        bridgePath,
+        getPython,
+        getBridgeEnv,
+        async (write: DiskWriteNotification) => {
+            if (!isPathInsideArchive(write.diskPath)) {
+                return;
+            }
+            const diskArchivePath = getDiskArchivePath(write.diskPath);
+            const internalPath = getLocatorInsideDiskArchive(write.diskPath, diskArchivePath);
+            await runCanonicalPropagation({
+                diskArchivePath,
+                internalPath,
+                content: write.content,
+                textContent: write.textContent,
+            });
+        },
+    );
     context.subscriptions.push(
         vscode.workspace.registerFileSystemProvider('totk-disk', totkDiskProvider, {
             isCaseSensitive: true,
@@ -682,6 +889,7 @@ export async function activate(context: vscode.ExtensionContext) {
         if (python) {
             void vscode.window.showInformationMessage('TOTK Editor: Python environment is ready.');
             void buildRomfsIndex();
+                void buildCanonicalIndex();
         } else {
             await promptPythonSetup(context);
         }
@@ -704,8 +912,25 @@ export async function activate(context: vscode.ExtensionContext) {
                 return;
             }
             void vscode.window.showInformationMessage('TOTK Editor: Rebuilding RomFS search index...');
-            await buildRomfsIndex();
+            await buildRomfsIndex(true);
             void vscode.window.showInformationMessage('TOTK Editor: RomFS search index rebuilt.');
+        }),
+        vscode.commands.registerCommand('totk-editor.rebuildCanonicalPathIndex', async () => {
+            const romfsPath = resolveRomfsPath();
+            if (!romfsPath) {
+                void vscode.window.showWarningMessage(
+                    'Set totk-editor.romfsPath before rebuilding the canonical path index.',
+                );
+                return;
+            }
+            const python = getPython();
+            if (!python) {
+                await promptPythonSetup(context);
+                return;
+            }
+            void vscode.window.showInformationMessage('TOTK Editor: Rebuilding canonical path index...');
+            await buildCanonicalIndex(true);
+            void vscode.window.showInformationMessage('TOTK Editor: Canonical path index rebuilt.');
         }),
     );
 
@@ -716,21 +941,40 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
         void buildRomfsIndex();
+        void buildCanonicalIndex();
     });
 
     await migrateOffStandaloneIconTheme(context);
     registerIconThemeCommands(context);
 
-    const archiveTree = registerArchiveTree(context);
+    archiveTree = registerArchiveTree(context);
     gameDumpTree = registerGameDumpTree(context, archiveTree);
     gameDumpTree.setExternalIndexPath(romfsIndexPath);
     await migrateSarcWorkspaceFolders(archiveTree);
     void buildRomfsIndex();
+    void buildCanonicalIndex();
+
+    context.subscriptions.push(
+        AinbNodeEditorProvider.register(context, async (info) => {
+            if (!isPathInsideArchive(info.diskPath)) {
+                return;
+            }
+            const diskArchivePath = getDiskArchivePath(info.diskPath);
+            const internalPath = getLocatorInsideDiskArchive(info.diskPath, diskArchivePath);
+            await runCanonicalPropagation({
+                diskArchivePath,
+                internalPath,
+                content: info.content,
+            });
+        }),
+    );
 
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration('totk-editor.romfsPath')) {
                 void buildRomfsIndex();
+                void buildCanonicalIndex();
+                invalidateCanonicalPathIndex();
             }
         }),
     );

@@ -26,7 +26,7 @@ _ARCHIVE_EXTENSIONS = (
 
 
 def _normalize_rel(path_value: str) -> str:
-    return path_value.replace('\\', '/').strip('/').lower()
+    return path_value.replace('\\', '/').strip('/')
 
 
 def _is_archive_file(name: str) -> bool:
@@ -88,7 +88,8 @@ def build_romfs_index(romfs_path: str, output_path: str) -> dict:
                 for virtual_path in virtual_files:
                     normalized_virtual = _normalize_rel(virtual_path)
                     if normalized_virtual:
-                        batch.append((f'{rel_path}/{normalized_virtual}',))
+                        full_path = f'{rel_path}/{normalized_virtual}'
+                        batch.append((full_path,))
                         file_count += 1
 
             if len(batch) >= 10000:

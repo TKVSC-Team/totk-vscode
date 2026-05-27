@@ -287,6 +287,10 @@
         "title": "TOTK: Rebuild Game Dump Search Index"
       },
       {
+        "command": "totk-editor.rebuildCanonicalPathIndex",
+        "title": "TOTK: Rebuild Canonical Path Index"
+      },
+      {
         "command": "totk-editor.useTotkIcons",
         "title": "TOTK: File Icon Theme Help"
       },
@@ -486,6 +490,11 @@
           },
           "default": [],
           "markdownDescription": "Additional file extensions (without dot) treated as **AAMP** parameter files, e.g. `bcustom`. See `aamp-extensions.json` in the extension folder for the built-in list."
+        },
+        "totk-editor.enableCanonicalSavePropagation": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When enabled, saving a file inside an archive updates all matching canonical-path instances across project archives. Missing matching archives are copied from the configured game dump first."
         }
       }
     },

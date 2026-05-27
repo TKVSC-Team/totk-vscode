@@ -511,6 +511,11 @@ def main():
             output_path = sys.argv[2]
             print(json.dumps(build_romfs_index(romfs_path, output_path)))
 
+        elif command == 'build-canonical-path-index':
+            from canonical_path_index import build_canonical_path_index
+            output_path = sys.argv[2]
+            print(json.dumps(build_canonical_path_index(romfs_path, output_path)))
+
         elif command == 'read-disk':
             file_path = sys.argv[2]
             file_data = Path(file_path).read_bytes()

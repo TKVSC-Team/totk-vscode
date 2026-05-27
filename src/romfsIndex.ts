@@ -86,30 +86,31 @@ export async function queryRomfsIndex(
     }
 
     const normalizedRomfs = romfsPath.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
-    if (loadedRoot !== normalizedRomfs) {
+    const normalizedLoadedRoot = loadedRoot.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    if (normalizedLoadedRoot !== normalizedRomfs) {
         return undefined;
     }
 
-    const stmt = database.prepare('SELECT path FROM files WHERE path LIKE :pattern');
-    stmt.bind({ ':pattern': `%${needle}%` });
-
     const files = new Set<string>();
     const dirs = new Set<string>();
+    const stmt = database.prepare('SELECT path FROM files WHERE lower(path) LIKE :pattern');
+    stmt.bind({ ':pattern': `%${needle}%` });
 
     while (stmt.step()) {
         const row = stmt.get();
-        const filePath = row[0] as string;
+        const filePath = String(row[0] ?? '');
+        const lowerPath = filePath.toLowerCase();
 
-        const fileName = filePath.split('/').pop() ?? '';
+        const fileName = (filePath.split('/').pop() ?? '').toLowerCase();
         if (!fileName.includes(needle)) {
             continue;
         }
 
-        files.add(filePath);
+        files.add(lowerPath);
 
-        let cursor = filePath.lastIndexOf('/');
+        let cursor = lowerPath.lastIndexOf('/');
         while (cursor > 0) {
-            const parent = filePath.slice(0, cursor);
+            const parent = lowerPath.slice(0, cursor);
             if (dirs.has(parent)) {
                 break;
             }

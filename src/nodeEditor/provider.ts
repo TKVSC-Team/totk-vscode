@@ -67,18 +67,29 @@ class AinbDocument implements vscode.CustomDocument {
 
 const VIEW_TYPE = 'totk-editor.ainbNodeEditor';
 
+export interface AinbSaveNotification {
+    diskPath: string;
+    content: Uint8Array;
+}
+
 export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbDocument> {
     private readonly registry: NodeEditorAdapterRegistry;
 
     private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<AinbDocument>>();
     public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
-    constructor(private readonly context: vscode.ExtensionContext) {
+    constructor(
+        private readonly context: vscode.ExtensionContext,
+        private readonly onDidSaveBinary?: (info: AinbSaveNotification) => Promise<void>,
+    ) {
         this.registry = new NodeEditorAdapterRegistry(context.extensionPath);
     }
 
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
-        const provider = new AinbNodeEditorProvider(context);
+    public static register(
+        context: vscode.ExtensionContext,
+        onDidSaveBinary?: (info: AinbSaveNotification) => Promise<void>,
+    ): vscode.Disposable {
+        const provider = new AinbNodeEditorProvider(context, onDidSaveBinary);
         return vscode.window.registerCustomEditorProvider(VIEW_TYPE, provider, {
             webviewOptions: { retainContextWhenHidden: true },
         });
@@ -100,6 +111,10 @@ export class AinbNodeEditorProvider implements vscode.CustomEditorProvider<AinbD
         try { fs.accessSync(targetPath, fs.constants.W_OK); }
         catch { fs.chmodSync(targetPath, 0o666); }
         fs.writeFileSync(targetPath, document.currentBinary);
+        await this.onDidSaveBinary?.({
+            diskPath: targetPath,
+            content: new Uint8Array(document.currentBinary),
+        });
         document.isDirty = false;
         document.allowDiskWrite = false;
     }
