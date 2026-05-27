@@ -47,6 +47,8 @@ export class ArchiveTreeItem extends vscode.TreeItem {
 export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeItem> {
     private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<ArchiveTreeItem | undefined>();
     readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+    private readonly onDidChangeRootsEmitter = new vscode.EventEmitter<void>();
+    readonly onDidChangeRoots = this.onDidChangeRootsEmitter.event;
 
     private roots: vscode.Uri[] = [];
 
@@ -114,6 +116,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
         this.sortRoots();
         void this.persistRoots();
         this.onDidChangeTreeDataEmitter.fire(undefined);
+        this.onDidChangeRootsEmitter.fire();
     }
 
     removeRoot(fileUri: vscode.Uri): void {
@@ -125,6 +128,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
         this.roots = next;
         void this.persistRoots();
         this.onDidChangeTreeDataEmitter.fire(undefined);
+        this.onDidChangeRootsEmitter.fire();
     }
 
     refresh(): void {

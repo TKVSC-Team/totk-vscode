@@ -3,8 +3,12 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { runBridgeJsonAsync } from './bridge';
 import { isArchiveFile } from './archives';
-import { queryCanonicalArchives } from './canonicalPathIndex';
+import { hasBaseCanonicalPath, queryCanonicalArchives } from './canonicalPathIndex';
 import { isWithinRoot, normalizePath, pathsEqual, resolveProjectRomfsMount } from './projectPaths';
+import {
+    addProjectCanonicalEntry,
+    queryProjectCanonicalArchives,
+} from './projectCanonicalOverlay';
 
 export interface ProjectRootInfo {
     fsPath: string;
@@ -26,6 +30,7 @@ export interface CanonicalSavePropagationOptions {
     pythonExecutable: string;
     bridgeEnv: NodeJS.ProcessEnv;
     projectRoots: ProjectRootInfo[];
+    projectOverlayDbPath: string;
     writeInput: CanonicalSaveWriteInput;
     output: vscode.OutputChannel;
 }
@@ -89,14 +94,11 @@ export async function propagateCanonicalSave(
         return;
     }
 
-    const archiveMatches = await queryCanonicalArchives(
+    const archiveMatches = (await queryCanonicalArchives(
         options.canonicalIndexPath,
         options.romfsPath,
         canonicalPath,
-    );
-    if (!archiveMatches || archiveMatches.length <= 1) {
-        return;
-    }
+    )) ?? [];
 
     const activeProjectRoot = inferActiveProjectRoot(
         options.writeInput.diskArchivePath,
@@ -110,6 +112,44 @@ export async function propagateCanonicalSave(
     }
 
     const projectRomfsRoot = resolveProjectRomfsMount(activeProjectRoot.fsPath, options.romfsPath);
+    const relFromProjectRomfs = path.relative(projectRomfsRoot, options.writeInput.diskArchivePath);
+    const projectArchiveRel = relFromProjectRomfs
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')
+        .replace(/\/+$/, '');
+    const baseHasCanonical = await hasBaseCanonicalPath(
+        options.canonicalIndexPath,
+        options.romfsPath,
+        canonicalPath,
+    );
+
+    if (projectArchiveRel && !projectArchiveRel.startsWith('..') && !baseHasCanonical) {
+        await addProjectCanonicalEntry(
+            options.projectOverlayDbPath,
+            activeProjectRoot.fsPath,
+            canonicalPath,
+            projectArchiveRel,
+        );
+    }
+
+    const projectMatches = await queryProjectCanonicalArchives(
+        options.projectOverlayDbPath,
+        activeProjectRoot.fsPath,
+        canonicalPath,
+    );
+
+    const mergedMatches = new Map<string, { archiveRelPath: string; canonicalPath: string }>();
+    for (const match of archiveMatches) {
+        mergedMatches.set(match.archiveRelPath.toLowerCase(), match);
+    }
+    for (const match of projectMatches) {
+        mergedMatches.set(match.archiveRelPath.toLowerCase(), match);
+    }
+
+    if (mergedMatches.size <= 1) {
+        return;
+    }
+
     const primaryArchive = normalizePath(options.writeInput.diskArchivePath);
     const writeMode = options.writeInput.textContent !== undefined ? 'text' : 'raw';
     const encodedRaw = options.writeInput.rawContent
@@ -117,7 +157,7 @@ export async function propagateCanonicalSave(
         : '';
 
     let propagated = 0;
-    for (const match of archiveMatches) {
+    for (const match of mergedMatches.values()) {
         const dumpArchivePath = path.join(options.romfsPath, ...splitRel(match.archiveRelPath));
         const projectArchivePath = path.join(projectRomfsRoot, ...splitRel(match.archiveRelPath));
 

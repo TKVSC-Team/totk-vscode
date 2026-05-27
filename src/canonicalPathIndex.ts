@@ -147,6 +147,38 @@ export async function queryCanonicalArchives(
     );
 }
 
+export async function hasBaseCanonicalPath(
+    dbPath: string,
+    romfsPath: string,
+    canonicalPath: string,
+): Promise<boolean> {
+    const canonical = normalizeCanonicalPath(canonicalPath);
+    if (!canonical) {
+        return false;
+    }
+
+    const database = await openDb(dbPath);
+    if (!database || !loadedRoot) {
+        return false;
+    }
+
+    const normalizedRomfs = normalizePath(romfsPath);
+    if (normalizePath(String(loadedRoot)) !== normalizedRomfs) {
+        return false;
+    }
+
+    const stmt = database.prepare(`
+        SELECT 1
+        FROM canonical_entries
+        WHERE canonical_path = :canonical COLLATE NOCASE
+        LIMIT 1
+    `);
+    stmt.bind({ ':canonical': canonical });
+    const exists = stmt.step();
+    stmt.free();
+    return exists;
+}
+
 export function invalidateCanonicalPathIndex(): void {
     closeDb();
 }

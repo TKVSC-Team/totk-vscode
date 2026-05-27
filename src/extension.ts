@@ -54,12 +54,17 @@ import { AinbNodeEditorProvider } from './nodeEditor/provider';
 import { TkprojEditorProvider } from './tkprojEditor';
 import { setExtensionPath } from './romfsIndex';
 import {
+    hasBaseCanonicalPath,
     invalidateCanonicalPathIndex,
     setCanonicalIndexExtensionPath,
 } from './canonicalPathIndex';
 import { propagateCanonicalSave } from './canonicalSavePropagation';
 import { normalizePath, pathsEqual } from './projectPaths';
 import type { DiskWriteNotification } from './totkDiskFs';
+import {
+    ensureProjectCanonicalImport,
+    setProjectCanonicalOverlayExtensionPath,
+} from './projectCanonicalOverlay';
 
 function shouldOfferExternalToolPrompt(content: string): boolean {
     return content.startsWith('<Binary Data:') || content.startsWith('Error reading file:');
@@ -558,6 +563,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initTextureViewer(context.extensionUri);
     setExtensionPath(context.extensionPath);
     setCanonicalIndexExtensionPath(context.extensionPath);
+    setProjectCanonicalOverlayExtensionPath(context.extensionPath);
     console.log('TOTK Editor is now active!');
     const output = vscode.window.createOutputChannel('TOTK Editor');
     context.subscriptions.push(output);
@@ -569,12 +575,17 @@ export async function activate(context: vscode.ExtensionContext) {
     const getPython = () => getCachedPythonExecutable() ?? '';
     const romfsIndexPath = path.join(context.globalStorageUri.fsPath, 'romfs-index.sqlite');
     const canonicalIndexPath = path.join(context.globalStorageUri.fsPath, 'canonical-paths.sqlite');
+    const projectCanonicalOverlayPath = path.join(
+        context.globalStorageUri.fsPath,
+        'canonical-project-overlays.sqlite',
+    );
     const romfsIndexStatePath = path.join(context.globalStorageUri.fsPath, 'romfs-index.state.json');
     const canonicalIndexStatePath = path.join(context.globalStorageUri.fsPath, 'canonical-paths.state.json');
     const ROMFS_INDEX_STATE_KEY = 'totk-editor.romfsIndexState';
     const CANONICAL_INDEX_STATE_KEY = 'totk-editor.canonicalIndexState';
     const ROMFS_INDEX_SCHEMA_VERSION = 3;
     const CANONICAL_INDEX_SCHEMA_VERSION = 3;
+    const PROJECT_CANONICAL_IMPORT_SCHEMA_VERSION = 2;
     let romfsIndexBuildPromise: Promise<void> | undefined;
     let canonicalIndexBuildPromise: Promise<void> | undefined;
     let gameDumpTree: ReturnType<typeof registerGameDumpTree> | undefined;
@@ -757,6 +768,7 @@ export async function activate(context: vscode.ExtensionContext) {
             pythonExecutable: pythonExe,
             bridgeEnv: getBridgeEnv(),
             projectRoots: archiveTree?.getProjectRoots() ?? [],
+            projectOverlayDbPath: projectCanonicalOverlayPath,
             writeInput: {
                 diskArchivePath: normalizePath(info.diskArchivePath),
                 internalPath: info.internalPath,
@@ -765,6 +777,34 @@ export async function activate(context: vscode.ExtensionContext) {
             },
             output,
         });
+    };
+
+    const importKnownProjectCanonicalPaths = async (): Promise<void> => {
+        const pythonExe = getPython();
+        const romfsPath = resolveRomfsPath();
+        if (!archiveTree || !pythonExe || !romfsPath) {
+            return;
+        }
+        for (const root of archiveTree.getProjectRoots()) {
+            await ensureProjectCanonicalImport({
+                overlayDbPath: projectCanonicalOverlayPath,
+                projectRoot: root.fsPath,
+                romfsPath,
+                pythonExecutable: pythonExe,
+                bridgePath,
+                bridgeEnv: getBridgeEnv(),
+                output,
+                importSchemaVersion: PROJECT_CANONICAL_IMPORT_SCHEMA_VERSION,
+                shouldIncludeCanonicalPath: async (canonicalPath: string) => {
+                    const existsInBase = await hasBaseCanonicalPath(
+                        canonicalIndexPath,
+                        romfsPath,
+                        canonicalPath,
+                    );
+                    return !existsInBase;
+                },
+            });
+        }
     };
 
     const sarcProvider = new SarcProvider(bridgePath, getPython, runCanonicalPropagation);
@@ -889,7 +929,8 @@ export async function activate(context: vscode.ExtensionContext) {
         if (python) {
             void vscode.window.showInformationMessage('TOTK Editor: Python environment is ready.');
             void buildRomfsIndex();
-                void buildCanonicalIndex();
+            void buildCanonicalIndex();
+            void importKnownProjectCanonicalPaths();
         } else {
             await promptPythonSetup(context);
         }
@@ -942,6 +983,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
         void buildRomfsIndex();
         void buildCanonicalIndex();
+        void importKnownProjectCanonicalPaths();
     });
 
     await migrateOffStandaloneIconTheme(context);
@@ -953,6 +995,13 @@ export async function activate(context: vscode.ExtensionContext) {
     await migrateSarcWorkspaceFolders(archiveTree);
     void buildRomfsIndex();
     void buildCanonicalIndex();
+    void importKnownProjectCanonicalPaths();
+
+    context.subscriptions.push(
+        archiveTree.onDidChangeRoots(() => {
+            void importKnownProjectCanonicalPaths();
+        }),
+    );
 
     context.subscriptions.push(
         AinbNodeEditorProvider.register(context, async (info) => {

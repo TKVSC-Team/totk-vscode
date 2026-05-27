@@ -5,11 +5,14 @@ declare module 'sql.js' {
 
     interface Database {
         exec(sql: string, params?: unknown[]): QueryExecResult[];
+        run(sql: string, params?: unknown[] | Record<string, unknown>): Database;
         prepare(sql: string): Statement;
+        export(): Uint8Array;
         close(): void;
     }
 
     interface Statement {
+        run(params?: Record<string, unknown> | unknown[]): void;
         bind(params?: Record<string, unknown> | unknown[]): boolean;
         step(): boolean;
         get(params?: Record<string, unknown> | unknown[]): unknown[];
