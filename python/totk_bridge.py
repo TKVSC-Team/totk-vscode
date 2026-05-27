@@ -421,11 +421,12 @@ def main():
                     result = _read_bntx_texture_result(bntx_data, tex_name)
                     print(json.dumps(result))
                 else:
+                    sarc, is_sarc_compressed = load_sarc(archive_path)
                     file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
                     print(
                         json.dumps(
                             _json_read_payload(
-                                read_file_content(file_data, internal_path, None, romfs_path)
+                                read_file_content(file_data, internal_path, sarc, romfs_path)
                             )
                         )
                     )

@@ -42,21 +42,82 @@ def _stem_from_internal_path(internal_path: str) -> str:
     return os.path.splitext(name)[0]
 
 
-def _sibling_baev_disk_path(file_path: str) -> str:
-    if file_path.lower().endswith('.asb'):
-        return file_path[:-4] + '.baev'
-    if file_path.lower().endswith('.asb.zs'):
-        return file_path[:-7] + '.baev.zs'
-    return ''
-
+# ASB files live in .../AS/<stem>.asb
+# Their paired AsNode BAEV files live in .../AnimationEvent/AsNode/<stem>.baev
+# These two functions map between those locations.
 
 def _sibling_baev_path(internal_path: str) -> str:
+    """Map a SARC-internal ASB path to its sibling AsNode BAEV path.
+
+    Actor/AS/Foo.root.asb      -> Actor/AnimationEvent/AsNode/Foo.root.baev
+    Actor/AS/Foo.root.asb.zs   -> Actor/AnimationEvent/AsNode/Foo.root.baev.zs
+    Returns '' if the path is not inside an AS directory.
+    """
     normalized = internal_path.replace('\\', '/')
-    if normalized.endswith('.asb'):
-        return normalized[:-4] + '.baev'
+
     if normalized.endswith('.asb.zs'):
-        return normalized[:-7] + '.baev.zs'
-    return ''
+        stem_path = normalized[:-7]
+        baev_ext = '.baev.zs'
+    elif normalized.endswith('.asb'):
+        stem_path = normalized[:-4]
+        baev_ext = '.baev'
+    else:
+        return ''
+
+    parts = stem_path.split('/')
+    stem = parts[-1]
+    dir_parts = parts[:-1]
+
+    new_dir_parts = []
+    replaced = False
+    for p in dir_parts:
+        if not replaced and p == 'AS':
+            new_dir_parts.extend(['AnimationEvent', 'AsNode'])
+            replaced = True
+        else:
+            new_dir_parts.append(p)
+
+    if not replaced:
+        return ''
+
+    return '/'.join(new_dir_parts + [stem + baev_ext])
+
+
+def _sibling_baev_disk_path(file_path: str) -> str:
+    """Map a disk ASB path to its sibling AsNode BAEV path.
+
+    /romfs/Actor/AS/Foo.root.asb    -> /romfs/Actor/AnimationEvent/AsNode/Foo.root.baev
+    /romfs/Actor/AS/Foo.root.asb.zs -> /romfs/Actor/AnimationEvent/AsNode/Foo.root.baev.zs
+    Returns '' if the path is not inside an AS directory.
+    """
+    normalized = file_path.replace('\\', '/')
+
+    if normalized.endswith('.asb.zs'):
+        stem_path = normalized[:-7]
+        baev_ext = '.baev.zs'
+    elif normalized.endswith('.asb'):
+        stem_path = normalized[:-4]
+        baev_ext = '.baev'
+    else:
+        return ''
+
+    parts = stem_path.split('/')
+    stem = parts[-1]
+    dir_parts = parts[:-1]
+
+    new_dir_parts = []
+    replaced = False
+    for p in dir_parts:
+        if not replaced and p == 'AS':
+            new_dir_parts.extend(['AnimationEvent', 'AsNode'])
+            replaced = True
+        else:
+            new_dir_parts.append(p)
+
+    if not replaced:
+        return ''
+
+    return '/'.join(new_dir_parts + [stem + baev_ext])
 
 
 def _decompress_bytes(data: bytes, internal_path: str, romfs_path: str) -> bytes:
@@ -91,13 +152,11 @@ def read_asb_content(file_data: bytes, internal_path: str, sarc, romfs_path: str
         if baev_internal:
             try:
                 baev_data = bytes(sarc.get_file(baev_internal).data)
-            except Exception:
-                baev_data = None
-        else:
-            baev_data = None
-        if baev_data is not None:
-            baev_data = _decompress_bytes(baev_data, baev_internal, romfs_path)
-            asb_file.import_baev(baev_data)
+                baev_data = _decompress_bytes(baev_data, baev_internal, romfs_path)
+                asb_file.import_baev(baev_data)
+            except Exception as e:
+                import traceback
+                print(f"Warning: Failed to import BAEV from {baev_internal}: {e}\n{traceback.format_exc()}", file=sys.stderr)
 
     return json.dumps(asb_file.asdict(), indent=2, ensure_ascii=False) + '\n'
 
@@ -189,8 +248,12 @@ def read_asb_content_disk(file_path: str, romfs_path: str = '') -> str:
 
         baev_path = _sibling_baev_disk_path(file_path)
         if baev_path and os.path.isfile(baev_path):
-            baev_data = _decompress_bytes(Path(baev_path).read_bytes(), baev_path, romfs_path)
-            asb_file.import_baev(baev_data)
+            try:
+                baev_data = _decompress_bytes(Path(baev_path).read_bytes(), baev_path, romfs_path)
+                asb_file.import_baev(baev_data)
+            except Exception as e:
+                import traceback
+                print(f"Warning: Failed to import BAEV from {baev_path}: {e}\n{traceback.format_exc()}", file=sys.stderr)
 
     return json.dumps(asb_file.asdict(), indent=2, ensure_ascii=False) + '\n'
 
