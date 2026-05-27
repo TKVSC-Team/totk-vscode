@@ -595,6 +595,14 @@ export async function activate(context: vscode.ExtensionContext) {
         const config = vscode.workspace.getConfiguration('totk-editor');
         return config.get<boolean>('enableCanonicalSavePropagation', true);
     };
+    const getCanonicalBlacklistPrefixes = (): string[] => {
+        const config = vscode.workspace.getConfiguration('totk-editor');
+        return config.get<string[]>('canonicalSyncBlacklistPrefixes', ['Mals', 'UI']);
+    };
+    const getCanonicalArchiveTypeBlacklist = (): string[] => {
+        const config = vscode.workspace.getConfiguration('totk-editor');
+        return config.get<string[]>('canonicalSyncArchiveTypeBlacklist', ['.sarc', '.blarc']);
+    };
 
     type IndexState = { romfsPath: string; schemaVersion: number };
 
@@ -769,6 +777,9 @@ export async function activate(context: vscode.ExtensionContext) {
             bridgeEnv: getBridgeEnv(),
             projectRoots: archiveTree?.getProjectRoots() ?? [],
             projectOverlayDbPath: projectCanonicalOverlayPath,
+            blacklistPrefixes: getCanonicalBlacklistPrefixes(),
+            archiveTypeBlacklist: getCanonicalArchiveTypeBlacklist(),
+            onPulledNewFiles: () => archiveTree?.refresh(),
             writeInput: {
                 diskArchivePath: normalizePath(info.diskArchivePath),
                 internalPath: info.internalPath,
