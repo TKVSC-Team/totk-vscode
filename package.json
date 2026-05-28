@@ -478,10 +478,8 @@
             "type": "string"
           },
           "default": [
-            "Mals",
-            "UI"
           ],
-          "markdownDescription": "Canonical path folder prefixes excluded from synchronized save propagation. Matching is case-insensitive and checks full canonical path prefixes."
+          "markdownDescription": "Canonical path folder prefixes excluded from synchronized save propagation. Matching is case-insensitive and checks full canonical path prefixes. This is NOT the RomFS path!"
         },
         "totk-editor.canonicalSyncArchiveTypeBlacklist": {
           "type": "array",
@@ -493,6 +491,14 @@
             ".blarc"
           ],
           "markdownDescription": "Archive file extensions that disable canonical synchronized edits for paths inside those archive types (for example nested `.sarc`/`.blarc`). Matching is case-insensitive."
+        },
+        "totk-editor.canonicalSyncFileExtensionBlacklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "File suffixes excluded from canonical synchronized save propagation. Matching is case-insensitive and supports compound subtype suffixes (for example `.bttf` and `.game__pouchcontent__DyeColorParam.bgyml`)."
         }
       }
     },

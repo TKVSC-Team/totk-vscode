@@ -33,6 +33,7 @@ export interface CanonicalSavePropagationOptions {
     projectOverlayDbPath: string;
     blacklistPrefixes: string[];
     archiveTypeBlacklist: string[];
+    fileExtensionBlacklist: string[];
     writeInput: CanonicalSaveWriteInput;
     output: vscode.OutputChannel;
     onPulledNewFiles?: () => void | Promise<void>;
@@ -94,6 +95,35 @@ function pathContainsBlacklistedArchiveType(pathValue: string, archiveTypes: str
             if (segment.endsWith(ext) || segment.endsWith(`${ext}.zs`)) {
                 return true;
             }
+        }
+    }
+    return false;
+}
+
+function normalizeFileSuffix(value: string): string {
+    const suffix = value.trim().toLowerCase();
+    if (!suffix) {
+        return '';
+    }
+    return suffix.startsWith('.') ? suffix : `.${suffix}`;
+}
+
+function pathMatchesBlacklistedFileSuffix(pathValue: string, fileSuffixes: string[]): boolean {
+    const normalizedPath = pathValue.replace(/\\/g, '/').replace(/^\/+/, '').toLowerCase();
+    if (!normalizedPath) {
+        return false;
+    }
+    const fileName = normalizedPath.split('/').pop() ?? '';
+    if (!fileName) {
+        return false;
+    }
+    for (const rawSuffix of fileSuffixes) {
+        const suffix = normalizeFileSuffix(rawSuffix);
+        if (!suffix) {
+            continue;
+        }
+        if (fileName.endsWith(suffix) || fileName.endsWith(`${suffix}.zs`)) {
+            return true;
         }
     }
     return false;
@@ -162,6 +192,12 @@ export async function propagateCanonicalSave(
     if (pathContainsBlacklistedArchiveType(canonicalPath, options.archiveTypeBlacklist)) {
         options.output.appendLine(
             `[canonical-save] Skipped sync for blacklisted archive type path: ${canonicalPath}`,
+        );
+        return;
+    }
+    if (pathMatchesBlacklistedFileSuffix(canonicalPath, options.fileExtensionBlacklist)) {
+        options.output.appendLine(
+            `[canonical-save] Skipped sync for blacklisted file suffix: ${canonicalPath}`,
         );
         return;
     }
@@ -237,6 +273,9 @@ export async function propagateCanonicalSave(
             pathContainsBlacklistedArchiveType(match.canonicalPath, options.archiveTypeBlacklist) ||
             pathContainsBlacklistedArchiveType(match.archiveRelPath, options.archiveTypeBlacklist)
         ) {
+            continue;
+        }
+        if (pathMatchesBlacklistedFileSuffix(match.canonicalPath, options.fileExtensionBlacklist)) {
             continue;
         }
 

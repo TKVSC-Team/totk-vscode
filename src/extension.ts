@@ -620,6 +620,10 @@ export async function activate(context: vscode.ExtensionContext) {
         const config = vscode.workspace.getConfiguration('totk-editor');
         return config.get<string[]>('canonicalSyncArchiveTypeBlacklist', ['.sarc', '.blarc']);
     };
+    const getCanonicalFileExtensionBlacklist = (): string[] => {
+        const config = vscode.workspace.getConfiguration('totk-editor');
+        return config.get<string[]>('canonicalSyncFileExtensionBlacklist', []);
+    };
 
     type IndexState = { romfsPath: string; schemaVersion: number };
 
@@ -798,6 +802,7 @@ export async function activate(context: vscode.ExtensionContext) {
             projectOverlayDbPath: projectCanonicalOverlayPath,
             blacklistPrefixes: getCanonicalBlacklistPrefixes(),
             archiveTypeBlacklist: getCanonicalArchiveTypeBlacklist(),
+            fileExtensionBlacklist: getCanonicalFileExtensionBlacklist(),
             onPulledNewFiles: () => archiveTree?.refresh(),
             writeInput: {
                 diskArchivePath: normalizePath(info.diskArchivePath),
