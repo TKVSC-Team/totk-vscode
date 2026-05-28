@@ -177,12 +177,12 @@
       },
       {
         "command": "totk-editor.refreshArchives",
-        "title": "TOTK: Refresh Archives",
+        "title": "TOTK: Refresh Projects",
         "icon": "$(refresh)"
       },
       {
         "command": "totk-editor.removeArchiveRoot",
-        "title": "TOTK: Remove from Archives"
+        "title": "TOTK: Remove from Projects"
       },
       {
         "command": "totk-editor.refreshGameDump",
@@ -239,7 +239,7 @@
       },
       {
         "command": "totk-editor.openEditableFile",
-        "title": "TOTK: Open File (BYML, AAMP, MSBT, ASB, BAEV, belnk, bslnk)"
+        "title": "TOTK: Open File (Supported Formats)"
       },
       {
         "command": "totk-editor.setupPython",
@@ -251,7 +251,7 @@
       },
       {
         "command": "totk-editor.browsePython",
-        "title": "TOTK: Browse for python.exe"
+        "title": "TOTK: Browse for python.exe (must be Python 3.12)"
       },
       {
         "command": "totk-editor.rebuildRomfsIndex",
@@ -284,7 +284,7 @@
       "activitybar": [
         {
           "id": "totk-editor",
-          "title": "Your Mods",
+          "title": "Your Projects",
           "icon": "icons/archives.svg"
         },
         {
@@ -458,7 +458,7 @@
           "type": "string",
           "enum": ["json", "yaml"],
           "default": "yaml",
-          "markdownDescription": "Format to use for Tag.Product.rstbl.byml files (JSON or YAML)."
+          "markdownDescription": "Format to use for displaying Tag.Product.rstbl.byml files (JSON or YAML)."
         },
         "totk-editor.extraAampExtensions": {
           "type": "array",

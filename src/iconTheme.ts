@@ -23,7 +23,7 @@ export function registerIconThemeCommands(context: vscode.ExtensionContext): voi
     context.subscriptions.push(
         vscode.commands.registerCommand('totk-editor.useTotkIcons', async () => {
             const choice = await vscode.window.showInformationMessage(
-                'TOTK file icons are applied via language icons on top of your current File Icon Theme. Do not select "TOTK File Icons" as your main theme.',
+                'TOTK file icons are applied via language icons on top of your current File Icon Theme. Do not select "TOTK File Icons" as your main theme, this will override all installed icons.',
                 'Open File Icon Theme Picker',
             );
             if (choice === 'Open File Icon Theme Picker') {
