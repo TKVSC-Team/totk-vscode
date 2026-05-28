@@ -21,11 +21,6 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:totk-editor.setupPython",
-    "onCommand:totk-editor.pickPython",
-    "onCommand:totk-editor.browsePython",
-    "onCommand:totk-editor.rebuildRomfsIndex",
-    "onCommand:totk-editor.rebuildCanonicalPathIndex",
     "workspaceContains:**/*.pack",
     "workspaceContains:**/*.sarc",
     "workspaceContains:**/*.genvb",
@@ -177,7 +172,7 @@
       },
       {
         "command": "totk-editor.addWorkspaceToArchives",
-        "title": "Add workspace folder to Projects",
+        "title": "TOTK: Add workspace folder to Projects",
         "icon": "$(repo-create)"
       },
       {
@@ -187,7 +182,7 @@
       },
       {
         "command": "totk-editor.removeArchiveRoot",
-        "title": "Remove from Archives"
+        "title": "TOTK: Remove from Archives"
       },
       {
         "command": "totk-editor.refreshGameDump",
@@ -200,43 +195,43 @@
       },
       {
         "command": "totk-editor.addDumpToProject",
-        "title": "Add to Project…"
+        "title": "TOTK: Add to Project…"
       },
       {
         "command": "totk-editor.archiveDelete",
-        "title": "Delete"
+        "title": "TOTK: Delete"
       },
       {
         "command": "totk-editor.archiveRename",
-        "title": "Rename"
+        "title": "TOTK: Rename"
       },
       {
         "command": "totk-editor.archiveNewFile",
-        "title": "New File"
+        "title": "TOTK: New File"
       },
       {
         "command": "totk-editor.archiveNewFolder",
-        "title": "New Folder"
+        "title": "TOTK: New Folder"
       },
       {
         "command": "totk-editor.archiveCopy",
-        "title": "Copy"
+        "title": "TOTK: Copy"
       },
       {
         "command": "totk-editor.archiveCut",
-        "title": "Cut"
+        "title": "TOTK: Cut"
       },
       {
         "command": "totk-editor.archivePaste",
-        "title": "Paste"
+        "title": "TOTK: Paste"
       },
       {
         "command": "totk-editor.archiveExport",
-        "title": "Export..."
+        "title": "TOTK: Export..."
       },
       {
         "command": "totk-editor.dumpExport",
-        "title": "Export..."
+        "title": "TOTK: Export..."
       },
       {
         "command": "totk-editor.exportYaml",
@@ -294,7 +289,7 @@
         },
         {
           "id": "totk-editor-dump",
-          "title": "TotK Dump",
+          "title": "TOTK Dump",
           "icon": "icons/dump.svg"
         }
       ]
