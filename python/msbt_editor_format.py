@@ -3,9 +3,10 @@
 import re
 
 from pymsbt.classes import TextCommand, TextComponent
+from msbt_tag_formatter import command_to_tag, tag_to_command
 
 _CMD_PATTERN = re.compile(
-    r'\{cmd:([^:}]+):(\d+):(\d+):([^}]*)\}',
+    r'\{cmd:([^:}]+):(\d+):(\d+):([^}]*)\}|\{\{([^}]+)\}\}',
 )
 _UNESCAPE = {
     '\\n': '\n',
@@ -34,7 +35,7 @@ def components_to_display(components) -> str:
         elif component.type == 'command':
             command = component.data
             hexdata = command.data or ''
-            parts.append(f'{{cmd:{command.magic}:{command.group}:{command.type}:{hexdata}}}')
+            parts.append(command_to_tag(command.magic, command.group, command.type, hexdata))
     return ''.join(parts)
 
 
@@ -55,8 +56,17 @@ def display_to_components(text: str) -> list:
                 TextComponent(type='text', data=_unescape_text(text[pos:match.start()]))
             )
 
-        magic, group, cmd_type, hexdata = match.groups()
-        data_size = len(bytes.fromhex(hexdata.replace('0x', ''))) if hexdata else 0
+        if match.group(5):
+            parsed = tag_to_command(match.group(5))
+            if parsed:
+                magic, group, cmd_type, hexdata = parsed
+            else:
+                magic, group, cmd_type, hexdata = 14, 0, 0, ''
+        else:
+            magic, group, cmd_type, hexdata = match.group(1), match.group(2), match.group(3), match.group(4)
+        
+        hex_clean = hexdata.replace('0x', '').replace(' ', '') if hexdata else ''
+        data_size = (len(hex_clean) + 1) // 2
         command = TextCommand.__new__(TextCommand)
         command.magic = magic
         command.group = int(group)

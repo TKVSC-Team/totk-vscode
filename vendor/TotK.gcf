@@ -1,0 +1,525 @@
+game: "The Legend of Zelda: Tears of the Kingdom"
+
+#create a local game config, inherit from this config (by adding "inherits: default:TotK"), and copy/uncomment the following section
+#replace the paths with paths to the actual compression dicts
+#the paths are relative to your local game config location (if not absolute)
+#you can find the game's compression dicts under romFS/Pack/ZsDic.pack.zs (you can also use the editor to unpack this archive)
+#zstd:
+#  - compressionLevel: 19
+#    dict: path/to/pack.zsdic
+#    filter: "*.pack.zs"
+#  - compressionLevel: 19
+#    dict: path/to/bcett.byml.zsdic
+#    filter: "*.bcett.byml.zs"
+#  - compressionLevel: 19
+#    filter: "*ZsDic.pack.zs"
+#  - compressionLevel: 19
+#    dict: path/to/zs.zsdic
+
+sarc:
+  alignment:
+    default: 0x08
+    extensions:
+      ".skybin":  0x01
+      ".extm":    0x04
+      ".hght":    0x04
+      ".bfcpx":   0x10
+      ".bflan":   0x10
+      ".bflyt":   0x10
+      ".bfotf":   0x10
+      ".bfttf":   0x10
+      ".bushvt":  0x10
+      ".glsl":    0x10
+      ".gsh":     0x100
+      ".bnsh":    0x1000
+      ".bntx":    0x1000
+      ".bofx":    0x1000
+      ".sharcb":  0x1000
+      ".baglmf":  0x2000
+      ".genvres": 0x2000
+
+msbt:
+  tags:
+    - name: ruby
+      description: ruby annotation rendered above the normal text
+      group: 0
+      type: 0
+      arguments:
+        - name: byteSpan
+          description: number of subsequent characters (as bytes) to render the annotation above (centered)
+          dataType: u16
+        - name: value
+          description: the annotation text
+          dataType: str
+    - name: font
+      group: 0
+      type: 1
+      arguments:
+        - name: face
+          dataType: s16
+          valueMap:
+            -1: Default
+            0: Ancient
+            1: Thin
+            2: ThinOutlined
+            3: Unknown
+            4: Normal
+            5: NormalOutlined
+            6: Bold
+            7: TitleDeco
+            8: Title
+    - name: size
+      description: changes the current text size
+      group: 0
+      type: 2
+      arguments:
+        - name: value
+          description: relative text size in percent
+          dataType: u16
+    - name: color
+      description: changes the current text color
+      group: 0
+      type: 3
+      arguments:
+        - name: id
+          description: id of the color
+          dataType: s16
+    - name: pageBreak
+      description: forces a new dialog page
+      group: 0
+      type: 4
+    - name: delay
+      description: delays the text rendering by a given number of frames
+      group: 1
+      type: 0
+      arguments:
+        - name: frames
+          description: number of frames to delay
+          dataType: u16
+    - name: playSound
+      description: plays a sound
+      group: 1
+      type: 3
+      arguments:
+        - name: id
+          description: id of the sound
+          dataType: u16
+    - name: icon
+      description: renders an icon
+      group: 1
+      type: 4
+      arguments:
+        - name: type
+          description: icon type
+          dataType: u8
+          valueMap:
+            0: LStickUp
+            1: LStickDown
+            2: LStickLeft
+            3: LStickRight
+            4: RStickUpDown
+            5: RStickRightLeft
+            6: DPadUp
+            7: DPadDown
+            8: DPadLeft
+            9: DPadRight
+            10: AButton0
+            11: AButton1
+            12: JumpButton0
+            13: YButton
+            14: ZLTrigger0
+            15: ZLTrigger1
+            16: SprintButton0
+            17: SprintButton1
+            18: SprintButton2
+            19: SprintButton3
+            20: SprintButton4
+            21: RBumper0
+            22: LBumper
+            23: PlusButton
+            24: MinusButton
+            25: RightArrow
+            26: LeftArrow
+            27: UpArrow
+            28: DownArrow
+            29: UpRightArrow
+            30: UpLeftArrow
+            31: DownLeftArrow
+            32: DownRightArrow
+            33: LStick
+            34: RStick
+            35: LStickLeftRight
+            36: NintendoSwitch
+            37: JumpButton1
+            38: XButton2
+            39: BButton
+            40: XButton1
+            41: PristineWeaponSparkle
+            42: RBumper1
+            43: DPadUpDown
+            44: RoyalCrest
+    - name: string1
+      group: 2
+      type: 1
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: number2
+      group: 2
+      type: 2
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: currentHorseName
+      description: gets the name of the current horse
+      group: 2
+      type: 3
+    - name: selectedHorseName
+      description: gets the name of the currently selected horse
+      group: 2
+      type: 4
+    - name: cookingAdjective
+      group: 2
+      type: 7
+    - name: cookingEffectCaption
+      group: 2
+      type: 8
+    - name: number9
+      group: 2
+      type: 9
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: string11
+      group: 2
+      type: 11
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: string12
+      group: 2
+      type: 12
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: number14
+      group: 2
+      type: 14
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: number15
+      group: 2
+      type: 15
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: number16
+      group: 2
+      type: 16
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+        - name: useDelimiter
+          dataType: bool
+    - name: number18
+      group: 2
+      type: 18
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: number19
+      group: 2
+      type: 19
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: number20
+      group: 2
+      type: 20
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+        - name: isDirect
+          dataType: bool
+    - name: number21
+      group: 2
+      type: 21
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: number22
+      group: 2
+      type: 22
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: attachmentAdjective
+      group: 2
+      type: 24
+    - name: equipmentBaseName
+      group: 2
+      type: 25
+    - name: essenceAdjective
+      group: 2
+      type: 26
+    - name: essenceBaseName
+      group: 2
+      type: 27
+    - name: weaponName
+      group: 2
+      type: 28
+    - name: playerName
+      group: 2
+      type: 29
+    - name: questItemName
+      group: 2
+      type: 30
+    - name: string31
+      group: 2
+      type: 31
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: string32
+      group: 2
+      type: 32
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: string33
+      group: 2
+      type: 33
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: yonaDynamicName
+      description: dynamic name for the NPC Yona; replaced with "???" if the user has not yet encountered the NPC
+      group: 2
+      type: 35
+    - name: string36
+      group: 2
+      type: 36
+      arguments:
+        - name: ref
+          dataType: str
+        - name: index
+          dataType: s16
+    - name: recipeName
+      description: gets the name of the cooking recipe
+      group: 2
+      type: 37
+    - name: setEmotion
+      group: 3
+      type: 0
+      arguments:
+        - name: emotion
+          dataType: u8
+          valueMap:
+            0: Normal_Face
+            1: Pleasure_Face
+            2: Anger_Face
+            3: Sorrow_Face
+            4: Surprise_Face
+            5: Thinking_Face
+            6: Serious_Face
+            7: Normal
+            8: Pleasure
+            9: Angry
+            10: Sorrow
+            11: Surprise
+            12: Thinking
+            13: Serious
+        - name: noVoice
+          dataType: bool
+    - name: setItalicFont
+      group: 3
+      type: 1
+    - name: setVoice
+      group: 4
+      type: 0
+      arguments:
+        - name: asset
+          dataType: str
+    - name: delay8
+      description: delays the text rendering by 8 frames
+      group: 5
+      type: 0
+    - name: delay15
+      description: delays the text rendering by 15 frames
+      group: 5
+      type: 1
+    - name: delay30
+      description: delays the text rendering by 30 frames
+      group: 5
+      type: 2
+    - name: extendVerticalSpace
+      description: extends the vertical render space to allow accents on capital letters
+      group: 7
+      type: 0
+    - name: resetFontStyle
+      description: resets any current font style back to dialog defaults
+      group: 15
+      type: 0
+    - name: wordInfo
+      description: contains grammatical information about a word
+      group: 201
+      type: 0
+      arguments:
+        - name: gender
+          description: id of the gender
+          dataType: u8
+        - name: defArticle
+          description: id of the definite article (DefArt_<id> in StaticMsg/GrammarArticle)
+          dataType: u8
+        - name: indefArticle
+          description: id of the indefinite article (IndefArt_<id> in StaticMsg/GrammarArticle)
+          dataType: u8
+        - name: isPlural
+          description: whether the word is in plural
+          dataType: bool
+    - name: defArticle
+      description: definite article from StaticMsg/GrammarArticle determined by a wordInfo function
+      group: 201
+      type: 1
+    - name: indefArticle
+      description: indefinite article from StaticMsg/GrammarArticle determined by a wordInfo function
+      group: 201
+      type: 2
+    - name: uppercaseNextWord
+      description: transforms the first letter of the next word to uppercase
+      group: 201
+      type: 3
+    - name: lowercaseNextWord
+      description: transforms the first letter of the next word to lowercase
+      group: 201
+      type: 4
+    - name: gender
+      description: contains gender-specific strings; decision on which string to select is determined by a wordInfo function
+      group: 201
+      type: 5
+      arguments:
+        - name: m
+          description: masculine value
+          dataType: str
+        - name: f
+          description: feminine value
+          dataType: str
+        - name: n
+          description: neuter value
+          dataType: str
+    - name: pluralCase
+      group: 201
+      type: 6
+      arguments:
+        - name: arg1
+          dataType: str
+          description: "EUfr/USfr: 0 or 1 item\nEUru: numbers ending in 1, but not 11\nOther languages: 1 item"
+        - name: arg2
+          dataType: str
+          description: "EUfr/USfr: 2 or more items\nEUru: numbers ending in 2,3,4, but not 12,13,14\nOther languages: 0, 2, or more items"
+        - name: arg3
+          dataType: str
+          description: "EUru: numbers ending in 5,6,7,8,9,0, and 11,12,13,14\nUnused in other languages"
+    - name: batchimObject
+      group: 201
+      type: 7
+      description: korean support consonant in a syllable, specifically if referring to an object
+      arguments:
+        - name: consonant
+          dataType: str
+          description: the value to insert if the syllable block ends with a consonant
+        - name: vowel
+          dataType: str
+          description: the value to insert if the syllable block ends with a vowel
+    - name: batchimDirection
+      group: 201
+      type: 8
+      description: korean support consonant in a syllable, specifically if referring to a direction
+      arguments:
+        - name: consonant
+          dataType: str
+          description: the value to insert if the syllable block ends with a consonant
+        - name: vowel
+          dataType: str
+          description: the value to insert if the syllable block ends with a vowel
+    - name: nounCase
+      group: 201
+      type: 9
+      arguments:
+        - name: type
+          dataType: u8
+    - name: gender10
+      group: 201
+      type: 10
+      arguments:
+        - name: arg1
+          dataType: str
+        - name: arg2
+          dataType: str
+        - name: arg3
+          dataType: str
+        - name: arg4
+          dataType: str
+        - name: arg5
+          dataType: str
+        - name: arg6
+          dataType: str
+        - name: arg7
+          dataType: str
+        - name: arg8
+          dataType: str
+        - name: arg9
+          dataType: str
+        - name: arg10
+          dataType: str
+        - name: arg11
+          dataType: str
+        - name: arg12
+          dataType: str
