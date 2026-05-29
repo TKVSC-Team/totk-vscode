@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/TKVSC-Team/totk-vscode/graphics/logo/Logo_FancyShading.png" width="300vh">
+  <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/logo/Logo_FancyShading.png" width="300vh">
   <h1>Tears of the Kingdom VSCode Extension</h1>
   
   <a href="https://discord.gg/vwPnX2uB8s">
