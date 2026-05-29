@@ -8,24 +8,24 @@ from pathlib import Path
 import oead
 import zstandard as zstd
 
-_ZSTD_MAGIC = b'\x28\xb5\x2f\xfd'
-_YAZ0_MAGIC = b'Yaz0'
+_ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
+_YAZ0_MAGIC = b"Yaz0"
 
 _ROMFS_HELP = (
-    'Set totk-editor.romfsPath to your extracted game RomFS folder '
-    '(must contain Pack/ZsDic.pack.zs).'
+    "Set totk-editor.romfsPath to your extracted game RomFS folder "
+    "(must contain Pack/ZsDic.pack.zs)."
 )
 
 
 def zsdic_pack_path(romfs_path: str) -> str:
-    return os.path.join(romfs_path, 'Pack', 'ZsDic.pack.zs')
+    return os.path.join(romfs_path, "Pack", "ZsDic.pack.zs")
 
 
 def _ensure_vendor_zstd() -> None:
     script_dir = Path(__file__).resolve().parent
     candidates = [
-        script_dir / 'vendor' / 'asb',
-        script_dir.parent / 'vendor' / 'asb',
+        script_dir / "vendor" / "asb",
+        script_dir.parent / "vendor" / "asb",
     ]
     for vendor in candidates:
         vendor_str = str(vendor)
@@ -42,25 +42,25 @@ def _get_zstd_context(zsdic_pack: str):
 
 
 def _logical_path_lower(logical_path: str) -> str:
-    return logical_path.lower().replace('\\', '/')
+    return logical_path.lower().replace("\\", "/")
 
 
 def _pick_decompressor(ctx, logical_path: str):
     lower = _logical_path_lower(logical_path)
-    if lower.endswith('.pack.zs'):
+    if lower.endswith(".pack.zs"):
         return ctx.pack
-    if lower.endswith('.bcett.byml.zs'):
+    if lower.endswith(".bcett.byml.zs"):
         return ctx.bcett
-    if lower.endswith('.mc'):
+    if lower.endswith(".mc"):
         return ctx.mc
     return ctx.zs
 
 
 def _pick_compressor(ctx, logical_path: str):
     lower = _logical_path_lower(logical_path)
-    if lower.endswith('.pack.zs'):
+    if lower.endswith(".pack.zs"):
         return ctx.pack_compress
-    if lower.endswith('.bcett.byml.zs'):
+    if lower.endswith(".bcett.byml.zs"):
         return ctx.bcett_compress
     return ctx.zs_compress
 
@@ -71,7 +71,7 @@ def _decompress_with_fallback(ctx, data: bytes, logical_path: str) -> bytes:
     candidates = [primary]
     if primary is not ctx.zs:
         candidates.append(ctx.zs)
-    if lower.endswith('.pack.zs') and ctx.pack not in candidates:
+    if lower.endswith(".pack.zs") and ctx.pack not in candidates:
         candidates.append(ctx.pack)
 
     last_error: Exception | None = None
@@ -87,20 +87,20 @@ def _decompress_with_fallback(ctx, data: bytes, logical_path: str) -> bytes:
 
 def decompress_container(
     file_data: bytes,
-    logical_path: str = '',
-    romfs_path: str = '',
+    logical_path: str = "",
+    romfs_path: str = "",
 ) -> tuple[bytes, bool, bool]:
     if file_data.startswith(_ZSTD_MAGIC):
-        zsdic = zsdic_pack_path(romfs_path) if romfs_path else ''
+        zsdic = zsdic_pack_path(romfs_path) if romfs_path else ""
         if zsdic and os.path.isfile(zsdic):
             ctx = _get_zstd_context(zsdic)
-            return _decompress_with_fallback(ctx, file_data, logical_path or 'file.zs'), True, False
+            return _decompress_with_fallback(ctx, file_data, logical_path or "file.zs"), True, False
 
         try:
             return zstd.ZstdDecompressor().decompress(file_data), True, False
         except zstd.ZstdError as e:
             raise ValueError(
-                f'Cannot decompress .zs data (dictionary mismatch). {_ROMFS_HELP}'
+                f"Cannot decompress .zs data (dictionary mismatch). {_ROMFS_HELP}"
             ) from e
 
     if file_data.startswith(_YAZ0_MAGIC):
@@ -121,10 +121,10 @@ def compress_container(
     if not was_zstd:
         return file_data
 
-    zsdic = zsdic_pack_path(romfs_path) if romfs_path else ''
+    zsdic = zsdic_pack_path(romfs_path) if romfs_path else ""
     if not zsdic or not os.path.isfile(zsdic):
-        raise ValueError(f'Cannot recompress .zs data. {_ROMFS_HELP}')
+        raise ValueError(f"Cannot recompress .zs data. {_ROMFS_HELP}")
 
     ctx = _get_zstd_context(zsdic)
-    comp = _pick_compressor(ctx, logical_path or 'file.zs')
+    comp = _pick_compressor(ctx, logical_path or "file.zs")
     return comp._compress(file_data)

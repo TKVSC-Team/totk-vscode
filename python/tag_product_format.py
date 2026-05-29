@@ -22,23 +22,21 @@ def to_editor_text(byml_doc: oead.byml.Hash) -> str:
         return False
 
     for i in range(path_list_count // 3):
-        actor_path = f"{path_list[i*3]}|{path_list[i*3+1]}|{path_list[i*3+2]}"
+        actor_path = f"{path_list[i * 3]}|{path_list[i * 3 + 1]}|{path_list[i * 3 + 2]}"
         actor_tag_list = []
         for k in range(tag_list_count):
             if get_bit(bit_table, i * tag_list_count + k):
                 actor_tag_list.append(tag_list[k])
         actor_tag_data[actor_path] = actor_tag_list
 
-    data = {
-        "PathList": actor_tag_data,
-        "TagList": tag_list
-    }
+    data = {"PathList": actor_tag_data, "TagList": tag_list}
 
-    fmt = os.environ.get('TOTK_TAG_PRODUCT_FORMAT', 'json')
-    if fmt == 'yaml':
-        return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=float('inf'))
+    fmt = os.environ.get("TOTK_TAG_PRODUCT_FORMAT", "json")
+    if fmt == "yaml":
+        return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=float("inf"))
     else:
         return json.dumps(data, indent=4)
+
 
 def from_editor_text(editor_text: str, big_endian: bool, version: int) -> bytes:
     json_data = yaml.safe_load(editor_text)
@@ -46,9 +44,10 @@ def from_editor_text(editor_text: str, big_endian: bool, version: int) -> bytes:
     path_list_map = json_data.get("PathList", {})
 
     path_vec = list(path_list_map.items())
+
     def sort_key(item):
         key = item[0]
-        parts = key.split('|')
+        parts = key.split("|")
         extract = parts[1] if len(parts) > 1 else key
         return (extract, key)
 
@@ -58,8 +57,8 @@ def from_editor_text(editor_text: str, big_endian: bool, version: int) -> bytes:
     bit_table_bits = []
 
     for path, tag_entries in path_vec:
-        if '|' in path:
-            slices = path.split('|')
+        if "|" in path:
+            slices = path.split("|")
             path_list_out.extend(slices)
 
         for tag in cached_tag_list:
@@ -71,13 +70,13 @@ def from_editor_text(editor_text: str, big_endian: bool, version: int) -> bytes:
         if bit:
             byte_idx = i // 8
             bit_idx = i % 8
-            bit_table_bytes[byte_idx] |= (1 << bit_idx)
+            bit_table_bytes[byte_idx] |= 1 << bit_idx
 
     byml_dict = {
         "PathList": path_list_out,
         "BitTable": bytes(bit_table_bytes),
         "RankTable": "",
-        "TagList": cached_tag_list
+        "TagList": cached_tag_list,
     }
 
     byml_doc = oead.byml.Hash(byml_dict)

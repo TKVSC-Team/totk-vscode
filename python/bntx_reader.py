@@ -7,12 +7,12 @@ All Int64 pointer fields store absolute file offsets (not self-relative).
 import struct
 import sys
 
-_BNTX_MAGIC = b'BNTX\x00\x00\x00\x00'
-_BRTI_MAGIC = b'BRTI'
+_BNTX_MAGIC = b"BNTX\x00\x00\x00\x00"
+_BRTI_MAGIC = b"BRTI"
 
 
 def _log(msg: str) -> None:
-    print(f'[bntx] {msg}', file=sys.stderr)
+    print(f"[bntx] {msg}", file=sys.stderr)
 
 
 def is_bntx(data: bytes) -> bool:
@@ -20,53 +20,89 @@ def is_bntx(data: bytes) -> bool:
 
 
 def _read_i64(data: bytes, offset: int, le: bool) -> int:
-    fmt = '<q' if le else '>q'
+    fmt = "<q" if le else ">q"
     return struct.unpack_from(fmt, data, offset)[0]
 
 
 def _read_i32(data: bytes, offset: int, le: bool) -> int:
-    fmt = '<i' if le else '>i'
+    fmt = "<i" if le else ">i"
     return struct.unpack_from(fmt, data, offset)[0]
 
 
 def _read_u32(data: bytes, offset: int, le: bool) -> int:
-    fmt = '<I' if le else '>I'
+    fmt = "<I" if le else ">I"
     return struct.unpack_from(fmt, data, offset)[0]
 
 
 def _read_u16(data: bytes, offset: int, le: bool) -> int:
-    fmt = '<H' if le else '>H'
+    fmt = "<H" if le else ">H"
     return struct.unpack_from(fmt, data, offset)[0]
 
 
 def _read_cstring(data: bytes, offset: int) -> str:
     if offset < 0 or offset >= len(data):
-        return ''
-    end = data.find(b'\x00', offset)
+        return ""
+    end = data.find(b"\x00", offset)
     if end < 0:
         end = min(offset + 256, len(data))
-    return data[offset:end].decode('utf-8', errors='replace')
+    return data[offset:end].decode("utf-8", errors="replace")
 
 
 class BntxTexture:
     """Parsed texture metadata matching Switch Toolbox's property set."""
-    __slots__ = ('name', 'width', 'height', 'format_id', 'mip_count',
-                 'data_offset', 'data_size', 'tile_mode', 'block_height_log2',
-                 'depth', 'flags', 'dims', 'swizzle', 'sample_count',
-                 'access_flags', 'array_count', 'alignment',
-                 'channel_r', 'channel_g', 'channel_b', 'channel_a',
-                 'pitch', 'image_size')
 
-    def __init__(self, name: str, width: int, height: int, format_id: int,
-                 mip_count: int, data_offset: int, data_size: int,
-                 tile_mode: int = 0, block_height_log2: int = 4,
-                 depth: int = 1, flags: int = 0, dims: int = 2,
-                 swizzle: int = 0, sample_count: int = 1,
-                 access_flags: int = 0, array_count: int = 1,
-                 alignment: int = 512,
-                 channel_r: int = 0, channel_g: int = 0,
-                 channel_b: int = 0, channel_a: int = 0,
-                 pitch: int = 0, image_size: int = 0):
+    __slots__ = (
+        "name",
+        "width",
+        "height",
+        "format_id",
+        "mip_count",
+        "data_offset",
+        "data_size",
+        "tile_mode",
+        "block_height_log2",
+        "depth",
+        "flags",
+        "dims",
+        "swizzle",
+        "sample_count",
+        "access_flags",
+        "array_count",
+        "alignment",
+        "channel_r",
+        "channel_g",
+        "channel_b",
+        "channel_a",
+        "pitch",
+        "image_size",
+    )
+
+    def __init__(
+        self,
+        name: str,
+        width: int,
+        height: int,
+        format_id: int,
+        mip_count: int,
+        data_offset: int,
+        data_size: int,
+        tile_mode: int = 0,
+        block_height_log2: int = 4,
+        depth: int = 1,
+        flags: int = 0,
+        dims: int = 2,
+        swizzle: int = 0,
+        sample_count: int = 1,
+        access_flags: int = 0,
+        array_count: int = 1,
+        alignment: int = 512,
+        channel_r: int = 0,
+        channel_g: int = 0,
+        channel_b: int = 0,
+        channel_a: int = 0,
+        pitch: int = 0,
+        image_size: int = 0,
+    ):
         self.name = name
         self.width = width
         self.height = height
@@ -95,42 +131,42 @@ class BntxTexture:
 def _parse_textures(data: bytes) -> list[BntxTexture]:
     file_len = len(data)
     if file_len < 0x58:
-        _log(f'File too small ({file_len} bytes)')
+        _log(f"File too small ({file_len} bytes)")
         return []
     if data[:8] != _BNTX_MAGIC:
-        _log(f'Bad magic: {data[:8]!r}')
+        _log(f"Bad magic: {data[:8]!r}")
         return []
 
     bom_bytes = data[0x0C:0x0E]
-    le = bom_bytes == b'\xFF\xFE'
-    _log(f'BNTX {file_len} bytes, {"LE" if le else "BE"} (BOM {bom_bytes.hex()})')
+    le = bom_bytes == b"\xff\xfe"
+    _log(f"BNTX {file_len} bytes, {'LE' if le else 'BE'} (BOM {bom_bytes.hex()})")
 
     target = data[0x20:0x24]
-    _log(f'Target platform: {target!r}')
+    _log(f"Target platform: {target!r}")
 
     tex_count = _read_i32(data, 0x24, le)
-    _log(f'Texture count: {tex_count}')
+    _log(f"Texture count: {tex_count}")
     if tex_count <= 0:
         return []
 
     info_ptrs_addr = _read_i64(data, 0x28, le)
-    _log(f'InfoPtrsAddr: 0x{info_ptrs_addr:X}')
+    _log(f"InfoPtrsAddr: 0x{info_ptrs_addr:X}")
 
     if info_ptrs_addr < 0 or info_ptrs_addr + 8 * tex_count > file_len:
-        _log(f'InfoPtrsAddr out of range (file is {file_len} bytes)')
+        _log(f"InfoPtrsAddr out of range (file is {file_len} bytes)")
         return []
 
     textures: list[BntxTexture] = []
     for i in range(tex_count):
         ptr_offset = info_ptrs_addr + 8 * i
         brti_abs = _read_i64(data, ptr_offset, le)
-        _log(f'  Texture {i}: BRTI at 0x{brti_abs:X}')
+        _log(f"  Texture {i}: BRTI at 0x{brti_abs:X}")
 
         if brti_abs < 0 or brti_abs + 0x70 > file_len:
-            _log(f'  Texture {i}: BRTI offset out of range, skipping')
+            _log(f"  Texture {i}: BRTI offset out of range, skipping")
             continue
-        if data[brti_abs:brti_abs + 4] != _BRTI_MAGIC:
-            _log(f'  Texture {i}: Bad BRTI magic {data[brti_abs:brti_abs + 4]!r}, skipping')
+        if data[brti_abs : brti_abs + 4] != _BRTI_MAGIC:
+            _log(f"  Texture {i}: Bad BRTI magic {data[brti_abs : brti_abs + 4]!r}, skipping")
             continue
 
         # TextureInfo data starts after the 16-byte block header
@@ -163,20 +199,30 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
         if tile_mode == 1 and width > 0:
             (format_id >> 8) & 0xFF
             fmt_bpp_lookup = {
-                0x01: 1, 0x02: 1, 0x03: 2, 0x04: 2, 0x05: 2, 0x06: 2,
-                0x07: 2, 0x08: 2, 0x09: 2, 0x0B: 4, 0x0C: 4, 0x0E: 4,
+                0x01: 1,
+                0x02: 1,
+                0x03: 2,
+                0x04: 2,
+                0x05: 2,
+                0x06: 2,
+                0x07: 2,
+                0x08: 2,
+                0x09: 2,
+                0x0B: 4,
+                0x0C: 4,
+                0x0E: 4,
             }
             pixel_bpp = fmt_bpp_lookup.get(format_id >> 8, 4)
             pitch = width * pixel_bpp
 
         name_addr = _read_i64(data, d + 0x50, le)
-        _log(f'  Texture {i}: nameAddr=0x{name_addr:X}, {width}x{height}, fmt=0x{format_id:04X}')
+        _log(f"  Texture {i}: nameAddr=0x{name_addr:X}, {width}x{height}, fmt=0x{format_id:04X}")
 
         if 0 < name_addr < file_len:
             name = _read_cstring(data, name_addr + 2)
         else:
-            name = f'texture_{i}'
-            _log(f'  Texture {i}: nameAddr out of range, using fallback name')
+            name = f"texture_{i}"
+            _log(f"  Texture {i}: nameAddr out of range, using fallback name")
 
         ptrs_addr = _read_i64(data, d + 0x60, le)
         if 0 < ptrs_addr < file_len:
@@ -184,35 +230,37 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
         else:
             first_mip_offset = 0
 
-        _log(f'  Texture {i}: name={name!r}')
+        _log(f"  Texture {i}: name={name!r}")
 
-        textures.append(BntxTexture(
-            name=name,
-            width=width,
-            height=height,
-            format_id=format_id,
-            mip_count=mip_count,
-            data_offset=first_mip_offset,
-            data_size=image_size,
-            tile_mode=tile_mode,
-            block_height_log2=block_height_log2,
-            depth=depth,
-            flags=flags,
-            dims=dims,
-            swizzle=swizzle,
-            sample_count=sample_count,
-            access_flags=access_flags,
-            array_count=array_count,
-            alignment=alignment,
-            channel_r=ch_r,
-            channel_g=ch_g,
-            channel_b=ch_b,
-            channel_a=ch_a,
-            pitch=pitch,
-            image_size=image_size,
-        ))
+        textures.append(
+            BntxTexture(
+                name=name,
+                width=width,
+                height=height,
+                format_id=format_id,
+                mip_count=mip_count,
+                data_offset=first_mip_offset,
+                data_size=image_size,
+                tile_mode=tile_mode,
+                block_height_log2=block_height_log2,
+                depth=depth,
+                flags=flags,
+                dims=dims,
+                swizzle=swizzle,
+                sample_count=sample_count,
+                access_flags=access_flags,
+                array_count=array_count,
+                alignment=alignment,
+                channel_r=ch_r,
+                channel_g=ch_g,
+                channel_b=ch_b,
+                channel_a=ch_a,
+                pitch=pitch,
+                image_size=image_size,
+            )
+        )
 
-    _log(f'Parsed {len(textures)} textures')
+    _log(f"Parsed {len(textures)} textures")
     return textures
 
 
@@ -226,6 +274,6 @@ def read_texture_data(data: bytes, texture_name: str) -> bytes:
     for tex in _parse_textures(data):
         if tex.name == texture_name:
             if tex.data_offset <= 0 or tex.data_size <= 0:
-                raise ValueError(f'Texture {texture_name!r} has no extractable data')
-            return data[tex.data_offset:tex.data_offset + tex.data_size]
-    raise FileNotFoundError(f'Texture not found in BNTX: {texture_name!r}')
+                raise ValueError(f"Texture {texture_name!r} has no extractable data")
+            return data[tex.data_offset : tex.data_offset + tex.data_size]
+    raise FileNotFoundError(f"Texture not found in BNTX: {texture_name!r}")

@@ -4,7 +4,7 @@ import re
 import sys
 from pathlib import Path
 
-_VENDOR_PYMSBT = Path(__file__).resolve().parent.parent / 'vendor' / 'pymsbt'
+_VENDOR_PYMSBT = Path(__file__).resolve().parent.parent / "vendor" / "pymsbt"
 if str(_VENDOR_PYMSBT) not in sys.path:
     sys.path.insert(0, str(_VENDOR_PYMSBT))
 
@@ -12,37 +12,37 @@ from msbt_tag_formatter import command_to_tag, tag_to_command
 from pymsbt.classes import TextCommand, TextComponent
 
 _CMD_PATTERN = re.compile(
-    r'\{cmd:([^:}]+):(\d+):(\d+):([^}]*)\}|\{\{([^}]+)\}\}',
+    r"\{cmd:([^:}]+):(\d+):(\d+):([^}]*)\}|\{\{([^}]+)\}\}",
 )
 _UNESCAPE = {
-    '\\n': '\n',
-    '\\r': '\r',
-    '\\t': '\t',
-    '\\\\': '\\',
-    '\\{': '{',
+    "\\n": "\n",
+    "\\r": "\r",
+    "\\t": "\t",
+    "\\\\": "\\",
+    "\\{": "{",
 }
 
 
 def _escape_text(text: str) -> str:
     return (
-        text.replace('\\', '\\\\')
-        .replace('\n', '\\n')
-        .replace('\r', '\\r')
-        .replace('\t', '\\t')
-        .replace('{', '\\{')
+        text.replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace("{", "\\{")
     )
 
 
 def components_to_display(components) -> str:
     parts: list[str] = []
     for component in components:
-        if component.type == 'text':
+        if component.type == "text":
             parts.append(_escape_text(component.data))
-        elif component.type == 'command':
+        elif component.type == "command":
             command = component.data
-            hexdata = command.data or ''
+            hexdata = command.data or ""
             parts.append(command_to_tag(command.magic, command.group, command.type, hexdata))
-    return ''.join(parts)
+    return "".join(parts)
 
 
 def display_to_components(text: str) -> list:
@@ -54,12 +54,12 @@ def display_to_components(text: str) -> list:
         if match is None:
             chunk = text[pos:]
             if chunk:
-                components.append(TextComponent(type='text', data=_unescape_text(chunk)))
+                components.append(TextComponent(type="text", data=_unescape_text(chunk)))
             break
 
         if match.start() > pos:
             components.append(
-                TextComponent(type='text', data=_unescape_text(text[pos:match.start()]))
+                TextComponent(type="text", data=_unescape_text(text[pos : match.start()]))
             )
 
         if match.group(5):
@@ -67,11 +67,16 @@ def display_to_components(text: str) -> list:
             if parsed:
                 magic, group, cmd_type, hexdata = parsed
             else:
-                magic, group, cmd_type, hexdata = 14, 0, 0, ''
+                magic, group, cmd_type, hexdata = 14, 0, 0, ""
         else:
-            magic, group, cmd_type, hexdata = match.group(1), match.group(2), match.group(3), match.group(4)
+            magic, group, cmd_type, hexdata = (
+                match.group(1),
+                match.group(2),
+                match.group(3),
+                match.group(4),
+            )
 
-        hex_clean = hexdata.replace('0x', '').replace(' ', '') if hexdata else ''
+        hex_clean = hexdata.replace("0x", "").replace(" ", "") if hexdata else ""
         data_size = (len(hex_clean) + 1) // 2
         command = TextCommand.__new__(TextCommand)
         command.magic = magic
@@ -81,11 +86,11 @@ def display_to_components(text: str) -> list:
         command.data = hexdata if hexdata else None
         command.start_offset = 0
         command.end_offset = 0
-        components.append(TextComponent(type='command', data=command))
+        components.append(TextComponent(type="command", data=command))
         pos = match.end()
 
     if not components:
-        components.append(TextComponent(type='text', data=''))
+        components.append(TextComponent(type="text", data=""))
 
     return components
 
@@ -94,7 +99,7 @@ def _unescape_text(text: str) -> str:
     result: list[str] = []
     i = 0
     while i < len(text):
-        if text[i] == '\\' and i + 1 < len(text):
+        if text[i] == "\\" and i + 1 < len(text):
             pair = text[i : i + 2]
             if pair in _UNESCAPE:
                 result.append(_UNESCAPE[pair])
@@ -102,7 +107,7 @@ def _unescape_text(text: str) -> str:
                 continue
         result.append(text[i])
         i += 1
-    return ''.join(result)
+    return "".join(result)
 
 
 def _parse_value(raw: str) -> str:
@@ -112,7 +117,7 @@ def _parse_value(raw: str) -> str:
         out: list[str] = []
         i = 0
         while i < len(inner):
-            if inner[i] == '\\' and i + 1 < len(inner):
+            if inner[i] == "\\" and i + 1 < len(inner):
                 pair = inner[i : i + 2]
                 if pair in _UNESCAPE:
                     out.append(_UNESCAPE[pair])
@@ -123,30 +128,31 @@ def _parse_value(raw: str) -> str:
                 continue
             out.append(inner[i])
             i += 1
-        return ''.join(out)
+        return "".join(out)
     return _unescape_text(value)
 
 
 def _has_bare_quotes(text: str) -> bool:
     import re
-    stripped = re.sub(r'\{\{[^}]*(?:\}[^}][^}]*)?\}\}', '', text)
+
+    stripped = re.sub(r"\{\{[^}]*(?:\}[^}][^}]*)?\}\}", "", text)
     return '"' in stripped
 
 
 def _format_value(text: str) -> str:
     needs_quoting = (
         not text
-        or any(ch in text for ch in ':#\n\r\t')
+        or any(ch in text for ch in ":#\n\r\t")
         or _has_bare_quotes(text)
         or text != text.strip()
     )
     if needs_quoting:
         escaped = (
-            text.replace('\\', '\\\\')
+            text.replace("\\", "\\\\")
             .replace('"', '\\"')
-            .replace('\n', '\\n')
-            .replace('\r', '\\r')
-            .replace('\t', '\\t')
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
         )
         return f'"{escaped}"'
     return text
@@ -156,17 +162,17 @@ def to_editor_text(text_labels: dict) -> str:
     lines: list[str] = []
     for label in sorted(text_labels.keys()):
         display = components_to_display(text_labels[label])
-        lines.append(f'{label}: {_format_value(display)}')
-    return '\n'.join(lines) + ('\n' if lines else '')
+        lines.append(f"{label}: {_format_value(display)}")
+    return "\n".join(lines) + ("\n" if lines else "")
 
 
 def from_editor_text(text: str) -> dict[str, list]:
     labels: dict[str, list] = {}
     for line in text.splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             continue
-        colon = line.find(':')
+        colon = line.find(":")
         if colon < 0:
             continue
         label = line[:colon].strip()

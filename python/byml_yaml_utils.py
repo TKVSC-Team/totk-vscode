@@ -3,7 +3,7 @@
 import re
 
 _U64_DECIMAL_PATTERN = re.compile(
-    r'(?P<prefix>:\s*|,\s*|\{\s*)(?P<num>\d{10,})(?=\s*(?:$|[,}\]]))',
+    r"(?P<prefix>:\s*|,\s*|\{\s*)(?P<num>\d{10,})(?=\s*(?:$|[,}\]]))",
     re.MULTILINE,
 )
 
@@ -12,11 +12,11 @@ def normalize_byml_u64_literals(yml_text: str) -> str:
     """Convert bare u64-sized decimals to !ul 0x... so oead keeps unsigned 64-bit types."""
 
     def replace(match: re.Match[str]) -> str:
-        value = int(match.group('num'))
+        value = int(match.group("num"))
         if value <= 0x7FFFFFFFFFFFFFFF:
             return match.group(0)
-        hex_value = f'!ul 0x{value:x}'
-        return f'{match.group("prefix")}{hex_value}'
+        hex_value = f"!ul 0x{value:x}"
+        return f"{match.group('prefix')}{hex_value}"
 
     return _U64_DECIMAL_PATTERN.sub(replace, yml_text)
 
@@ -26,4 +26,4 @@ def format_byml_for_editor(byml_doc) -> str:
     import oead
 
     text = oead.byml.to_text(byml_doc)
-    return text.rstrip() + '\n'
+    return text.rstrip() + "\n"

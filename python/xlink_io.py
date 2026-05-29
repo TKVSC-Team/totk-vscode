@@ -7,48 +7,49 @@ from pathlib import Path
 
 from zstd_totk import decompress_container, zsdic_pack_path
 
-_ZSTD_MAGIC = b'\x28\xb5\x2f\xfd'
+_ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 _SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def is_xlnk_extension(logical_path: str) -> bool:
-    lower = logical_path.lower().replace('\\', '/')
-    if lower.endswith('.zs'):
+    lower = logical_path.lower().replace("\\", "/")
+    if lower.endswith(".zs"):
         lower = lower[:-3]
-    return lower.endswith('.belnk') or lower.endswith('.bslnk')
+    return lower.endswith(".belnk") or lower.endswith(".bslnk")
 
 
 def is_xlnk_binary(file_data: bytes) -> bool:
-    if len(file_data) >= 4 and file_data[:4] == b'XLNK':
+    if len(file_data) >= 4 and file_data[:4] == b"XLNK":
         return True
     try:
-        data, _, _ = decompress_container(file_data, '', '')
+        data, _, _ = decompress_container(file_data, "", "")
     except ValueError:
         data = file_data
-    return len(data) >= 4 and data[:4] == b'XLNK'
+    return len(data) >= 4 and data[:4] == b"XLNK"
 
 
 def _platform_tool_names() -> list[str]:
     """Return candidate binary names for the current platform, most specific first."""
     import sys
-    if os.name == 'nt':
-        return ['xlink_tool.exe']
-    if sys.platform == 'darwin':
-        return ['xlink_tool_osx', 'xlink_tool'] # Use macOS build of xlink2
-    return ['xlink_tool_linux', 'xlink_tool'] # Assume linux if Windows and macOS not detected
+
+    if os.name == "nt":
+        return ["xlink_tool.exe"]
+    if sys.platform == "darwin":
+        return ["xlink_tool_osx", "xlink_tool"]  # Use macOS build of xlink2
+    return ["xlink_tool_linux", "xlink_tool"]  # Assume linux if Windows and macOS not detected
 
 
 def find_xlink_tool() -> str:
-    override = os.environ.get('TOTK_XLINK_TOOL', '').strip()
+    override = os.environ.get("TOTK_XLINK_TOOL", "").strip()
     if override:
         if os.path.isfile(override):
             return override
-        raise FileNotFoundError(f'TOTK_XLINK_TOOL is not a file: {override}')
+        raise FileNotFoundError(f"TOTK_XLINK_TOOL is not a file: {override}")
 
     candidates = _platform_tool_names()
     search_dirs = [
-        _SCRIPT_DIR / 'vendor' / 'xlink2',
-        _SCRIPT_DIR.parent / 'vendor' / 'xlink2',
+        _SCRIPT_DIR / "vendor" / "xlink2",
+        _SCRIPT_DIR.parent / "vendor" / "xlink2",
     ]
     for d in search_dirs:
         for name in candidates:
@@ -58,16 +59,16 @@ def find_xlink_tool() -> str:
                 return str(p)
 
     raise FileNotFoundError(
-        'xlink_tool not found. Install dt-12345/xlink2 and set TOTK_XLINK_TOOL, '
-        f'or place one of {candidates} in vendor/xlink2/.'
+        "xlink_tool not found. Install dt-12345/xlink2 and set TOTK_XLINK_TOOL, "
+        f"or place one of {candidates} in vendor/xlink2/."
     )
 
 
 def _zsdic_for_romfs(romfs_path: str) -> str:
     if not romfs_path:
-        return ''
+        return ""
     path = zsdic_pack_path(romfs_path)
-    return path if os.path.isfile(path) else ''
+    return path if os.path.isfile(path) else ""
 
 
 def _run_xlink_export(
@@ -76,13 +77,13 @@ def _run_xlink_export(
     output_yaml: str,
     zsdic: str,
 ) -> None:
-    args = [tool, '-e', input_path, output_yaml]
+    args = [tool, "-e", input_path, output_yaml]
     if zsdic:
         args.append(zsdic)
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout or '').strip() or f'exit {result.returncode}'
-        raise RuntimeError(f'xlink_tool export failed: {detail}')
+        detail = (result.stderr or result.stdout or "").strip() or f"exit {result.returncode}"
+        raise RuntimeError(f"xlink_tool export failed: {detail}")
 
 
 def _run_xlink_import(
@@ -91,46 +92,46 @@ def _run_xlink_import(
     output_path: str,
     zsdic: str,
 ) -> None:
-    args = [tool, '-i', input_yaml, output_path]
+    args = [tool, "-i", input_yaml, output_path]
     if zsdic:
         args.append(zsdic)
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout or '').strip() or f'exit {result.returncode}'
-        raise RuntimeError(f'xlink_tool import failed: {detail}')
+        detail = (result.stderr or result.stdout or "").strip() or f"exit {result.returncode}"
+        raise RuntimeError(f"xlink_tool import failed: {detail}")
 
 
-def read_xlnk_content(file_data: bytes, logical_path: str = '', romfs_path: str = '') -> str:
+def read_xlnk_content(file_data: bytes, logical_path: str = "", romfs_path: str = "") -> str:
     tool = find_xlink_tool()
     zsdic = _zsdic_for_romfs(romfs_path)
     use_zsdic = bool(zsdic) and (
-        logical_path.lower().endswith('.zs') or file_data.startswith(_ZSTD_MAGIC)
+        logical_path.lower().endswith(".zs") or file_data.startswith(_ZSTD_MAGIC)
     )
 
-    with tempfile.TemporaryDirectory(prefix='totk-xlnk-') as tmp:
+    with tempfile.TemporaryDirectory(prefix="totk-xlnk-") as tmp:
         tmp_path = Path(tmp)
-        inp = tmp_path / 'input'
-        out_yaml = tmp_path / 'output.yaml'
+        inp = tmp_path / "input"
+        out_yaml = tmp_path / "output.yaml"
         inp.write_bytes(file_data)
-        _run_xlink_export(tool, str(inp), str(out_yaml), zsdic if use_zsdic else '')
-        return out_yaml.read_text(encoding='utf-8')
+        _run_xlink_export(tool, str(inp), str(out_yaml), zsdic if use_zsdic else "")
+        return out_yaml.read_text(encoding="utf-8")
 
 
 def write_xlnk_bytes(
     orig_file_data: bytes,
     editor_text: str,
-    logical_path: str = '',
-    romfs_path: str = '',
+    logical_path: str = "",
+    romfs_path: str = "",
 ) -> bytes:
     tool = find_xlink_tool()
     zsdic = _zsdic_for_romfs(romfs_path)
-    was_zstd = logical_path.lower().endswith('.zs') or orig_file_data.startswith(_ZSTD_MAGIC)
+    was_zstd = logical_path.lower().endswith(".zs") or orig_file_data.startswith(_ZSTD_MAGIC)
     use_zsdic = bool(zsdic) and was_zstd
 
-    with tempfile.TemporaryDirectory(prefix='totk-xlnk-') as tmp:
+    with tempfile.TemporaryDirectory(prefix="totk-xlnk-") as tmp:
         tmp_path = Path(tmp)
-        yaml_path = tmp_path / 'input.yaml'
-        out_path = tmp_path / 'output'
-        yaml_path.write_text(editor_text, encoding='utf-8')
-        _run_xlink_import(tool, str(yaml_path), str(out_path), zsdic if use_zsdic else '')
+        yaml_path = tmp_path / "input.yaml"
+        out_path = tmp_path / "output"
+        yaml_path.write_text(editor_text, encoding="utf-8")
+        _run_xlink_import(tool, str(yaml_path), str(out_path), zsdic if use_zsdic else "")
         return out_path.read_bytes()
