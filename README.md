@@ -68,6 +68,14 @@ Preview and edit subfiles of SARC and BNTX archives
 
  <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/tkproj_Edit.png" width="300vh">
 
+## Canonical Path Saving
+
+The canonical path of a file is where the file exists in the game's memory, as opposed to the romfs path which describes its location within a game dump. Using the romfs file located at `\Pack\Actor\Armor_001_Head.pack.zs\Component\ArmorParam\Armor_001_Head.game__component__ArmorParam.bgyml` as an example, the canonical path would be `\Component\ArmorParam\Armor_001_Head.game__component__ArmorParam.bgyml`.
+
+Anyone who has made changes to an upgradeable armor set, or to any parameter file that is parented to a file used in another actor pack, is familiar with needing to make the same edits to an identically named file in several different locations in order for everything to work nicely ingame. TKVSC builds a database of all canonical paths in your game dump and in each of your mod projects and automatically saves changes to all instances of a file's canonical path, pulling files in from the game dump as needed when it isn't already present in your mod project.
+
+To demonstrate with a direct comparison, modifying the defense of every level of the Champion's Leathers would take **15 file modifications without TKVSC**, and only **5 with TKVSC**.
+
 ## Planned Features
 
 *( if there are any features you don't see on here, feel free to make an issue on this GitHub! )*
