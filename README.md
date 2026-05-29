@@ -25,10 +25,12 @@ Our core design philosophy creating this extension is **centralization of toolin
 
 <sup></sub>It also pairs well with **TKMM!**</sup></sub>
 
-**TKVSC** GameBanana page: https://gamebanana.com/tools/22893.
+**TKVSC** GameBanana page: https://gamebanana.com/tools/22893
 
 ## Features
+Preview and edit subfiles of SARC and BNTX archives
 
+ <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/SARC_Edit.png" width="300vh">
 
 ### Supported Filetypes 
 
@@ -46,7 +48,8 @@ Our core design philosophy creating this extension is **centralization of toolin
 
 ### Activity Bar Tabs
 
-Preview and edit subfiles of SARC and BNTX archives
+ <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/ActivityBarGuide.png" width="300vh">
+
 
 **Your Mods**
 - Add the current folder open in VS Code to a list of Project Folders.
@@ -62,6 +65,8 @@ Preview and edit subfiles of SARC and BNTX archives
 - Preview `.bntx` subfiles and `.txtg` files as PNGs
 - Visual editor for [TKMM](https://tkmm.org) `.tkproj` files
 - For files TKVSC does not support, such as `.bfres`, the user can choose external programs to open them in by default (separate from similar features in the OS).
+
+ <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/tkproj_Edit.png" width="300vh">
 
 ## Planned Features
 
