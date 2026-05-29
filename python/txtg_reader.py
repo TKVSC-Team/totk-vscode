@@ -120,24 +120,22 @@ def _image_quality_score(pixels: bytes, width: int, height: int, raw_mode: str) 
     if width < 4 or height < 4 or len(pixels) < width * height * 4:
         return 1e12
 
-    if raw_mode == 'BGRA':
-        ro, go, bo = 2, 1, 0
-    else:
-        ro, go, bo = 0, 1, 2
+    try:
+        from PIL import Image
+        img = Image.frombytes('RGBA', (width, height), pixels, 'raw', raw_mode)
+        lum = img.convert('L').tobytes()
+    except Exception:
+        return 1e12
 
-    def luminance_at(x: int, y: int) -> int:
-        off = (y * width + x) * 4
-        r = pixels[off + ro]
-        g = pixels[off + go]
-        b = pixels[off + bo]
-        return (77 * r + 150 * g + 29 * b) >> 8
-
+    y_step = max(1, height // 64)
     total_adj = 0
     total_count = 0
-    for y in range(height):
+    for y in range(0, height, y_step):
+        row_off = y * width
         for x in range(1, width):
-            total_adj += abs(luminance_at(x, y) - luminance_at(x - 1, y))
+            total_adj += abs(lum[row_off + x] - lum[row_off + x - 1])
             total_count += 1
+            
     base = total_adj / max(1, total_count)
 
     seam_penalty = 0.0
@@ -146,9 +144,10 @@ def _image_quality_score(pixels: bytes, width: int, height: int, raw_mode: str) 
             continue
         seam_sum = 0
         seam_count = 0
-        for y in range(height):
+        for y in range(0, height, y_step):
+            row_off = y * width
             for x in range(period, width, period):
-                seam_sum += abs(luminance_at(x, y) - luminance_at(x - 1, y))
+                seam_sum += abs(lum[row_off + x] - lum[row_off + x - 1])
                 seam_count += 1
         if seam_count:
             seam_avg = seam_sum / seam_count
@@ -180,7 +179,7 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
     image_data = surfaces[0] if surfaces else b''
 
     decode_error: str | None = None
-    png_b64 = None
+    png_path = None
     if not image_data:
         decode_error = 'TXTG has no readable surface payload.'
     elif width <= 0 or height <= 0:
@@ -249,9 +248,17 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
             block_height_log2 = best_bh
             from PIL import Image
             image = Image.frombytes('RGBA', (width, height), best_pixels, 'raw', best_raw_mode)
-            out = io.BytesIO()
-            image.save(out, format='PNG')
-            png_b64 = out.getvalue()
+            import tempfile
+            import os
+            safe = ''.join(c if c.isalnum() or c in '._-' else '_' for c in texture_name)
+            fd, tmp_path = tempfile.mkstemp(prefix='totk-txtg-', suffix=f'-{safe}.png')
+            try:
+                image.save(tmp_path, 'PNG')
+                png_path = tmp_path
+            except Exception:
+                pass
+            finally:
+                os.close(fd)
 
     channel_map = {
         0: 'Red',
@@ -306,9 +313,8 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
         },
     }
 
-    if png_b64 is not None:
-        import base64
-        result['pngBase64'] = base64.b64encode(png_b64).decode('ascii')
+    if png_path is not None:
+        result['pngPath'] = png_path
     elif decode_error:
         result['error'] = decode_error
     return result

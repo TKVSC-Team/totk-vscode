@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import type { BntxTextureResult, BntxChannelInfo, BntxImageInfo, BntxMiscInfo } from './bridge';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const panels = new Map<string, vscode.WebviewPanel>();
 let extensionUri: vscode.Uri | undefined;
@@ -23,6 +25,9 @@ export function openTextureViewer(
     const localRoots = extensionUri
         ? [vscode.Uri.joinPath(extensionUri, 'icons')]
         : [];
+    if (result.pngPath) {
+        localRoots.push(vscode.Uri.file(path.dirname(result.pngPath)));
+    }
 
     const panel = vscode.window.createWebviewPanel(
         'totkTextureViewer',
@@ -33,14 +38,24 @@ export function openTextureViewer(
 
     panel.webview.html = buildHtml(result, panel.webview);
     panels.set(key, panel);
-    panel.onDidDispose(() => panels.delete(key));
+    panel.onDidDispose(() => {
+        panels.delete(key);
+        if (result.pngPath) {
+            try {
+                fs.unlinkSync(result.pngPath);
+            } catch { }
+        }
+    });
 }
 
 function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
     const meta = result.metadata;
-    const imgSrc = result.pngBase64
-        ? `data:image/png;base64,${result.pngBase64}`
-        : '';
+    let imgSrc = '';
+    if (result.pngPath) {
+        imgSrc = webview.asWebviewUri(vscode.Uri.file(result.pngPath)).toString();
+    } else if (result.pngBase64) {
+        imgSrc = `data:image/png;base64,${result.pngBase64}`;
+    }
 
     const resizeIconUri = extensionUri
         ? webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'icons', 'resize.svg'))
@@ -67,7 +82,7 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
         : '<p style="color:#888;">No metadata available</p>';
 
     const errorText = result.error ?? 'Rendering failed for this texture variant.';
-    const errorNote = !result.pngBase64
+    const errorNote = !imgSrc
         ? `<p style="color:#e8a040;margin-top:12px;">${escapeHtml(errorText)}</p>`
         : '';
 

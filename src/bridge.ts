@@ -134,6 +134,7 @@ export interface BntxTextureResult {
         blockHLog2: number;
     };
     pngBase64?: string;
+    pngPath?: string;
 }
 
 type BridgeReadResult = BridgeReadPayload | BntxTextureResult;

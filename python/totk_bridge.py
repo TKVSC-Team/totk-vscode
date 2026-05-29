@@ -84,9 +84,7 @@ def _read_bntx_texture_result(bntx_data: bytes, texture_name: str) -> dict:
         result['metadata'] = metadata
     png_path = render_texture_to_png(bntx_data, texture_name)
     if png_path:
-        png_bytes = Path(png_path).read_bytes()
-        result['pngBase64'] = base64.b64encode(png_bytes).decode('ascii')
-        os.unlink(png_path)
+        result['pngPath'] = png_path
     return result
 
 

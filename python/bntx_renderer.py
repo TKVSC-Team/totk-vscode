@@ -106,16 +106,31 @@ def _deswizzle_block_linear(width: int, height: int, blk_w: int, blk_h: int,
     except ImportError:
         pass
 
-    _log('Using pure-Python deswizzle (may be slow for large textures)')
-    pitch = _round_up(width_in_blocks * bpp, 64)
+    _log('Using pure-Python deswizzle (optimized for speed)')
+    pitch = ((width_in_blocks * bpp - 1) | 63) + 1
+    bh8 = 8 * block_height
+    bh512 = 512 * block_height
+    image_width_in_gobs = _div_round_up(pitch, 64)
+    gob_y_stride = bh512 * image_width_in_gobs
+    x_offsets = []
+    for x in range(width_in_blocks):
+        x_byte = x * bpp
+        x_part = (x_byte // 64) * bh512 + ((x_byte % 64) // 32) * 256 + ((x_byte % 32) // 16) * 32 + (x_byte % 16)
+        x_offsets.append((x_byte, x_part))
 
     result = bytearray(width_in_blocks * height_in_blocks * bpp)
+    len_data = len(data)
+    len_result = len(result)
 
     for y in range(height_in_blocks):
-        for x in range(width_in_blocks):
-            src = _get_addr_block_linear(x, y, pitch, bpp, block_height)
-            dst = (y * width_in_blocks + x) * bpp
-            if src + bpp <= len(data) and dst + bpp <= len(result):
+        y_gob = (y // bh8) * gob_y_stride
+        y_in_gob = y % bh8
+        y_part = y_gob + (y_in_gob // 8) * 512 + ((y % 8) // 2) * 64 + (y % 2) * 16
+        dst_y = y * width_in_blocks * bpp
+        for x_byte, x_part in x_offsets:
+            src = y_part + x_part
+            dst = dst_y + x_byte
+            if src + bpp <= len_data and dst + bpp <= len_result:
                 result[dst:dst + bpp] = data[src:src + bpp]
 
     return bytes(result)
@@ -159,31 +174,25 @@ def _decode_pixels(linear_data: bytes, width: int, height: int,
         return linear_data[:pixel_count * 4], 'BGRA'
 
     if decoder_key == 'r8':
+        n = min(pixel_count, len(linear_data))
         out = bytearray(pixel_count * 4)
-        for i in range(min(pixel_count, len(linear_data))):
-            v = linear_data[i]
-            off = i * 4
-            out[off] = v; out[off + 1] = v; out[off + 2] = v; out[off + 3] = 255
+        v = linear_data[:n]
+        out[0::4] = v
+        out[1::4] = v
+        out[2::4] = v
+        out[3::4] = b'\xFF' * n
         return bytes(out), 'RGBA'
 
     if decoder_key == 'rg8':
+        n = min(pixel_count, len(linear_data) // 2)
         out = bytearray(pixel_count * 4)
-        for i in range(min(pixel_count, len(linear_data) // 2)):
-            r, g = linear_data[i * 2], linear_data[i * 2 + 1]
-            off = i * 4
-            out[off] = r; out[off + 1] = g; out[off + 2] = 0; out[off + 3] = 255
+        out[0::4] = linear_data[0:n*2:2]
+        out[1::4] = linear_data[1:n*2:2]
+        out[3::4] = b'\xFF' * n
         return bytes(out), 'RGBA'
 
     if decoder_key == 'rgb565':
-        out = bytearray(pixel_count * 4)
-        for i in range(min(pixel_count, len(linear_data) // 2)):
-            val = linear_data[i * 2] | (linear_data[i * 2 + 1] << 8)
-            r = ((val >> 11) & 0x1F) * 255 // 31
-            g = ((val >> 5) & 0x3F) * 255 // 63
-            b = (val & 0x1F) * 255 // 31
-            off = i * 4
-            out[off] = r; out[off + 1] = g; out[off + 2] = b; out[off + 3] = 255
-        return bytes(out), 'RGBA'
+        return linear_data[:pixel_count * 2], 'BGR;16'
 
     try:
         import texture2ddecoder as t2d
@@ -216,21 +225,27 @@ def _decode_pixels(linear_data: bytes, width: int, height: int,
 
 def _bc4_to_grayscale(bgra: bytes, pixel_count: int) -> bytes:
     """BC4 decodes to a single channel in BGRA. Map it to grayscale RGBA."""
+    n = min(pixel_count, len(bgra) // 4)
+    v = bgra[2:n*4:4]
     out = bytearray(pixel_count * 4)
-    for i in range(min(pixel_count, len(bgra) // 4)):
-        v = bgra[i * 4 + 2]  # red channel in BGRA layout (B=0, G=1, R=2, A=3)
-        off = i * 4
-        out[off] = v; out[off + 1] = v; out[off + 2] = v; out[off + 3] = 255
+    out[0::4] = v
+    out[1::4] = v
+    out[2::4] = v
+    out[3::4] = b'\xFF' * n
     return bytes(out)
 
 
 def _bc5_to_normal(bgra: bytes, pixel_count: int) -> bytes:
     """BC5 decodes to RG channels. Show as normal-map style RGB."""
+    n = min(pixel_count, len(bgra) // 4)
+    b = bgra[0:n*4:4]
+    g = bgra[1:n*4:4]
+    r = bgra[2:n*4:4]
     out = bytearray(pixel_count * 4)
-    for i in range(min(pixel_count, len(bgra) // 4)):
-        b, g, r, a = bgra[i*4], bgra[i*4+1], bgra[i*4+2], bgra[i*4+3]
-        off = i * 4
-        out[off] = r; out[off + 1] = g; out[off + 2] = 255; out[off + 3] = 255
+    out[0::4] = r
+    out[1::4] = g
+    out[2::4] = b'\xFF' * n
+    out[3::4] = b'\xFF' * n
     return bytes(out)
 
 
@@ -325,19 +340,48 @@ def _apply_channel_swizzle(
     else:
         src_off = {2: 0, 3: 1, 4: 2, 5: 3}
 
-    out = bytearray(pixel_count * 4)
-    mapping = [(ch_r, 0), (ch_g, 1), (ch_b, 2), (ch_a, 3)]
-    n = min(pixel_count, len(pixels) // 4)
-
-    for i in range(n):
-        base = i * 4
-        for ch_val, dst in mapping:
+    try:
+        from PIL import Image
+        img = Image.frombytes('RGBA', (width, height), pixels, 'raw', raw_mode)
+        bands = img.split()
+        
+        zero_band = None
+        one_band = None
+        
+        def get_band(ch_val):
+            nonlocal zero_band, one_band
             if ch_val == 0:
-                out[base + dst] = 0
+                if zero_band is None:
+                    zero_band = bands[0].point(lambda _: 0)
+                return zero_band
             elif ch_val == 1:
-                out[base + dst] = 255
+                if one_band is None:
+                    one_band = bands[0].point(lambda _: 255)
+                return one_band
             elif ch_val in src_off:
-                out[base + dst] = pixels[base + src_off[ch_val]]
+                return bands[src_off[ch_val]]
+            return bands[0]
+
+        img = Image.merge('RGBA', (get_band(ch_r), get_band(ch_g), get_band(ch_b), get_band(ch_a)))
+        return img.tobytes('raw', 'RGBA'), 'RGBA'
+    except Exception as e:
+        _log(f'Pillow swizzle failed: {e}')
+        # Fallback to slow Python loop if pillow fails
+        out = bytearray(pixel_count * 4)
+        mapping = [(ch_r, 0), (ch_g, 1), (ch_b, 2), (ch_a, 3)]
+        n = min(pixel_count, len(pixels) // 4)
+
+        for i in range(n):
+            base = i * 4
+            for ch_val, dst in mapping:
+                if ch_val == 0:
+                    out[base + dst] = 0
+                elif ch_val == 1:
+                    out[base + dst] = 255
+                elif ch_val in src_off:
+                    out[base + dst] = pixels[base + src_off[ch_val]]
+
+        return bytes(out), 'RGBA'
 
     return bytes(out), 'RGBA'
 
