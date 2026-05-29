@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/discord/1508590792149827745?style=for-the-badge&logoColor=5865F2&color=5865F2&labelColor=2A2C33&logo=discord&label=discord" alt="Discord"/>
   </a> &nbsp;
   <a href="https://github.com/TKVSC-Team/totk-vscode/releases/latest">
-    <img src="https://img.shields.io/github/v/tag/TKVSC-Team/totk-vscode?style=for-the-badge&logoColor=ffffff&color=C71B42&labelColor=2A2C33&logo=github&label=Version" alt="Releases' YouTube"/>
+    <img src="https://img.shields.io/github/v/tag/TKVSC-Team/totk-vscode?style=for-the-badge&logoColor=ffffff&color=C71B42&labelColor=2A2C33&logo=github&label=Version" alt="Latest Release"
   </a> &nbsp;
   <a href="https://github.com/TKVSC-Team/totk-vscode">
     <img src="https://img.shields.io/github/stars/TKVSC-Team/totk-vscode?style=for-the-badge&color=FFCB41&labelColor=2A2C33&logo=github" alt="Stars"/>
@@ -20,6 +20,10 @@
 <br />
 
 The **T**ears of the **K**ingdom **V**isual **S**tudio **C**ode Extension or **TKVSC** is a Visual Studio Code extension for editing and browsing **Tears of the Kingdom** (**TotK**) game files.
+
+Our core design philosophy creating this extension is **centralization of tooling concerns**, and **automating the boilerplate of the design process**.
+
+<sup></sub>It also pairs well with **TKMM!**</sup></sub>
 
 **TKVSC** GameBanana page: https://gamebanana.com/tools/22893.
 
@@ -59,6 +63,16 @@ Preview and edit subfiles of SARC and BNTX archives
 - Visual editor for [TKMM](https://tkmm.org) `.tkproj` files
 - For files TKVSC does not support, such as `.bfres`, the user can choose external programs to open them in by default (separate from similar features in the OS).
 
+## Planned Features
+
+*( if there are any features you don't see on here, feel free to make an issue on this GitHub! )*
+
+- Node Based Editors (AINB, ASB, BAEV, and EVFL are all planned.)
+- BFRES Support (Preview, Editing.)
+- Audio Support (BARS, BWAV.)
+- Actor Tooling (Automating the process as much as possible.)
+- <sub></sup>PTCL/ELink support is being researched but not confirmed. This is uncharted territory.</sup></sub>
+
 ## Setup
 
 ### Requirements
@@ -95,6 +109,11 @@ That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`).
 
 
 ## Development
+
+### Contributing:
+We are an open project, and if there are any features you'd like to see, or issues you come across: feel free to make a PR!
+
+### Getting Started:
 
 ```bash
 npm install
