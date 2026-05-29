@@ -25,5 +25,8 @@ context/
 docs/
 images
 node_modules/
+!node_modules/sql.js/**
 .gitmodules
 scripts/
+.ruff_cache/
+totk_vscode_pythn.egg-info

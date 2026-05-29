@@ -44,4 +44,4 @@
 
 `Export Current File to YAML` - Export current file as a `.YAML`
 
-`Open File` - Opens the file in the editor view, if supported
+`Open File` - Opens the file in the editor view, if supported.

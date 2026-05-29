@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/logo/Logo_FancyShading.png" width="300vh">
+  <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/logo/Logo_FancyShading.png?raw=true" width="300vh">
   <h1>Tears of the Kingdom VSCode Extension</h1>
   
   <a href="https://discord.gg/vwPnX2uB8s">
@@ -13,7 +13,7 @@
 
   </a> &nbsp;
   <a href="https://github.com/TKVSC-Team/totk-vscode/releases">
-    <img src="https://img.shields.io/github/downloads/TKVSC-Team/totk-vscode/total?style=for-the-badge&labelColor=2A2C33&color=31c059&logo=data:image/svg%2bxml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pg0KPCEtLSBVcGxvYWRlZCB0bzogU1ZHIFJlcG8sIHd3dy5zdmdyZXBvLmNvbSwgR2VuZXJhdG9yOiBTVkcgUmVwbyBNaXhlciBUb29scyAtLT4NCjxzdmcgZmlsbD0iIzMxYzA1OSIgaGVpZ2h0PSI4MDBweCIgd2lkdGg9IjgwMHB4IiB2ZXJzaW9uPSIxLjEiIGlkPSJDYXBhXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiDQoJIHZpZXdCb3g9IjAgMCA0NzEuMiA0NzEuMiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8Zz4NCgk8Zz4NCgkJPHBhdGggZD0iTTQ1Ny43LDIzMC4xNWMtNy41LDAtMTMuNSw2LTEzLjUsMTMuNXYxMjIuOGMwLDMzLjQtMjcuMiw2MC41LTYwLjUsNjAuNUg4Ny41Yy0zMy40LDAtNjAuNS0yNy4yLTYwLjUtNjAuNXYtMTI0LjgNCgkJCWMwLTcuNS02LTEzLjUtMTMuNS0xMy41cy0xMy41LDYtMTMuNSwxMy41djEyNC44YzAsNDguMywzOS4zLDg3LjUsODcuNSw4Ny41aDI5Ni4yYzQ4LjMsMCw4Ny41LTM5LjMsODcuNS04Ny41di0xMjIuOA0KCQkJQzQ3MS4yLDIzNi4yNSw0NjUuMiwyMzAuMTUsNDU3LjcsMjMwLjE1eiIvPg0KCQk8cGF0aCBkPSJNMjI2LjEsMzQ2Ljc1YzIuNiwyLjYsNi4xLDQsOS41LDRzNi45LTEuMyw5LjUtNGw4NS44LTg1LjhjNS4zLTUuMyw1LjMtMTMuOCwwLTE5LjFjLTUuMy01LjMtMTMuOC01LjMtMTkuMSwwbC02Mi43LDYyLjgNCgkJCVYzMC43NWMwLTcuNS02LTEzLjUtMTMuNS0xMy41cy0xMy41LDYtMTMuNSwxMy41djI3My45bC02Mi44LTYyLjhjLTUuMy01LjMtMTMuOC01LjMtMTkuMSwwYy01LjMsNS4zLTUuMywxMy44LDAsMTkuMQ0KCQkJTDIyNi4xLDM0Ni43NXoiLz4NCgk8L2c+DQo8L2c+DQo8L3N2Zz4=" alt="Downloads"/>
+    <img src="https://img.shields.io/github/downloads/TKVSC-Team/totk-vscode/total?style=for-the-badge&labelColor=2A2C33&color=31c059&logo=data:image/svg%2bxml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pg0KPCEtLSBVcGxvYWRlZCB0bzogU1ZHIFJlcG8sIHd3dy5zdmdyZXBvLmNvbSwgR2VuZXJhdG9yOiBTVkcgUmVwbyBNaXhlciBUb29scyAtLT4NCjxzdmcgZmlsbD0iIzMxYzA1OSIgaGVpZ2h0PSI4MDBweCIgd2lkdGg9IjgwMHB4IiB2ZXJzaW9uPSIxLjEiIGlkPSJDYXBhXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiDQoJIHZpZXdCb3g9IjAgMCA0NzEuMiA0NzEuMiIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8Zz4NCgk8Zz4NCgkJPHBhdGggZD0iTTQ1Ny43LDIzMC4xNWMtNy41LDAtMTMuNSw2LTEzLjUsMTMuNXYxMjIuOGMwLDMzLjQtMjcuMiw2MC41LTYwLjUsNjAuNUg4Ny41Yy0zMy40LDAtNjAuNS0yNy4yLTYwLjUtNjAuNXYtMTI0LjgNCgkJCWMwLTcuNS02LTEzLjUtMTMuNS0xMy41cy0xMy41LDYtMTMuNSwxMy41djEyNC44YzAsNDguMywzOS4zLDg3LjUsODcuNSw4Ny41aDI5Ni4yYzQ4LjMsMCw4Ny41LTM5LjMsODcuNS04Ny41di0xMjIuOA0KCQkJQzQ3MS4yLDIzNi4yNSw0NjUuMiwyMzAuMTUsNDU3LjcsMjMwLjE1eiIvPg0KCQk8cGF0aCBkPSJNMjI2LjEsMzQ2Ljc1YzIuNiwyLjYsNi4xLDQsOS41LDRzNi45LTEuMyw5LjUtNGw4NS44LTg1LjhjNS4zLTUuMyw1LjMtMTMuOCwwLTE5LjFjLTUuMy01LjMtMTMuOC01LjMtMTkuMSwwbC02Mi43LDYyLjgNCgkJCVYzMC43NWMwLTcuNS02LTEzLjUtMTMuNS0xMy41cy0xMy41LDYtMTMuNSwxMy41djI3My45bC02Mi44LTYyLjhjLTUuMy01LjMtMTMuOC01LjMtMTkuMSwwYy01LjMsNS4zLTUuMywxMy44LDAsMTkuMQ0KCQkJTDIyNi4xLDM0Ni43NXoiLz4NCgk8L2c+DQo8L2c+DQo8L3N2Zz4=&cache=1" alt="Downloads"/>
   </a>
 </div>
 
@@ -27,10 +27,13 @@ Our core design philosophy creating this extension is **centralization of toolin
 
 **TKVSC** GameBanana page: https://gamebanana.com/tools/22893
 
+## DISCLAIMER
+**WE ARE NOT RESPONSIBLE IF YOUR MOD BREAKS. THIS TOOL IS IN ACTIVE BETA AND THINGS WILL BREAK. MAKE FREQUENT BACKUPS**
+
 ## Features
 Preview and edit subfiles of SARC and BNTX archives
 
- <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/SARC_Edit.png" width="720vh">
+ <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/SARC_Edit.png?raw=true" width="720vh">
 
 ### Supported Filetypes 
 
@@ -48,11 +51,11 @@ Preview and edit subfiles of SARC and BNTX archives
 
 ### Activity Bar Tabs
 
- <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/ActivityBarGuide.png" width="400vh">
+ <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/ActivityBarGuide.png?raw=true" width="400vh">
 
 
 **Your Mods**
-- Add the current folder open in VS Code to a list of Project Folders.
+- Add the current folder open in VS Code to a list of Project Folders
 
 **TOTK Dump**
 - Browse your dump of TOTK in Read-Only mode. Right click to add a file to the correct romfs path within a Project Folder of your choosing
@@ -60,13 +63,14 @@ Preview and edit subfiles of SARC and BNTX archives
 ### Additional capabilities:
 
 - Archives within archives (e.g. a `.sarc` inside a `.pack`) can be browsed and edited
+- Search for romfs contents, including filenames inside of SARCs
 - Right-click a file within an archive to export it to a Project Folder.
 - File templates: Rather than the typical method of copying, pasting, and wiping an existing file to make a new file of the same format, TKVSC can create empty files of formats supported by the editor.
 - Preview `.bntx` subfiles and `.txtg` files as PNGs
 - Visual editor for [TKMM](https://tkmm.org) `.tkproj` files
 - For files TKVSC does not support, such as `.bfres`, the user can choose external programs to open them in by default (separate from similar features in the OS).
 
- <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/tkproj_Edit.png" width="800vh">
+ <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/graphics/Promo/tkproj_Edit.png?raw=true" width="800vh">
 
 ## Canonical Path Saving
 
@@ -84,7 +88,8 @@ To demonstrate with a direct comparison, modifying the defense of every level of
 - BFRES Support (Preview, Editing.)
 - Audio Support (BARS, BWAV.)
 - Actor Tooling (Automating the process as much as possible.)
-- <sub></sup>PTCL/ELink support is being researched but not confirmed. This is uncharted territory.</sup></sub>
+- Full romfs file content string searching
+- <sub></sup>PTCL/Effect support is being researched but not confirmed. This is uncharted territory.</sup></sub>
 
 ## Setup
 
