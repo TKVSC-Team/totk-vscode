@@ -500,6 +500,11 @@
           "default": "yaml",
           "markdownDescription": "Format to use for displaying Tag.Product.rstbl.byml files (JSON or YAML)."
         },
+        "totk-editor.bymlInlineContainerMaxCount": {
+          "type": "integer",
+          "default": 1,
+          "markdownDescription": "The maximum number of child nodes allowed in a list/array or map/hash for it to still be formatted as an inline container (e.g. `[1]` or `{a: 1}`)."
+        },
         "totk-editor.extraAampExtensions": {
           "type": "array",
           "items": {

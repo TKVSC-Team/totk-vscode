@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: totk-vscode-python
+Version: 0.0.1b1
+Summary: Python scripts for TOTK VSCode extension
+Requires-Python: ~=3.12
+License-File: LICENSE
+Requires-Dist: oead>=1.2.9.post4
+Requires-Dist: zstandard>=0.22.0
+Requires-Dist: mmh3>=4.0.0
+Requires-Dist: Pillow>=10.0.0
+Requires-Dist: texture2ddecoder>=1.0.4
+Requires-Dist: PyYAML>=6.0
+Provides-Extra: dev
+Requires-Dist: ruff>=0.3.0; extra == "dev"
+Dynamic: license-file

@@ -1,0 +1,9 @@
+oead>=1.2.9.post4
+zstandard>=0.22.0
+mmh3>=4.0.0
+Pillow>=10.0.0
+texture2ddecoder>=1.0.4
+PyYAML>=6.0
+
+[dev]
+ruff>=0.3.0

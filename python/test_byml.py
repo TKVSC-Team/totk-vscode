@@ -3,9 +3,9 @@ from byml_editor_format import to_editor_text
 
 byml_doc = oead.byml.Hash(
     {
-        "SystemUserParamCount": 0,
+        "SystemUserParamCount": oead.S32(0),
         "Strings": oead.byml.Array(["", "Alpha", "AlwaysDisplayDistance"]),
-        "FloatVal": 1.0,
+        "FloatVal": oead.F32(1.0),
     }
 )
 
