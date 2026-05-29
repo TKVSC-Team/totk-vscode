@@ -1,6 +1,6 @@
 # totk-vscode [TKVSC]
 
-TKVSC is a Visual Studio Code extension for editing and browsing **Tears of the Kingdom** (**TotK**) game files.
+TKVSC is a Visual Studio Code extension for editing and browsing **Tears of the Kingdom** (**TOTK**) game files.
 
 ## Features
 
@@ -26,8 +26,8 @@ Preview and edit subfiles of SARC and BNTX archives
 **Your Mods**
 - Add the current folder open in VS Code to a list of Project Folders.
 
-**TotK Dump**
-- Browse your dump of TotK in Read-Only mode. Right click to add a file to the correct romfs path within a Project Folder of your choosing
+**TOTK Dump**
+- Browse your dump of TOTK in Read-Only mode. Right click to add a file to the correct romfs path within a Project Folder of your choosing
 
 ### Additional capabilities:
 
@@ -44,7 +44,7 @@ Preview and edit subfiles of SARC and BNTX archives
 * [Python 3.12](https://www.python.org/downloads/release/python-31213/)
 * Node.js
 * Python 3.12-venv (on Linux)
-* Valid TotK dump
+* Valid TOTK dump
 
 ### Steps
 1. Install the extension (VSIX).
@@ -99,5 +99,5 @@ py -3.12 -m pip install -r requirements.txt
 **KillzXGaming**: [Switch Toolbox](https://github.com/KillzXGaming/Switch-Toolbox) - image handling referenced\
 **Arch Leaders**: [NX Editor](https://github.com/NX-Editor/NxEditor) - text formatting referenced\
 **SolidLink**: [Totkbits](https://github.com/SolidLink95/TotkBits) - Tag.Product and text formatting referenced\
-**AeonSake**: [MSBT Editor](https://gitlab.com/AeonSake/msbt-editor) - TotK Config included\
+**AeonSake**: [MSBT Editor](https://gitlab.com/AeonSake/msbt-editor) - TOTK Config included\
 **P1gyy**: [pymsbt fork](https://github.com/TKVSC-Team/pymsbt) integrated into codebase

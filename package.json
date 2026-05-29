@@ -3,7 +3,7 @@
   "icon": "icons/ExtensionIcon.png",
   "publisher": "totk-editor",
   "displayName": "totk-vscode",
-  "description": "Edit various TotK formats natively in VSCode",
+  "description": "Edit various TOTK formats natively in VSCode",
   "version": "0.0.1",
   "repository": {
     "type": "git",

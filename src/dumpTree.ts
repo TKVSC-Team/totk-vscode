@@ -503,7 +503,7 @@ export function registerGameDumpTree(
                 );
                 if (entries.length === 0) {
                     void vscode.window.showWarningMessage(
-                        'Select one or more files in TotK Dump first.',
+                        'Select one or more files in TOTK Dump first.',
                     );
                     return;
                 }

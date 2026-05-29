@@ -1,7 +1,7 @@
 # TKVSC Settings
 
 ## RomFS Dump Path
-The absolute path to your TotK Dump's romfs folder (the folder does not need to be named romfs).
+The absolute path to your TOTK Dump's romfs folder (the folder does not need to be named romfs).
 
 For example: `C:\Users\Aster\Zelda\TOTK Dumps\140\romfs`
 
@@ -23,4 +23,4 @@ Canonical path prefixes in this section are excluded from the canonical sync pro
 Many `.bgyml` files within archives have a more detailed extension before them. This setting checks for strings at the end of a canonical path, such as `.game__pouchcontent__DyeColorParam.bgyml` for the canonical path `GameParameter\DyeColorParam\Orange.game__pouchcontent__DyeColorParam.bgyml`.
 
 ## Additional AAMP Extensions
-TotK has many custom extensions that are actually just AAMP files. We did our best to label the known formats, however if you come across an AAMP file that the editor won't open, add its extensin here (e.g. `.baglblm`) and let us know in the TKVSC Discord server.
+TOTK has many custom extensions that are actually just AAMP files. We did our best to label the known formats, however if you come across an AAMP file that the editor won't open, add its extensin here (e.g. `.baglblm`) and let us know in the TKVSC Discord server.
