@@ -104,6 +104,7 @@ function getBridgeEnv(): NodeJS.ProcessEnv {
         TOTK_EDITOR_ROMFS: romfsPath,
         TOTK_TAG_PRODUCT_FORMAT: config.get<string>('tagProductFormat', 'json'),
         TOTK_EXTRA_AAMP_EXTS: extraAamp.map((ext) => ext.replace(/^\./, '')).join(','),
+        TOTK_BYML_INLINE_CONTAINER_MAX_COUNT: String(config.get<number>('bymlInlineContainerMaxCount', 1)),
     };
 }
 
