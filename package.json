@@ -334,11 +334,13 @@
         {
           "id": "totk-editor.gameDumpSearch",
           "name": "Search",
-          "type": "webview"
+          "type": "webview",
+          "initialSize": 1
         },
         {
           "id": "totk-editor.gameDump",
-          "name": "RomFS"
+          "name": "RomFS",
+          "initialSize": 15
         }
       ]
     },
