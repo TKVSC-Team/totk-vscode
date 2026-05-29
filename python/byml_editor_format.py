@@ -1,6 +1,7 @@
 """Format oead BYML documents for editor display."""
 
 import os
+
 import oead
 
 _MAX_COUNT = int(os.environ.get("TOTK_BYML_INLINE_CONTAINER_MAX_COUNT", "1"))
