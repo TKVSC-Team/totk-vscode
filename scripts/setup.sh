@@ -71,7 +71,7 @@ fi
 
 PIP="$VENV_DIR/bin/pip"
 echo "  Installing Python dependencies"
-"$PIP" install -r "$ROOT/requirements.txt" --quiet
+"$PIP" install "$ROOT" --quiet
 
 # ── 4. Compile ─────────────────────────────────────────────────────
 echo ""

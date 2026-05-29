@@ -238,7 +238,7 @@ def _bc4_to_grayscale(bgra: bytes, pixel_count: int) -> bytes:
 def _bc5_to_normal(bgra: bytes, pixel_count: int) -> bytes:
     """BC5 decodes to RG channels. Show as normal-map style RGB."""
     n = min(pixel_count, len(bgra) // 4)
-    b = bgra[0:n*4:4]
+    bgra[0:n*4:4]
     g = bgra[1:n*4:4]
     r = bgra[2:n*4:4]
     out = bytearray(pixel_count * 4)

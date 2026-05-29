@@ -161,7 +161,7 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
 
         pitch = 0
         if tile_mode == 1 and width > 0:
-            bpp = (format_id >> 8) & 0xFF
+            (format_id >> 8) & 0xFF
             fmt_bpp_lookup = {
                 0x01: 1, 0x02: 1, 0x03: 2, 0x04: 2, 0x05: 2, 0x06: 2,
                 0x07: 2, 0x08: 2, 0x09: 2, 0x0B: 4, 0x0C: 4, 0x0E: 4,

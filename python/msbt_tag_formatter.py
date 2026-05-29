@@ -23,7 +23,7 @@ def _decode_str_args_block(data: bytes, count: int) -> list[str]:
     results: list[str] = []
     ci = 0  # character index
 
-    for arg_idx in range(count):
+    for _arg_idx in range(count):
         if ci >= len(chars):
             results.append('')
             continue

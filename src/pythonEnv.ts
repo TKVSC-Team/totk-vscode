@@ -23,8 +23,8 @@ function getVenvPython(venvDir: string): string {
         : path.join(venvDir, 'bin', 'python');
 }
 
-function readRequirementsHash(requirementsPath: string): string {
-    return crypto.createHash('sha256').update(fs.readFileSync(requirementsPath)).digest('hex');
+function readPyProjectHash(pyprojectPath: string): string {
+    return crypto.createHash('sha256').update(fs.readFileSync(pyprojectPath)).digest('hex');
 }
 
 function runQuiet(launcher: PythonLauncher, args: string[]): void {
@@ -375,27 +375,27 @@ function createVenv(base: PythonLauncher, venvDir: string): void {
     runQuiet(base, ['-m', 'venv', venvDir]);
 }
 
-function installRequirements(venvPython: string, requirementsPath: string): void {
+function installRequirements(venvPython: string, extensionPath: string): void {
     execFileSync(venvPython, ['-m', 'pip', 'install', '--upgrade', 'pip'], {
         stdio: 'pipe',
         timeout: 300_000,
     });
-    execFileSync(venvPython, ['-m', 'pip', 'install', '-r', requirementsPath], {
+    execFileSync(venvPython, ['-m', 'pip', 'install', extensionPath], {
         stdio: 'pipe',
         timeout: 600_000,
     });
 }
 
 async function bootstrapPython(context: vscode.ExtensionContext): Promise<string | undefined> {
-    const requirementsPath = path.join(context.extensionPath, 'requirements.txt');
-    if (!fs.existsSync(requirementsPath)) {
-        void vscode.window.showErrorMessage('TOTK Editor: requirements.txt is missing from the extension package.');
+    const pyprojectPath = path.join(context.extensionPath, 'pyproject.toml');
+    if (!fs.existsSync(pyprojectPath)) {
+        void vscode.window.showErrorMessage('TOTK Editor: pyproject.toml is missing from the extension package.');
         return undefined;
     }
 
     const vendorPymsbtPath = path.join(context.extensionPath, 'vendor', 'pymsbt');
 
-    const requirementsHash = readRequirementsHash(requirementsPath);
+    const requirementsHash = readPyProjectHash(pyprojectPath);
     const storageDir = context.globalStorageUri.fsPath;
     const venvDir = path.join(storageDir, VENV_DIR_NAME);
     const venvPython = getVenvPython(venvDir);
@@ -427,7 +427,7 @@ async function bootstrapPython(context: vscode.ExtensionContext): Promise<string
             }
 
             createVenv(basePython, venvDir);
-            installRequirements(venvPython, requirementsPath);
+            installRequirements(venvPython, context.extensionPath);
 
             if (!verifyVenvPython(venvPython, vendorPymsbtPath)) {
                 throw new Error('Python packages installed but import check failed (oead / zstandard / vendor/pymsbt).');

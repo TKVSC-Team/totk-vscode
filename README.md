@@ -106,7 +106,7 @@ Press F5 to launch the Extension Development Host. The dev host uses the same au
 Manual Python setup (optional):
 
 ```bash
-py -3.12 -m pip install -r requirements.txt
+py -3.12 -m pip install .
 ```
 
 ## Credits
