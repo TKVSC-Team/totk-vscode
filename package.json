@@ -1,17 +1,17 @@
 {
   "name": "totk-vscode",
   "icon": "icons/ExtensionIcon.png",
-  "publisher": "totk-editor",
-  "displayName": "totk-vscode",
-  "description": "Edit various TOTK formats natively in VSCode",
-  "version": "0.0.1",
+  "publisher": "TKVSC-Team",
+  "displayName": "TKVSC",
+  "description": "Canonically Amazing",
+  "version": "0.0.1-beta",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Mindstormman06/totk-vscode.git"
+    "url": "https://github.com/TKVSC-Team/totk-vscode"
   },
-  "homepage": "https://github.com/Mindstormman06/totk-vscode#readme",
+  "homepage": "https://discord.gg/vwPnX2uB8s",
   "bugs": {
-    "url": "https://github.com/Mindstormman06/totk-vscode/issues"
+    "url": "https://github.com/TKVSC-Team/totk-vscode/issues"
   },
   "engines": {
     "vscode": "^1.120.0"
