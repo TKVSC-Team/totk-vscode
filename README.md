@@ -2,6 +2,9 @@
 
 TKVSC is a Visual Studio Code extension for editing and browsing **Tears of the Kingdom** (**TOTK**) game files.
 
+TKVSC GameBanana page: https://gamebanana.com/tools/22893\
+TKVSC Discord server:  https://discord.gg/vwPnX2uB8s
+
 ## Features
 
 
@@ -101,3 +104,4 @@ py -3.12 -m pip install -r requirements.txt
 **SolidLink**: [Totkbits](https://github.com/SolidLink95/TotkBits) - Tag.Product and text formatting referenced\
 **AeonSake**: [MSBT Editor](https://gitlab.com/AeonSake/msbt-editor) - TOTK Config included\
 **P1gyy**: [pymsbt fork](https://github.com/TKVSC-Team/pymsbt) integrated into codebase
+
