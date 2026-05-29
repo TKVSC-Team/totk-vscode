@@ -60,6 +60,7 @@ Preview and edit subfiles of SARC and BNTX archives
 ### Additional capabilities:
 
 - Archives within archives (e.g. a `.sarc` inside a `.pack`) can be browsed and edited
+- Search for romfs contents, including filenames inside of SARCs
 - Right-click a file within an archive to export it to a Project Folder.
 - File templates: Rather than the typical method of copying, pasting, and wiping an existing file to make a new file of the same format, TKVSC can create empty files of formats supported by the editor.
 - Preview `.bntx` subfiles and `.txtg` files as PNGs
@@ -84,7 +85,8 @@ To demonstrate with a direct comparison, modifying the defense of every level of
 - BFRES Support (Preview, Editing.)
 - Audio Support (BARS, BWAV.)
 - Actor Tooling (Automating the process as much as possible.)
-- <sub></sup>PTCL/ELink support is being researched but not confirmed. This is uncharted territory.</sup></sub>
+- Full romfs file content string searching
+- <sub></sup>PTCL/Effect support is being researched but not confirmed. This is uncharted territory.</sup></sub>
 
 ## Setup
 
