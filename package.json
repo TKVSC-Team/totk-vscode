@@ -218,7 +218,7 @@
       },
       {
         "command": "totk-editor.addDumpToProject",
-        "title": "TOTK: Add to Project…"
+        "title": "Add to Project…"
       },
       {
         "command": "totk-editor.configureFilteringRules",
@@ -226,39 +226,39 @@
       },
       {
         "command": "totk-editor.archiveDelete",
-        "title": "TOTK: Delete"
+        "title": "Delete"
       },
       {
         "command": "totk-editor.archiveRename",
-        "title": "TOTK: Rename"
+        "title": "Rename"
       },
       {
         "command": "totk-editor.archiveNewFile",
-        "title": "TOTK: New File"
+        "title": "New File"
       },
       {
         "command": "totk-editor.archiveNewFolder",
-        "title": "TOTK: New Folder"
+        "title": "New Folder"
       },
       {
         "command": "totk-editor.archiveCopy",
-        "title": "TOTK: Copy"
+        "title": "Copy"
       },
       {
         "command": "totk-editor.archiveCut",
-        "title": "TOTK: Cut"
+        "title": "Cut"
       },
       {
         "command": "totk-editor.archivePaste",
-        "title": "TOTK: Paste"
+        "title": "Paste"
       },
       {
         "command": "totk-editor.archiveExport",
-        "title": "TOTK: Export..."
+        "title": "Export..."
       },
       {
         "command": "totk-editor.dumpExport",
-        "title": "TOTK: Export..."
+        "title": "Export..."
       },
       {
         "command": "totk-editor.exportYaml",

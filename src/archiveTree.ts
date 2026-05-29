@@ -28,6 +28,7 @@ export class ArchiveTreeItem extends vscode.TreeItem {
     ) {
         super(entryName, collapsibleState);
         this.resourceUri = resourceUri;
+        this.id = resourceUri.toString();
         this.contextValue =
             options?.contextValue ?? (options?.isRoot ? 'archiveRoot' : undefined);
         if (options?.isRoot) {

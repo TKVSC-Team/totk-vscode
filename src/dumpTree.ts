@@ -29,6 +29,7 @@ export class DumpTreeItem extends vscode.TreeItem {
     ) {
         super(entryName, collapsibleState);
         this.resourceUri = resourceUri;
+        this.id = resourceUri.toString();
         this.contextValue = contextValue;
 
         if (collapsibleState === vscode.TreeItemCollapsibleState.None) {
