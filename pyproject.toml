@@ -12,6 +12,9 @@ dependencies = [
     "PyYAML>=6.0"
 ]
 
+[tool.setuptools]
+packages = []
+
 [project.optional-dependencies]
 dev = [
     "ruff>=0.3.0",
