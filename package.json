@@ -788,7 +788,7 @@
     "eslint": "^9.39.3",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.60.0"
   },
   "dependencies": {
     "sql.js": "^1.14.1"
