@@ -756,6 +756,7 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",
+    "fix": "eslint src --fix && python -m ruff check --fix && python -m ruff format",
     "test": "vscode-test"
   },
   "devDependencies": {
