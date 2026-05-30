@@ -152,6 +152,9 @@ py -3.12 -m pip install .
 **The5thTear** - Developer, Research\
 **Aster** - Graphics, Documentation
 
+### Contributors
+**Clonephaze** - [GitHub Template Refactor](https://github.com/TKVSC-Team/totk-vscode/pull/62)
+
 ### Third-Parties
 **dt13245**: [ASB fork](https://github.com/TKVSC-Team/asb), [AINB fork](https://github.com/TKVSC-Team/AINB), and [XLink2](https://github.com/dt-12345/xlink2) binaries integrated into codebase\
 **KillzXGaming**: [Switch Toolbox](https://github.com/KillzXGaming/Switch-Toolbox) - image handling referenced\
