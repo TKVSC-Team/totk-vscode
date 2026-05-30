@@ -127,25 +127,9 @@ npm run package:vsix
 That produces `totk-vscode-0.0.1.vsix` (version comes from `package.json`).
 
 
-## Development
-
 ### Contributing:
-We are an open project, and if there are any features you'd like to see, or issues you come across: feel free to make a PR!
 
-### Getting Started:
-
-```bash
-npm install
-npm run compile
-```
-
-Press F5 to launch the Extension Development Host. The dev host uses the same auto-setup logic as production.
-
-Manual Python setup (optional):
-
-```bash
-py -3.12 -m pip install .
-```
+See: [CONTRIBUTING.md](./.github/CONTRIBUTING.md)
 
 ## Credits
 ### TKVSC Team
