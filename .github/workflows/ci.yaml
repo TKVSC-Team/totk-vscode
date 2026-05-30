@@ -6,8 +6,18 @@ env:
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - 'graphics/**'
+      - 'docs/**'
+      - 'LICENSE'
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - '**.md'
+      - 'graphics/**'
+      - 'docs/**'
+      - 'LICENSE'
 
 jobs:
   build-and-test:
