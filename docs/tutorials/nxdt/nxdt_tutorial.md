@@ -30,7 +30,7 @@ It is assumed in this tutorial that you already have a modded Nintendo Switch sy
 2. Connect to the MicroSD card of your modded Nintendo Switch either directly or using Hekate's USB Mass Storage feature
     * To use USB Mass Storage, navigate to the `Tools` tab, then select `USB Tools`, then `SD Card` as shown in the images below
 
-        <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/docs/tutorials/nxdt/nxdt_hekate_tools.bmp" alt="Screenshot of the Tools tab in Hekate" width="80%"/>
+        <img src="https://raw.githubusercontent.com/TKVSC-Team/totk-vscode/refs/heads/main/docs/tutorials/nxdt/nxdt_hekate_tools.bmp" alt="Screenshot of the Tools tab in Hekate" width="80%"/>
 3. Move `nxdt_rw_poc.nro` into the `switch\` folder located at the root of the MicroSD Card
 
 #### Moving Keys and Firmware to PC
@@ -69,13 +69,13 @@ It is assumed in this tutorial that you already have a modded Nintendo Switch sy
 
 On your modded Nintendo Switch, navigate to the Homebrew Menu by holding `R` on your controller while launching any game. Navigate to `nxdt_rw_poc` as shown below and launch it.
 
-<img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/docs/tutorials/nxdt/nxdt_homebrewmenu.jpg" alt="Homebrew Menu screenshot with nxdt_rw_poc selected" width="80%"/> 
+<img src="https://raw.githubusercontent.com/TKVSC-Team/totk-vscode/refs/heads/main/docs/tutorials/nxdt/nxdt_homebrewmenu.jpg" alt="Homebrew Menu screenshot with nxdt_rw_poc selected" width="80%"/> 
 
 
 
 You should be presented with a screen similar to the one below:
 
-<img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/docs/tutorials/nxdt/nxdt_nxdt_main.jpg" alt="Main menu of NX Dump Tool" width="80%"/>
+<img src="https://raw.githubusercontent.com/TKVSC-Team/totk-vscode/refs/heads/main/docs/tutorials/nxdt/nxdt_nxdt_main.jpg" alt="Main menu of NX Dump Tool" width="80%"/>
 
 Depending on what you want to dump, you will either select `gamecard menu`, `user titles menu`, or possibly both. The `gamecard menu` is for dumping from a cartridge. This will include a `.xci` file containing the basegame and any bundled updates and/or DLC. The `user titles` menu is for anything digitally installed to your system. This will result in you performing multiple dumps to extract the basegame, installed update, DLC, and DLC update where applicable. 
 
@@ -87,7 +87,7 @@ Regardless of what dump you're making, ensure that on your PC you have the NX Du
 1. Choose `gamecard menu`
 2. Ensure that `output storage` is set to `usb host (pc)` as shown below
 
-    <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/docs/tutorials/nxdt/nxdt_nxdt_gamecard.jpg" alt="MaDump configuration screen for game cards within NX Dump Tool" width="90%">
+    <img src="https://raw.githubusercontent.com/TKVSC-Team/totk-vscode/refs/heads/main/docs/tutorials/nxdt/nxdt_nxdt_gamecard.jpg" alt="MaDump configuration screen for game cards within NX Dump Tool" width="90%">
 
 3. Select `dump gamecard image (xci)`
 
@@ -100,7 +100,7 @@ Wait for the process to complete. Both the Nintendo Switch and Host Client will 
 4. Choose the content type you'd like to dump. You will need at *least* the `base application`, and it is recommended to dump the latest update as well, as the update only contains the modified files relative to the basegame, not the full game
 5. Ensure that `output storage` is seto to `usb host (pc)` as shown below
 
-    <img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/docs/tutorials/nxdt/nxdt_nxdt_usertitles_dumpscreen.jpg" alt="Dump configuration screen for user titles within NX Dump Tool" width="90%">
+    <img src="https://raw.githubusercontent.com/TKVSC-Team/totk-vscode/refs/heads/main/docs/tutorials/nxdt/nxdt_nxdt_usertitles_dumpscreen.jpg" alt="Dump configuration screen for user titles within NX Dump Tool" width="90%">
 
 6. Select `start nsp dump`
 
@@ -116,7 +116,7 @@ The amazing team behind Ryubing has already created a [comprehensive setup guide
 
 At this point, you should see your games in Ryubing. Right click on a game and hover over `Extract Data`. For all games, you will see the `ExeFS`, `RomFS`, and `Logo` options. For games that you have installed DLC for, you will also see the `DLC RomFS` option. See the below image for reference:
 
-<img src="https://github.com/TKVSC-Team/totk-vscode/blob/main/docs/tutorials/nxdt/nxdt_ryubing_extractdata.png" alt="Context menu on Ryubing's main screen for Breath of the Wild. Extract Data is being hovered over, and showing the four aforementioned options" width="80%">
+<img src="https://raw.githubusercontent.com/TKVSC-Team/totk-vscode/refs/heads/main/docs/tutorials/nxdt/nxdt_ryubing_extractdata.png" alt="Context menu on Ryubing's main screen for Breath of the Wild. Extract Data is being hovered over, and showing the four aforementioned options" width="80%">
 
 Regardless of what type of mods you make, you should create a RomFS dump. For creating mods that involve writing and compiling code, you will also need to create an ExeFS dump. After selecting the type of dump you'd like to make, create a folder for the files to go in. Each dump type should go in a separate empty folder.
 
