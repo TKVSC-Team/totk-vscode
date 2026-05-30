@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import initSqlJs, { Database } from 'sql.js';
+import { isArchiveFile } from './archives';
 
 let db: Database | undefined;
 let loadedDbPath: string | undefined;
@@ -75,8 +76,9 @@ export async function queryRomfsIndex(
     dbPath: string,
     romfsPath: string,
     needle: string,
+    archiveNeedle: string = '',
 ): Promise<RomfsIndexResult | undefined> {
-    if (!needle) {
+    if (!needle && !archiveNeedle) {
         return undefined;
     }
 
@@ -93,8 +95,9 @@ export async function queryRomfsIndex(
 
     const files = new Set<string>();
     const dirs = new Set<string>();
+    const sqlPattern = needle ? `%${needle}%` : `%${archiveNeedle}%`;
     const stmt = database.prepare('SELECT path FROM files WHERE lower(path) LIKE :pattern');
-    stmt.bind({ ':pattern': `%${needle}%` });
+    stmt.bind({ ':pattern': sqlPattern });
 
     while (stmt.step()) {
         const row = stmt.get();
@@ -102,8 +105,16 @@ export async function queryRomfsIndex(
         const lowerPath = filePath.toLowerCase();
 
         const fileName = (filePath.split('/').pop() ?? '').toLowerCase();
-        if (!fileName.includes(needle)) {
+        if (needle && !fileName.includes(needle)) {
             continue;
+        }
+        if (archiveNeedle) {
+            if (!isArchiveFile(fileName)) {
+                continue;
+            }
+            if (!fileName.includes(archiveNeedle)) {
+                continue;
+            }
         }
 
         files.add(lowerPath);

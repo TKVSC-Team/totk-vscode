@@ -55,10 +55,13 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
     readonly onDidChangeSearchState = this.onDidChangeSearchStateEmitter.event;
     private filterQuery = '';
     private filterNeedle = '';
+    private archiveFilterQuery = '';
+    private archiveFilterNeedle = '';
     private indexReady = false;
     private externalIndexBuildInProgress = false;
     private externalIndexPath: string | undefined;
     private lastComputedNeedle = '';
+    private lastComputedArchiveNeedle = '';
     private visibleFileMatches = new Set<string>();
     private visibleDirectoryMatches = new Set<string>();
 
@@ -75,7 +78,23 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
         this.filterQuery = nextQuery;
         this.filterNeedle = nextNeedle;
         this.lastComputedNeedle = '';
-        if (!this.filterNeedle) {
+        this.applyFilters();
+    }
+
+    setArchiveFilterQuery(query: string): void {
+        const nextQuery = query;
+        const nextNeedle = query.trim().toLowerCase();
+        if (nextQuery === this.archiveFilterQuery && nextNeedle === this.archiveFilterNeedle) {
+            return;
+        }
+        this.archiveFilterQuery = nextQuery;
+        this.archiveFilterNeedle = nextNeedle;
+        this.lastComputedArchiveNeedle = '';
+        this.applyFilters();
+    }
+
+    private applyFilters(): void {
+        if (!this.filterNeedle && !this.archiveFilterNeedle) {
             this.visibleFileMatches.clear();
             this.visibleDirectoryMatches.clear();
             this.onDidChangeSearchStateEmitter.fire();
@@ -97,14 +116,22 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
         return this.filterQuery;
     }
 
+    clearArchiveFilterQuery(): void {
+        this.setArchiveFilterQuery('');
+    }
+
+    getArchiveFilterQuery(): string {
+        return this.archiveFilterQuery;
+    }
+
     getSearchStatus(): string {
-        if (!this.filterNeedle) {
+        if (!this.filterNeedle && !this.archiveFilterNeedle) {
             return '';
         }
         if (this.externalIndexBuildInProgress) {
             return 'Building search index...';
         }
-        if (!this.indexReady || this.lastComputedNeedle !== this.filterNeedle) {
+        if (!this.indexReady || this.lastComputedNeedle !== this.filterNeedle || this.lastComputedArchiveNeedle !== this.archiveFilterNeedle) {
             return 'Searching...';
         }
         return `${this.visibleFileMatches.size.toLocaleString()} match(es)`;
@@ -114,10 +141,11 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
         this.indexReady = false;
         this.externalIndexBuildInProgress = false;
         this.lastComputedNeedle = '';
+        this.lastComputedArchiveNeedle = '';
         this.visibleFileMatches.clear();
         this.visibleDirectoryMatches.clear();
         invalidateRomfsIndex();
-        if (this.filterNeedle) {
+        if (this.filterNeedle || this.archiveFilterNeedle) {
             void this.recomputeFilterMatches();
         }
         this.onDidChangeSearchStateEmitter.fire();
@@ -136,8 +164,9 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
     onExternalIndexUpdated(): void {
         this.indexReady = false;
         this.lastComputedNeedle = '';
+        this.lastComputedArchiveNeedle = '';
         invalidateRomfsIndex();
-        if (this.filterNeedle) {
+        if (this.filterNeedle || this.archiveFilterNeedle) {
             void this.recomputeFilterMatches();
         }
         this.onDidChangeSearchStateEmitter.fire();
@@ -190,34 +219,56 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
         entries: [string, vscode.FileType][],
         parentUri: vscode.Uri,
     ): Promise<[string, vscode.FileType][]> {
-        if (!this.filterNeedle) {
+        if (!this.filterNeedle && !this.archiveFilterNeedle) {
             return entries;
         }
 
-        if (!this.indexReady || this.lastComputedNeedle !== this.filterNeedle) {
-            return entries.filter(([name, fileType]) =>
-                fileType === vscode.FileType.Directory || name.toLowerCase().includes(this.filterNeedle),
-            );
-        }
-
         const romfsPath = resolveRomfsPath();
-        if (!romfsPath) {
-            return [];
-        }
 
         return entries.filter(([name, fileType]) => {
             const childUri = vscode.Uri.joinPath(parentUri, name);
-            const relativeKey = toRelativeSearchKey(childUri.fsPath, romfsPath);
-            if (fileType === vscode.FileType.Directory) {
-                return this.visibleDirectoryMatches.has(relativeKey);
+            const insideArchive = isPathInsideArchive(childUri.fsPath);
+
+            if (insideArchive) {
+                if (fileType === vscode.FileType.Directory) {
+                    return true;
+                }
+                if (this.filterNeedle) {
+                    return name.toLowerCase().includes(this.filterNeedle);
+                }
+                return true;
             }
-            return this.visibleFileMatches.has(relativeKey);
+
+            if (this.indexReady && this.lastComputedNeedle === this.filterNeedle && this.lastComputedArchiveNeedle === this.archiveFilterNeedle && romfsPath) {
+                const relativeKey = toRelativeSearchKey(childUri.fsPath, romfsPath);
+                if (fileType === vscode.FileType.Directory) {
+                    if (isArchiveFile(name)) {
+                        return this.visibleFileMatches.has(relativeKey) || this.visibleDirectoryMatches.has(relativeKey);
+                    }
+                    return this.visibleDirectoryMatches.has(relativeKey);
+                }
+                return this.visibleFileMatches.has(relativeKey);
+            }
+
+            if (fileType === vscode.FileType.Directory) {
+                return true;
+            }
+            const lowerName = name.toLowerCase();
+            if (this.filterNeedle && !lowerName.includes(this.filterNeedle)) {
+                return false;
+            }
+            if (this.archiveFilterNeedle) {
+                if (!isArchiveFile(name) || !lowerName.includes(this.archiveFilterNeedle)) {
+                    return false;
+                }
+            }
+            return true;
         });
     }
 
     private async recomputeFilterMatches(): Promise<void> {
         const romfsPath = resolveRomfsPath();
-        if (!romfsPath || !this.filterNeedle) {
+        if (!romfsPath || (!this.filterNeedle && !this.archiveFilterNeedle)) {
             return;
         }
 
@@ -227,15 +278,17 @@ export class GameDumpTreeProvider implements vscode.TreeDataProvider<DumpTreeIte
         }
 
         const needle = this.filterNeedle;
-        const result = await queryRomfsIndex(indexPath, romfsPath, needle);
+        const archiveNeedle = this.archiveFilterNeedle;
+        const result = await queryRomfsIndex(indexPath, romfsPath, needle, archiveNeedle);
 
-        if (!result || this.filterNeedle !== needle) {
+        if (!result || this.filterNeedle !== needle || this.archiveFilterNeedle !== archiveNeedle) {
             return;
         }
 
         this.visibleFileMatches = result.matchedFiles;
         this.visibleDirectoryMatches = result.matchedDirs;
         this.lastComputedNeedle = needle;
+        this.lastComputedArchiveNeedle = archiveNeedle;
         this.indexReady = true;
         this.onDidChangeSearchStateEmitter.fire();
         this.refresh();
@@ -251,21 +304,32 @@ class GameDumpSearchViewProvider implements vscode.WebviewViewProvider {
     resolveWebviewView(webviewView: vscode.WebviewView): void {
         this.view = webviewView;
         webviewView.webview.options = { enableScripts: true };
-        webviewView.webview.html = this.buildHtml(this.treeProvider.getFilterQuery());
+        webviewView.webview.html = this.buildHtml(
+            this.treeProvider.getFilterQuery(),
+            this.treeProvider.getArchiveFilterQuery()
+        );
 
-        webviewView.webview.onDidReceiveMessage((message: { type: string; query?: string }) => {
-            if (message.type === 'setQuery') {
-                const query = message.query ?? '';
+        webviewView.webview.onDidReceiveMessage((message: { type: string; query?: string; archiveQuery?: string }) => {
+            if (message.type === 'setQuery' || message.type === 'setArchiveQuery') {
                 if (this.debounceHandle) {
                     clearTimeout(this.debounceHandle);
                 }
                 this.debounceHandle = setTimeout(() => {
-                    this.treeProvider.setFilterQuery(query);
+                    if (message.query !== undefined) {
+                        this.treeProvider.setFilterQuery(message.query);
+                    }
+                    if (message.archiveQuery !== undefined) {
+                        this.treeProvider.setArchiveFilterQuery(message.archiveQuery);
+                    }
                 }, 120);
             }
             if (message.type === 'clear') {
                 this.treeProvider.clearFilterQuery();
                 this.postQuery('');
+            }
+            if (message.type === 'clearArchive') {
+                this.treeProvider.clearArchiveFilterQuery();
+                this.postArchiveQuery('');
             }
         });
     }
@@ -277,6 +341,13 @@ class GameDumpSearchViewProvider implements vscode.WebviewViewProvider {
         void this.view.webview.postMessage({ type: 'setQuery', query });
     }
 
+    postArchiveQuery(query: string): void {
+        if (!this.view) {
+            return;
+        }
+        void this.view.webview.postMessage({ type: 'setArchiveQuery', query });
+    }
+
     postStatus(status: string): void {
         if (!this.view) {
             return;
@@ -284,8 +355,9 @@ class GameDumpSearchViewProvider implements vscode.WebviewViewProvider {
         void this.view.webview.postMessage({ type: 'setStatus', status });
     }
 
-    private buildHtml(initialQuery: string): string {
+    private buildHtml(initialQuery: string, initialArchiveQuery: string): string {
         const escaped = escapeHtml(initialQuery);
+        const escapedArchive = escapeHtml(initialArchiveQuery);
         return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -303,9 +375,9 @@ class GameDumpSearchViewProvider implements vscode.WebviewViewProvider {
         display: flex;
         align-items: center;
         gap: 6px;
+        margin-bottom: 6px;
     }
     .status {
-        margin-top: 6px;
         font-size: 11px;
         color: var(--vscode-descriptionForeground);
         min-height: 14px;
@@ -346,11 +418,17 @@ class GameDumpSearchViewProvider implements vscode.WebviewViewProvider {
         <input id="q" type="text" value="${escaped}" placeholder="Filter game dump..." />
         <button id="clear" title="Clear">✕</button>
     </div>
+    <div class="row">
+        <input id="aq" type="text" value="${escapedArchive}" placeholder="Filter archives..." />
+        <button id="clearArchive" title="Clear">✕</button>
+    </div>
     <div id="status" class="status"></div>
     <script>
         const vscode = acquireVsCodeApi();
         const input = document.getElementById('q');
         const clear = document.getElementById('clear');
+        const archiveInput = document.getElementById('aq');
+        const clearArchive = document.getElementById('clearArchive');
         const status = document.getElementById('status');
 
         input.addEventListener('input', () => {
@@ -362,10 +440,22 @@ class GameDumpSearchViewProvider implements vscode.WebviewViewProvider {
             input.focus();
         });
 
+        archiveInput.addEventListener('input', () => {
+            vscode.postMessage({ type: 'setArchiveQuery', archiveQuery: archiveInput.value });
+        });
+        clearArchive.addEventListener('click', () => {
+            archiveInput.value = '';
+            vscode.postMessage({ type: 'clearArchive' });
+            archiveInput.focus();
+        });
+
         window.addEventListener('message', (event) => {
             const msg = event.data;
             if (msg?.type === 'setQuery') {
                 input.value = msg.query ?? '';
+            }
+            if (msg?.type === 'setArchiveQuery') {
+                archiveInput.value = msg.query ?? '';
             }
             if (msg?.type === 'setStatus') {
                 status.textContent = msg.status ?? '';
@@ -445,9 +535,15 @@ export function registerGameDumpTree(
     );
     const updateFilterUi = (): void => {
         const query = provider.getFilterQuery().trim();
+        const archiveQuery = provider.getArchiveFilterQuery().trim();
         const status = provider.getSearchStatus();
-        if (query) {
-            treeView.message = status ? `Search: ${query} - ${status}` : `Search: ${query}`;
+        
+        let msgParts = [];
+        if (query) msgParts.push(query);
+        if (archiveQuery) msgParts.push(`Archives: ${archiveQuery}`);
+        
+        if (msgParts.length > 0) {
+            treeView.message = status ? `Search: ${msgParts.join(', ')} - ${status}` : `Search: ${msgParts.join(', ')}`;
         } else {
             treeView.message = undefined;
         }
