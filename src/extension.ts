@@ -375,7 +375,7 @@ class SarcProvider implements vscode.FileSystemProvider {
     async readFile(uri: vscode.Uri): Promise<Uint8Array> {
         const fsPath = uri.fsPath;
 
-        if (!this.usesArchiveListing(fsPath)) {
+        if (!this.usesArchiveListing(fsPath) || (!isPathInsideArchive(fsPath) && isArchiveFile(fsPath))) {
             if (isEditableFile(fsPath)) {
                 try {
                     logger.showProcessingToast(fsPath);
@@ -395,7 +395,7 @@ class SarcProvider implements vscode.FileSystemProvider {
             const raw = fs.readFileSync(fsPath);
             this.fileContentCache.set(uri.toString(), raw);
             // For non-editable binary files opened from archive-related trees, show external-tool actions.
-            if ((uri.scheme === 'totk-dump' || uri.scheme === 'sarc') && isLikelyBinaryBuffer(raw)) {
+            if ((uri.scheme === 'totk-dump' || uri.scheme === 'sarc') && isLikelyBinaryBuffer(raw) && !isArchiveFile(fsPath)) {
                 return new TextEncoder().encode(
                     formatExternalToolPrompt(
                         fsPath,

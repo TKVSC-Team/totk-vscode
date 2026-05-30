@@ -66,7 +66,7 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
                 return [entry.name, vscode.FileType.Directory];
             }
             if (isArchiveFile(entryPath)) {
-                return [entry.name, vscode.FileType.Directory];
+                return [entry.name, vscode.FileType.File];
             }
             return [entry.name, vscode.FileType.File];
         });

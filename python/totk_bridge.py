@@ -392,13 +392,27 @@ def write_file_content(
 ):
     kind = _file_kind(logical_path)
     if kind is None:
-        kind = _file_kind(
-            logical_path,
-            read_archive_file_bytes(archive_path, logical_path, romfs_path),
-            romfs_path,
-        )
+        try:
+            orig = read_archive_file_bytes(archive_path, logical_path, romfs_path)
+        except Exception:
+            orig = None
+        kind = _file_kind(logical_path, orig, romfs_path)
+
+    def get_original_bytes():
+        try:
+            return read_archive_file_bytes(archive_path, logical_path, romfs_path)
+        except Exception:
+            import re
+            parent = Path(logical_path).parent
+            name = Path(logical_path).name
+            cleaned_name = re.sub(r'_\d+(\..+)?$', r'\1', name)
+            romfs_file_path = Path(romfs_path) / parent / cleaned_name
+            if romfs_file_path.exists() and romfs_file_path.is_file():
+                return romfs_file_path.read_bytes()
+            return b""
+
     if kind == "byml":
-        orig = read_archive_file_bytes(archive_path, logical_path, romfs_path)
+        orig = get_original_bytes()
         new_bytes = write_byml_bytes(orig, editor_text, logical_path, romfs_path)
         writer = oead.SarcWriter.from_sarc(sarc)
         writer.files[logical_path] = new_bytes
@@ -407,13 +421,13 @@ def write_file_content(
         path_check = (archive_path + "/" + logical_path).lower()
         if not any(lang in path_check for lang in ["usen", "euen", "gben"]):
             raise ValueError("Saving non-English MSBT files is not supported at this time.")
-        orig = read_archive_file_bytes(archive_path, logical_path, romfs_path)
+        orig = get_original_bytes()
         new_bytes = write_msbt_bytes(orig, editor_text, logical_path, romfs_path)
         writer = oead.SarcWriter.from_sarc(sarc)
         writer.files[logical_path] = new_bytes
         save_sarc(archive_path, writer.write()[1], is_sarc_compressed)
     elif kind == "aamp":
-        orig = read_archive_file_bytes(archive_path, logical_path, romfs_path)
+        orig = get_original_bytes()
         new_bytes = write_aamp_bytes(orig, editor_text, logical_path, romfs_path)
         writer = oead.SarcWriter.from_sarc(sarc)
         writer.files[logical_path] = new_bytes
@@ -431,7 +445,7 @@ def write_file_content(
         else:
             write_baev_disk(logical_path, editor_text, romfs_path)
     elif kind == "xlnk":
-        orig = read_archive_file_bytes(archive_path, logical_path, romfs_path)
+        orig = get_original_bytes()
         new_bytes = write_xlnk_bytes(orig, editor_text, logical_path, romfs_path)
         writer = oead.SarcWriter.from_sarc(sarc)
         writer.files[logical_path] = new_bytes

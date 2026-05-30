@@ -271,6 +271,14 @@
         "title": "Paste"
       },
       {
+        "command": "totk-editor.archiveUndo",
+        "title": "Undo"
+      },
+      {
+        "command": "totk-editor.archiveRedo",
+        "title": "Redo"
+      },
+      {
         "command": "totk-editor.archiveExport",
         "title": "Export..."
       },
@@ -424,12 +432,17 @@
         },
         {
           "command": "totk-editor.archiveCopy",
-          "when": "view == totk-editor.archives && (viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir)",
+          "when": "view == totk-editor.archives && (viewItem == archiveRoot || viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir)",
+          "group": "9_cutcopypaste@1"
+        },
+        {
+          "command": "totk-editor.archiveCopy",
+          "when": "view == totk-editor.gameDump && (viewItem == dumpFile || viewItem == dumpVirtualFile || viewItem == dumpArchive || viewItem == dumpDir)",
           "group": "9_cutcopypaste@1"
         },
         {
           "command": "totk-editor.archiveCut",
-          "when": "view == totk-editor.archives && (viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir)",
+          "when": "view == totk-editor.archives && (viewItem == archiveRoot || viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir)",
           "group": "9_cutcopypaste@2"
         },
         {
@@ -462,33 +475,65 @@
           "when": "view == totk-editor.gameDump && (viewItem == dumpFile || viewItem == dumpVirtualFile || viewItem == dumpArchive)",
           "group": "8_filter@1"
         }
+      ],
+      "explorer/context": [
+        {
+          "command": "totk-editor.archivePaste",
+          "when": "totk-editor.archiveClipboardNotEmpty",
+          "group": "9_cutcopypaste"
+        }
       ]
     },
     "keybindings": [
       {
         "command": "totk-editor.archiveDelete",
         "key": "delete",
-        "when": "totk-editor.archives.focus && !inputFocus"
+        "when": "focusedView == totk-editor.archives && !inputFocus"
       },
       {
         "command": "totk-editor.archiveRename",
         "key": "f2",
-        "when": "totk-editor.archives.focus && !inputFocus"
+        "when": "focusedView == totk-editor.archives && !inputFocus"
       },
       {
         "command": "totk-editor.archiveCopy",
         "key": "ctrl+c",
-        "when": "totk-editor.archives.focus && !inputFocus"
+        "when": "focusedView == totk-editor.archives && !inputFocus"
+      },
+      {
+        "command": "totk-editor.archiveCopy",
+        "key": "ctrl+c",
+        "when": "focusedView == totk-editor.gameDump && !inputFocus"
       },
       {
         "command": "totk-editor.archiveCut",
         "key": "ctrl+x",
-        "when": "totk-editor.archives.focus && !inputFocus"
+        "when": "focusedView == totk-editor.archives && !inputFocus"
       },
       {
         "command": "totk-editor.archivePaste",
         "key": "ctrl+v",
-        "when": "totk-editor.archives.focus && !inputFocus"
+        "when": "focusedView == totk-editor.archives && !inputFocus"
+      },
+      {
+        "command": "totk-editor.archivePaste",
+        "key": "ctrl+v",
+        "when": "explorerViewletFocus && !inputFocus && totk-editor.archiveClipboardNotEmpty"
+      },
+      {
+        "command": "totk-editor.archiveUndo",
+        "key": "ctrl+z",
+        "when": "focusedView == totk-editor.archives && !inputFocus"
+      },
+      {
+        "command": "totk-editor.archiveRedo",
+        "key": "ctrl+y",
+        "when": "focusedView == totk-editor.archives && !inputFocus"
+      },
+      {
+        "command": "totk-editor.archiveRedo",
+        "key": "ctrl+shift+z",
+        "when": "focusedView == totk-editor.archives && !inputFocus"
       }
     ],
     "configuration": {

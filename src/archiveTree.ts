@@ -96,7 +96,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
                 .sort(compareEntriesFoldersFirstKeepingArchivesMixed)
                 .map(([name, fileType]) => {
                     const childUri = vscode.Uri.joinPath(element.resourceUri, name);
-                    const isDirectory = fileType === vscode.FileType.Directory;
+                    const isDirectory = fileType === vscode.FileType.Directory || isArchiveFile(name);
                     return new ArchiveTreeItem(
                         name,
                         childUri,
