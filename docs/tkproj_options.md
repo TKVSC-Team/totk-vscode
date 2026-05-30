@@ -15,7 +15,8 @@ Mod Folder
     │   ├── Option2Name/
     │   │   └── romfs/
     │   └── Option3Name/
-    │       └── romfs/
+    │   │   └── romfs/
+    |   └── info.json
     │
     ├── OptionGroup2Name/
     │   ├── thumbnail.jpg
@@ -24,7 +25,8 @@ Mod Folder
     │   ├── Option2Name/
     │   │   └── romfs/
     │   └── Option3Name/
-    │       └── romfs/
+    │   │   └── romfs/
+    |   └── info.json
     │
     └── OptionGroup3Name/
         ├── thumbnail.jpg
@@ -33,7 +35,8 @@ Mod Folder
         ├── Option2Name/
         │   └── romfs/
         └── Option3Name/
-            └── romfs/
+    │   │   └── romfs/
+    |   └── info.json
 ```
 
 Recommended Flow:
