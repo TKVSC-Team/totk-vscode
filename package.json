@@ -212,6 +212,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "totk-editor.canonicalSyncOn",
+        "title": "Enable Canonical Sync",
+        "icon": "./icons/outline-view-active.svg"
+      },
+      {
+        "command": "totk-editor.canonicalSyncOff",
+        "title": "Enable Canonical Sync",
+        "icon": "./icons/outline-view-inactive.svg"
+      },
+      {
         "command": "totk-editor.removeArchiveRoot",
         "title": "Remove from Projects"
       },
@@ -347,7 +357,7 @@
     "viewsWelcome": [
       {
         "view": "totk-editor.archives",
-        "contents": "Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, `.bfarc`, and `.bntx` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Open Archive](command:totk-editor.openPack)\n\n[Browse Workspace Folder](command:totk-editor.addWorkspaceToArchives)\n\n[Add Projects via File Explorer](command:totk-editor.addProjectFolders)"
+        "contents": "Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, `.bfarc`, and `.bntx` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Add Projects via File Explorer](command:totk-editor.addProjectFolders)"
       },
       {
         "view": "totk-editor.gameDump",
@@ -357,13 +367,13 @@
     "menus": {
       "view/title": [
         {
-          "command": "totk-editor.openPack",
-          "when": "view == totk-editor.archives",
+          "command": "totk-editor.canonicalSyncOn",
+          "when": "view == totk-editor.archives && config.totk-editor.enableCanonicalSavePropagation",
           "group": "navigation"
         },
         {
-          "command": "totk-editor.addWorkspaceToArchives",
-          "when": "view == totk-editor.archives",
+          "command": "totk-editor.canonicalSyncOff",
+          "when": "view == totk-editor.archives && !config.totk-editor.enableCanonicalSavePropagation",
           "group": "navigation"
         },
         {

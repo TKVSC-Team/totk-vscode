@@ -1004,6 +1004,16 @@ export async function activate(context: vscode.ExtensionContext) {
             await buildCanonicalIndex(true);
             void vscode.window.showInformationMessage('TOTK Editor: Canonical path index rebuilt.');
         }),
+        vscode.commands.registerCommand('totk-editor.canonicalSyncOn', async () => {
+            const config = vscode.workspace.getConfiguration('totk-editor');
+            await config.update('enableCanonicalSavePropagation', false, vscode.ConfigurationTarget.Global);
+            void vscode.window.showInformationMessage('TOTK Editor: Canonical sync disabled.');
+        }),
+        vscode.commands.registerCommand('totk-editor.canonicalSyncOff', async () => {
+            const config = vscode.workspace.getConfiguration('totk-editor');
+            await config.update('enableCanonicalSavePropagation', true, vscode.ConfigurationTarget.Global);
+            void vscode.window.showInformationMessage('TOTK Editor: Canonical sync enabled.');
+        }),
     );
 
     const sarcProvider = new SarcProvider(bridgePath, getPython, runCanonicalPropagation);

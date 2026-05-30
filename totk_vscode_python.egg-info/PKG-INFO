@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: totk-vscode-python
-Version: 0.0.1b1
+Version: 0.0.1b2
 Summary: Python scripts for TOTK VSCode extension
 Requires-Python: ~=3.12
 License-File: LICENSE
