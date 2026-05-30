@@ -12,6 +12,7 @@ Thanks for your interest in contributing! Here's what you need to know.
 ## Before submitting a PR
 
 - Make sure the extension builds: `npm run build`
+- Run `npm run fix` to lint and format both TypeScript and Python
 - Keep changes focused — one concern per PR
 - Reference any related issue in your PR description (e.g. `Closes #123`)
 - Don't include unrelated formatting or whitespace changes
@@ -20,7 +21,7 @@ Thanks for your interest in contributing! Here's what you need to know.
 
 - TypeScript source lives in `src/`, Python scripts in `python/`
 - Follow the existing patterns in the file you're editing
-- ESLint is configured — run `npx eslint src/` to check before submitting
+- Run `npm run fix` before submitting — this runs both TypeScript and Python linting and formatting in one step
 
 ## Questions?
 
