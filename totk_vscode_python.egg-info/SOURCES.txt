@@ -1,8 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-totk_vscode_python.egg-info/PKG-INFO
-totk_vscode_python.egg-info/SOURCES.txt
-totk_vscode_python.egg-info/dependency_links.txt
-totk_vscode_python.egg-info/requires.txt
-totk_vscode_python.egg-info/top_level.txt
