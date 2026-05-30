@@ -319,6 +319,7 @@ def get_texture_metadata(bntx_data: bytes, texture_name: str) -> dict | None:
                     "formatId": f"0x{tex.format_id:04X}",
                     "useSRGB": "True" if is_srgb else "False",
                     "name": tex.name,
+                    "path": tex.path,
                     "accessFlags": _access_flags_str(tex.access_flags),
                 },
                 "misc": {

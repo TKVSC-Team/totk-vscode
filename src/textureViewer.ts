@@ -13,6 +13,9 @@ export function initTextureViewer(extUri: vscode.Uri): void {
 export function openTextureViewer(
     textureName: string,
     result: BntxTextureResult,
+    diskArchive?: string,
+    filePath?: string,
+    onSave?: (data: any) => Promise<void>
 ): void {
     const key = textureName;
     const existing = panels.get(key);
@@ -44,6 +47,18 @@ export function openTextureViewer(
             try {
                 fs.unlinkSync(result.pngPath);
             } catch { }
+        }
+    });
+
+    panel.webview.onDidReceiveMessage(async (message) => {
+        if (message.type === 'save-metadata' && onSave) {
+            try {
+                await onSave(message.data);
+                vscode.window.showInformationMessage('Texture metadata saved successfully!');
+            } catch (e) {
+                const err = e instanceof Error ? e.message : String(e);
+                vscode.window.showErrorMessage(`Failed to save metadata: ${err}`);
+            }
         }
     });
 }
@@ -159,6 +174,7 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
     .props-panel {
         flex: 1 1 auto;
         min-width: 280px;
+        max-width: 400px;
         max-height: 100vh;
         overflow-y: auto;
     }
@@ -198,6 +214,31 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
         background: var(--vscode-list-activeSelectionBackground, #094771);
         color: var(--vscode-list-activeSelectionForeground, #fff);
     }
+    .meta-input {
+        width: 100%;
+        background: var(--vscode-input-background, #3c3c3c);
+        color: var(--vscode-input-foreground, #ccc);
+        border: 1px solid var(--vscode-input-border, transparent);
+        padding: 4px;
+        border-radius: 2px;
+        box-sizing: border-box;
+    }
+    .meta-input:focus {
+        outline: 1px solid var(--vscode-focusBorder, #007acc);
+        outline-offset: -1px;
+    }
+    .save-btn {
+        background: var(--vscode-button-background, #0e639c);
+        color: var(--vscode-button-foreground, #fff);
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 2px;
+        font-weight: 500;
+    }
+    .save-btn:hover {
+        background: var(--vscode-button-hoverBackground, #1177bb);
+    }
 </style>
 </head>
 <body>
@@ -213,10 +254,14 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
             : '<div class="no-image">No preview</div>'}
     </div>
     <div class="props-panel">
+        <div style="margin-bottom: 12px; display: flex; justify-content: flex-end;">
+            <button class="save-btn" onclick="saveMetadata()">Save Changes</button>
+        </div>
         ${metaSections}
         ${errorNote}
     </div>
     <script>
+        const vscode = acquireVsCodeApi();
         let scaled = true;
         function toggleSize() {
             const img = document.getElementById('texImg');
@@ -230,6 +275,19 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
                 img.classList.remove('scaled');
                 label.textContent = 'Original (${texW}\u00d7${texH})';
             }
+        }
+        function saveMetadata() {
+            const data = {
+                red: document.getElementById('chRed')?.value,
+                green: document.getElementById('chGreen')?.value,
+                blue: document.getElementById('chBlue')?.value,
+                alpha: document.getElementById('chAlpha')?.value,
+                useSRGB: document.getElementById('useSRGB')?.checked,
+                name: document.getElementById('metaName')?.value,
+                path: document.getElementById('metaPath')?.value,
+                swizzle: parseInt(document.getElementById('metaSwizzle')?.value || "0", 10)
+            };
+            vscode.postMessage({ type: 'save-metadata', data });
         }
     </script>
 </body>
@@ -248,23 +306,30 @@ function buildSection(title: string, rows: string): string {
 }
 
 function buildChannelRows(ch: BntxChannelInfo): string {
+    const opts = ['Red', 'Green', 'Blue', 'Alpha', 'Zero', 'One'];
+    const select = (id: string, current: string) => {
+        const options = opts.map(o => `<option value="${o}" ${current === o ? 'selected' : ''}>${o}</option>`).join('');
+        return `<select id="${id}" class="meta-input">${options}</select>`;
+    };
     return [
-        row('Red Channel', ch.red),
-        row('Green Channel', ch.green),
-        row('Blue Channel', ch.blue),
-        row('Alpha Channel', ch.alpha),
+        row('Red Channel', select('chRed', ch.red)),
+        row('Green Channel', select('chGreen', ch.green)),
+        row('Blue Channel', select('chBlue', ch.blue)),
+        row('Alpha Channel', select('chAlpha', ch.alpha)),
     ].join('');
 }
 
 function buildImageInfoRows(info: BntxImageInfo): string {
+    const srgbChecked = info.useSRGB === 'True' ? 'checked' : '';
+    
     return [
         row('Width', String(info.width)),
         row('Height', String(info.height)),
         row('Mip Count', String(info.mipCount)),
         row('Format', info.format),
-        row('Use SRGB', info.useSRGB),
-        row('Name', info.name),
-        row('Access Flags', info.accessFlags),
+        row('Use SRGB', `<input type="checkbox" id="useSRGB" ${srgbChecked} />`),
+        row('Name', `<input type="text" id="metaName" class="meta-input" value="${escapeHtml(info.name)}" />`),
+        row('Path', `<input type="text" id="metaPath" class="meta-input" value="${escapeHtml(info.path ?? '')}" />`),
     ].join('');
 }
 
@@ -272,7 +337,7 @@ function buildMiscRows(misc: BntxMiscInfo): string {
     return [
         row('Depth', String(misc.depth)),
         row('Tile Mode', misc.tileMode),
-        row('Swizzle', String(misc.swizzle)),
+        row('Swizzle', `<input type="number" id="metaSwizzle" class="meta-input" value="${misc.swizzle}" />`),
         row('Alignment', String(misc.alignment)),
         row('Pitch', String(misc.pitch)),
         row('Dims', misc.dims),

@@ -45,6 +45,8 @@ from xlink_io import (
     write_xlnk_bytes,
 )
 from zstd_totk import compress_container, decompress_container
+from bntx_editor import BntxEditor
+from txtg_editor import TxtgEditor
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stdin.reconfigure(encoding="utf-8")
@@ -111,6 +113,34 @@ def export_archive_file_to_temp(archive_path: str, internal_path: str, romfs_pat
         out.write(file_data)
     return tmp_path
 
+
+def _get_bntx_file_bytes(archive_path: str, internal_path: str, romfs_path: str) -> tuple[bytes, str, str, bool, bool]:
+    from archive_resolve import _resolve_bntx_data
+    result = _resolve_bntx_data(archive_path, internal_path, romfs_path)
+    if not result:
+        raise ValueError('Could not resolve BNTX data')
+    bntx_bytes, remainder, bntx_prefix = result
+    bntx_path = bntx_prefix if bntx_prefix else ""
+    is_zstd = bntx_path.endswith('.zs') if bntx_path else archive_path.endswith('.zs')
+    return bntx_bytes, bntx_path, remainder, is_zstd, False
+
+def _save_bntx_file_bytes(archive_path: str, bntx_path: str, new_bytes: bytes, is_zstd: bool, romfs_path: str):
+    if is_zstd:
+        new_bytes = compress_container(new_bytes, bntx_path or archive_path, romfs_path, was_zstd=True, was_yaz0=False)
+    if bntx_path:
+        from archive_resolve import write_archive_file_bytes
+        write_archive_file_bytes(archive_path, bntx_path, new_bytes, romfs_path)
+    else:
+        Path(archive_path).write_bytes(new_bytes)
+
+def _save_txtg_file_bytes(archive_path: str, logical_path: str, new_bytes: bytes, is_zstd: bool, romfs_path: str):
+    if is_zstd:
+        new_bytes = compress_container(new_bytes, logical_path or archive_path, romfs_path, was_zstd=True, was_yaz0=False)
+    if logical_path != archive_path:
+        from archive_resolve import write_archive_file_bytes
+        write_archive_file_bytes(archive_path, logical_path, new_bytes, romfs_path)
+    else:
+        Path(archive_path).write_bytes(new_bytes)
 
 def get_romfs_path():
     return os.environ.get("TOTK_EDITOR_ROMFS", "").strip()
@@ -537,6 +567,88 @@ def main():
                 delete_archive_entry(archive_path, internal_path, romfs_path)
                 print(json.dumps({"success": True}))
 
+            elif command == "update-metadata":
+                internal_path = sys.argv[3]
+                metadata_str = sys.argv[4]
+                metadata = json.loads(metadata_str)
+                bntx_bytes, bntx_path, _, is_zstd, _ = _get_bntx_file_bytes(archive_path, internal_path, romfs_path)
+                editor = BntxEditor(bntx_bytes)
+                tex_name = metadata.get('name', '')
+                if not tex_name:
+                    from bntx_reader import _read_bntx_string
+                    name_addr = editor._read_fmt('q', editor.get_texture_ptrs()[0] + 0x10 + 0x50)
+                    tex_name = _read_bntx_string(editor._data, name_addr, editor.le)
+                editor.update_metadata(tex_name, metadata)
+                _save_bntx_file_bytes(archive_path, bntx_path, editor.to_bytes(), is_zstd, romfs_path)
+                print(json.dumps({'success': True}))
+
+            elif command == "update-txtg-metadata":
+                internal_path = sys.argv[3]
+                metadata_str = sys.argv[4]
+                metadata = json.loads(metadata_str)
+                if internal_path:
+                    from archive_resolve import read_archive_file_bytes
+                    file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
+                    logical_path = internal_path
+                else:
+                    file_data = Path(archive_path).read_bytes()
+                    logical_path = archive_path
+                
+                try:
+                    payload, _, is_zstd = decompress_container(file_data, logical_path, romfs_path)
+                except Exception:
+                    payload = file_data
+                    is_zstd = False
+                
+                editor = TxtgEditor(payload)
+                if 'useSRGB' in metadata and metadata['useSRGB'] is not None:
+                    use_srgb = bool(metadata['useSRGB'])
+                    fmt = editor.format_id
+                    
+                    if fmt == 0x101 and editor.texture_setting2 == 32631:
+                        fmt = 0x102
+                        
+                    srgb_map = {
+                        0x101: 0x109, 0x109: 0x109, # ASTC 4x4
+                        0x102: 0x105, 0x105: 0x105, # ASTC 8x8
+                        0x202: 0x203, 0x203: 0x203, # BC1
+                        0x302: 0x303, 0x303: 0x303, # BC1
+                        0x505: 0x505, # BC3
+                        0x602: 0x602, 0x606: 0x606, 0x607: 0x607, # BC4
+                        0x702: 0x703, 0x703: 0x703, # BC5
+                    }
+                    unorm_map = {
+                        0x109: 0x101, 0x101: 0x101,
+                        0x105: 0x102, 0x102: 0x102,
+                        0x203: 0x202, 0x202: 0x202,
+                        0x303: 0x302, 0x302: 0x302,
+                        0x505: 0x505,
+                        0x602: 0x602, 0x606: 0x606, 0x607: 0x607,
+                        0x703: 0x702, 0x702: 0x702,
+                    }
+                    if use_srgb:
+                        if fmt == 0x101 and editor.texture_setting2 not in (0, 32631):
+                            pass
+                        elif fmt in srgb_map:
+                            editor.format_id = srgb_map[fmt]
+                    elif not use_srgb and fmt in unorm_map:
+                        editor.format_id = unorm_map[fmt]
+                        
+                channels = ['Red', 'Green', 'Blue', 'Alpha', 'Zero', 'One']
+                ch_map = {c: i for i, c in enumerate(channels)}
+                if 'red' in metadata and metadata['red'] in ch_map:
+                    editor.comp_r = ch_map[metadata['red']]
+                if 'green' in metadata and metadata['green'] in ch_map:
+                    editor.comp_g = ch_map[metadata['green']]
+                if 'blue' in metadata and metadata['blue'] in ch_map:
+                    editor.comp_b = ch_map[metadata['blue']]
+                if 'alpha' in metadata and metadata['alpha'] in ch_map:
+                    editor.comp_a = ch_map[metadata['alpha']]
+                
+                
+                _save_txtg_file_bytes(archive_path, logical_path, editor.to_bytes(), is_zstd, romfs_path)
+                print(json.dumps({'success': True}))
+
             elif command == "rename-entry":
                 old_path = sys.argv[3]
                 new_path = sys.argv[4]
@@ -553,7 +665,7 @@ def main():
                 print(json.dumps({"success": True}))
 
     except Exception as e:
-        print(json.dumps({"error": str(e)}))
+        import traceback; print(json.dumps({'error': str(e), 'traceback': traceback.format_exc()}))
         sys.exit(0)
 
 

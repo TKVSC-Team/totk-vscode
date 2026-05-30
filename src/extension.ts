@@ -1023,7 +1023,25 @@ export async function activate(context: vscode.ExtensionContext) {
                 );
                 if (isBntxTextureResult(raw)) {
                     const texName = raw.metadata?.name ?? filePath.split('/').pop() ?? 'texture';
-                    openTextureViewer(texName, raw);
+                    openTextureViewer(texName, raw, diskArchive, filePath, async (data) => {
+                        const payloadStr = JSON.stringify(data);
+                        const updateArgs = isTxtgFile(uri.fsPath)
+                            ? ['update-txtg-metadata', diskArchive, filePath, payloadStr]
+                            : ['update-metadata', diskArchive, filePath, payloadStr];
+                        
+                        const result = await runBridgeReadAsync(
+                            python,
+                            bridgePath,
+                            updateArgs,
+                            getBridgeEnv()
+                        );
+                        if (result && (result as any).error) {
+                            throw new Error((result as any).error);
+                        }
+                        
+                        // Automatically refresh the texture viewer to show the applied changes
+                        void vscode.commands.executeCommand('totk-editor.openBntxTexture', uri);
+                    });
                 } else {
                     void vscode.window.showErrorMessage('Failed to load texture preview.');
                 }

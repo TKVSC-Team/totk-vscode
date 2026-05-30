@@ -39,20 +39,39 @@ def _read_u16(data: bytes, offset: int, le: bool) -> int:
     return struct.unpack_from(fmt, data, offset)[0]
 
 
-def _read_cstring(data: bytes, offset: int) -> str:
+def _format_channel(ch: int) -> str:
+    mapping = {0: "Zero", 1: "One", 2: "Red", 3: "Green", 4: "Blue", 5: "Alpha"}
+    return mapping.get(ch, "Red")
+
+
+def _read_bntx_string(data: bytes, offset: int, le: bool) -> str:
     if offset < 0 or offset >= len(data):
         return ""
+        
+    # If the pointer is literally pointing at the NX block header, it's an empty Nintendo string
+    if data[offset:offset+3] == b"NX ":
+        return ""
+        
+    # Try reading as a length-prefixed string (Switch Toolbox style)
+    if offset + 2 <= len(data):
+        str_len = _read_u16(data, offset, le)
+        # Check if length is reasonable and null-terminated exactly at the end
+        if 0 <= str_len <= 256 and offset + 2 + str_len < len(data):
+            if data[offset + 2 + str_len] == 0:
+                return data[offset + 2 : offset + 2 + str_len].decode("utf-8", errors="replace")
+                
+    # Fallback: treat as a standard C-string starting at offset
     end = data.find(b"\x00", offset)
     if end < 0:
         end = min(offset + 256, len(data))
     return data[offset:end].decode("utf-8", errors="replace")
-
 
 class BntxTexture:
     """Parsed texture metadata matching Switch Toolbox's property set."""
 
     __slots__ = (
         "name",
+        "path",
         "width",
         "height",
         "format_id",
@@ -80,6 +99,7 @@ class BntxTexture:
     def __init__(
         self,
         name: str,
+        path: str,
         width: int,
         height: int,
         format_id: int,
@@ -104,6 +124,7 @@ class BntxTexture:
         image_size: int = 0,
     ):
         self.name = name
+        self.path = path
         self.width = width
         self.height = height
         self.format_id = format_id
@@ -219,10 +240,16 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
         _log(f"  Texture {i}: nameAddr=0x{name_addr:X}, {width}x{height}, fmt=0x{format_id:04X}")
 
         if 0 < name_addr < file_len:
-            name = _read_cstring(data, name_addr + 2)
+            name = _read_bntx_string(data, name_addr, le)
         else:
             name = f"texture_{i}"
             _log(f"  Texture {i}: nameAddr out of range, using fallback name")
+            
+        path_addr = _read_i64(data, d + 0x58, le)
+        if 0 < path_addr < file_len:
+            path = _read_bntx_string(data, path_addr, le)
+        else:
+            path = ""
 
         ptrs_addr = _read_i64(data, d + 0x60, le)
         if 0 < ptrs_addr < file_len:
@@ -235,6 +262,7 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
         textures.append(
             BntxTexture(
                 name=name,
+                path=path,
                 width=width,
                 height=height,
                 format_id=format_id,
@@ -277,3 +305,11 @@ def read_texture_data(data: bytes, texture_name: str) -> bytes:
                 raise ValueError(f"Texture {texture_name!r} has no extractable data")
             return data[tex.data_offset : tex.data_offset + tex.data_size]
     raise FileNotFoundError(f"Texture not found in BNTX: {texture_name!r}")
+"""BNTX (Binary NX TeXture) container editor."""
+
+import struct
+
+
+def bit_length(n: int) -> int:
+    return n.bit_length()
+

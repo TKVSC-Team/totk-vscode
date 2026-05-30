@@ -99,6 +99,7 @@ export interface BntxImageInfo {
     formatId: string;
     useSRGB: string;
     name: string;
+    path: string;
     accessFlags: string;
 }
 
@@ -212,3 +213,103 @@ export async function runBridgeReadContentAsync(
     return result.content ?? '';
 }
 
+export async function runBridgeUpdateBntxMetadataAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    metadata: Record<string, any>,
+    env?: NodeJS.ProcessEnv,
+): Promise<void> {
+    await runBridgeJsonAsync(
+        pythonExecutable,
+        bridgePath,
+        ['update-bntx-metadata', archivePath, internalPath],
+        JSON.stringify(metadata),
+        env,
+    );
+}
+
+export async function runBridgeUpdateTxtgMetadataAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    metadata: Record<string, any>,
+    env?: NodeJS.ProcessEnv,
+): Promise<void> {
+    await runBridgeJsonAsync(
+        pythonExecutable,
+        bridgePath,
+        ['update-txtg-metadata', archivePath, internalPath],
+        JSON.stringify(metadata),
+        env,
+    );
+}
+
+export async function runBridgeRenameBntxTextureAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    newName: string,
+    env?: NodeJS.ProcessEnv,
+): Promise<void> {
+    await runBridgeJsonAsync(
+        pythonExecutable,
+        bridgePath,
+        ['rename-bntx-texture', archivePath, internalPath, newName],
+        undefined,
+        env,
+    );
+}
+
+export async function runBridgeDeleteBntxTextureAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    env?: NodeJS.ProcessEnv,
+): Promise<void> {
+    await runBridgeJsonAsync(
+        pythonExecutable,
+        bridgePath,
+        ['delete-bntx-texture', archivePath, internalPath],
+        undefined,
+        env,
+    );
+}
+
+export async function runBridgeReplaceBntxPayloadAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    rawPayload: Buffer,
+    env?: NodeJS.ProcessEnv,
+): Promise<void> {
+    await runBridgeJsonAsync(
+        pythonExecutable,
+        bridgePath,
+        ['replace-bntx-payload', archivePath, internalPath],
+        rawPayload.toString('base64'),
+        env,
+    );
+}
+
+export async function runBridgeReplaceTxtgPayloadAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    rawPayload: Buffer,
+    env?: NodeJS.ProcessEnv,
+): Promise<void> {
+    await runBridgeJsonAsync(
+        pythonExecutable,
+        bridgePath,
+        ['replace-txtg-payload', archivePath, internalPath],
+        rawPayload.toString('base64'),
+        env,
+    );
+}

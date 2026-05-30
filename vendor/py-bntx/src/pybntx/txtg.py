@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import zstandard as zstd
-from bntx_renderer import (
+from .renderer import (
     _apply_channel_swizzle,
     _decode_pixels,
     _deswizzle_block_linear,
@@ -178,14 +178,6 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
 
     decode_error: str | None = None
     png_path = None
-    
-    # TOTK textures sometimes disguise ASTC 8x8 as ASTC 4x4. We use ASTC 4x4 block size to decode.
-    is_astc_8x8 = False
-    if "ASTC_8x8" in fmt_name and decoder_key == "astc":
-        is_astc_8x8 = True
-        blk_w = 4
-        blk_h = 4
-        
     if not image_data:
         decode_error = "TXTG has no readable surface payload."
     elif width <= 0 or height <= 0:
@@ -193,15 +185,12 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
     elif decoder_key == "unknown" or bpp <= 0:
         decode_error = f"Unsupported TXTG format id 0x{format_id:04X}."
     else:
-        render_width = width // 2 if is_astc_8x8 else width
-        render_height = height // 2 if is_astc_8x8 else height
-        
         decode_inputs: list[tuple[str, bytes, int]] = []
         for bh in _iter_block_height_candidates(texture_setting4):
             try:
                 linear = _deswizzle_block_linear(
-                    render_width,
-                    render_height,
+                    width,
+                    height,
                     blk_w,
                     blk_h,
                     bpp,
@@ -212,7 +201,7 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
             except Exception:
                 pass
         try:
-            linear_pitch = _deswizzle_pitch_linear(render_width, render_height, blk_w, blk_h, bpp, image_data)
+            linear_pitch = _deswizzle_pitch_linear(width, height, blk_w, blk_h, bpp, image_data)
             decode_inputs.append(("pitch-linear", linear_pitch, block_height_log2))
         except Exception:
             pass
@@ -221,7 +210,7 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
         best_candidate: tuple[float, bytes, int, str] | None = None
         for label, payload, bh_used in decode_inputs:
             try:
-                pixels, raw_mode = _decode_pixels(payload, render_width, render_height, decoder_key, blk_w, blk_h)
+                pixels, raw_mode = _decode_pixels(payload, width, height, decoder_key, blk_w, blk_h)
                 if pixels is None:
                     decode_error = f"Decode failed via {label} path ({decoder_key})."
                     continue
@@ -238,14 +227,14 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
                 pixels, raw_mode = _apply_channel_swizzle(
                     pixels,
                     raw_mode,
-                    render_width,
-                    render_height,
+                    width,
+                    height,
                     ch_r,
                     ch_g,
                     ch_b,
                     ch_a,
                 )
-                score = _image_quality_score(pixels, render_width, render_height, raw_mode)
+                score = _image_quality_score(pixels, width, height, raw_mode)
                 if best_candidate is None or score < best_candidate[0]:
                     best_candidate = (score, pixels, bh_used, raw_mode)
                     decode_error = None
@@ -257,9 +246,7 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
             block_height_log2 = best_bh
             from PIL import Image
 
-            image = Image.frombytes("RGBA", (render_width, render_height), best_pixels, "raw", best_raw_mode)
-            if is_astc_8x8:
-                image = image.resize((width, height), Image.NEAREST)
+            image = Image.frombytes("RGBA", (width, height), best_pixels, "raw", best_raw_mode)
             import os
             import tempfile
 
@@ -473,4 +460,3 @@ class TxtgEditor:
 
     def to_bytes(self) -> bytes:
         return bytes(self._data)
-
