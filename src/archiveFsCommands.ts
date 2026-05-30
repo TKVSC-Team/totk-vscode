@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { toSarcUri, type ArchiveTreeItem } from './archiveTree';
 import { isAampExtension } from './aampExtensions';
-import { isPathInsideArchive, isArchiveFile, getDiskArchivePath } from './archives';
+import { isPathInsideArchive, isArchiveFile, getDiskArchivePath, isArchiveFileName } from './archives';
 import { getDumpSelection, type DumpTreeItem } from './dumpTree';
 
 let archiveTreeView: vscode.TreeView<ArchiveTreeItem> | undefined;
@@ -72,6 +72,15 @@ function templatePromptConfigForName(name: string): TemplatePromptConfig | undef
             filters: { AAMP: ['zs'], All: ['*'] },
         };
     }
+    if (isArchiveFileName(name)) {
+        const extMatch = name.match(/\.([a-z0-9]+)(\.zs)?$/i);
+        const primaryExt = extMatch ? extMatch[1]!.toLowerCase() : 'sarc';
+        const label = primaryExt.toUpperCase();
+        return {
+            kindLabel: label,
+            filters: { [label]: [primaryExt, 'zs'], All: ['*'] },
+        };
+    }
     return undefined;
 }
 
@@ -81,20 +90,26 @@ async function initialContentForNewFile(name: string): Promise<Uint8Array | unde
         return new Uint8Array();
     }
 
+    const isSarc = isArchiveFileName(name);
+    const choices: vscode.QuickPickItem[] = [
+        {
+            label: `Use existing ${promptConfig.kindLabel} as template...`,
+            description: `Recommended: creates a valid ${promptConfig.kindLabel} file immediately`,
+        },
+    ];
+
+    if (!isSarc) {
+        choices.push({
+            label: 'Create empty file',
+            description:
+                promptConfig.kindLabel === 'MSBT'
+                    ? 'MSBT may not be writable until replaced with a valid template'
+                    : 'Creates an empty file and lets converter build from text on first save',
+        });
+    }
+
     const choice = await vscode.window.showQuickPick(
-        [
-            {
-                label: `Use existing ${promptConfig.kindLabel} as template...`,
-                description: `Recommended: creates a valid ${promptConfig.kindLabel} file immediately`,
-            },
-            {
-                label: 'Create empty file',
-                description:
-                    promptConfig.kindLabel === 'MSBT'
-                        ? 'MSBT may not be writable until replaced with a valid template'
-                        : 'Creates an empty file and lets converter build from text on first save',
-            },
-        ],
+        choices,
         {
             title: `New ${promptConfig.kindLabel} file`,
             placeHolder: `Choose how to initialize this ${promptConfig.kindLabel}`,
