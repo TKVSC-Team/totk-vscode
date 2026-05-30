@@ -1,0 +1,17 @@
+name: Q&A
+description: Ask a question about TKVSC
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What do you want to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Any relevant context, screenshots, or file types involved.

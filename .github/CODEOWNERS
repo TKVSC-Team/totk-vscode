@@ -1,0 +1,24 @@
+# CODEOWNERS
+#
+# This file defines who is automatically requested as a reviewer when a pull
+# request modifies files matching a given pattern. GitHub checks this file from
+# bottom to top — the last matching rule wins.
+#
+# Format:
+#   <glob pattern>  <@username or @org/team>  [<additional owners>...]
+#
+# Examples:
+#   *                     @someone          — matches every file (catch-all)
+#   *.ts                  @someone          — all TypeScript files
+#   src/                  @someone          — everything under src/
+#   src/bridge.ts         @someone @other   — one specific file, multiple owners
+#   docs/                 @docs-person      — only doc changes go to this person
+#
+# A GitHub team can be used instead of individual usernames:
+#   *  @TKVSC-Team/maintainers
+#
+# The wildcard * below assigns all files to the maintainers team, meaning
+# every PR will request a review from that team by default. This team will need to be set up in 
+# the repository settings with the appropriate members and permissions for this to work effectively.
+
+* @TKVSC-Team/maintainers
