@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import * as vscode from 'vscode';
-import { runBridgeJson } from './bridge';
+import { runBridgeJson, runBridgeJsonAsync } from './bridge';
 import {
     getDiskArchivePath,
     getLocatorInsideDiskArchive,
@@ -113,7 +113,7 @@ export function registerExternalToolSupport(
         return config.tools.find((tool) => tool.id === toolId);
     };
 
-    const resolveToolLaunchPath = (uri: vscode.Uri): string => {
+    const resolveToolLaunchPath = async (uri: vscode.Uri): Promise<string> => {
         if (!isArchiveBrowsePath(uri.fsPath)) {
             return uri.fsPath;
         }
@@ -131,7 +131,7 @@ export function registerExternalToolSupport(
             throw new Error('Cannot export archive root to an external tool.');
         }
 
-        const result = runBridgeJson<{ path: string }>(
+        const result = await runBridgeJsonAsync<{ path: string }>(
             python,
             options.bridgePath,
             ['export-temp', diskArchive, locator],
@@ -268,7 +268,7 @@ export function registerExternalToolSupport(
             if (!tool) {
                 return;
             }
-            const targetPath = resolveToolLaunchPath(uri);
+            const targetPath = await resolveToolLaunchPath(uri);
             // Default action always opens the selected file in the associated tool.
             launchTool(tool, targetPath, true);
         } catch (error) {

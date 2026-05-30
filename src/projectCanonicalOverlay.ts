@@ -291,6 +291,19 @@ async function markProjectImported(
     await saveDb(overlayDbPath);
 }
 
+async function parallelMap<T, R>(items: T[], fn: (item: T) => Promise<R>, limit = 8): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let index = 0;
+    const workers = Array(Math.min(limit, items.length)).fill(0).map(async () => {
+        while (index < items.length) {
+            const i = index++;
+            results[i] = await fn(items[i]);
+        }
+    });
+    await Promise.all(workers);
+    return results;
+}
+
 export async function ensureProjectCanonicalImport(
     options: EnsureProjectImportOptions,
 ): Promise<void> {
@@ -323,9 +336,7 @@ export async function ensureProjectCanonicalImport(
             return;
         }
 
-        const rows: Array<{ canonical: string; archiveRel: string }> = [];
-
-        for (const archive of archives) {
+        const results = await parallelMap(archives, async (archive) => {
             let listed: string[] = [];
             try {
                 listed = await runBridgeJsonAsync<string[]>(
@@ -344,16 +355,20 @@ export async function ensureProjectCanonicalImport(
 
             const archiveRel = normalizeRel(path.relative(projectRomfsRoot, archive.archivePath));
             if (!archiveRel) {
-                continue;
+                return [];
             }
+            const archiveRows: Array<{ canonical: string; archiveRel: string }> = [];
             for (const virtualPath of listed) {
                 const canonical = normalizeRel(virtualPath);
                 if (!canonical) {
                     continue;
                 }
-                rows.push({ canonical, archiveRel });
+                archiveRows.push({ canonical, archiveRel });
             }
-        }
+            return archiveRows;
+        }, 8);
+
+        const rows = results.flat();
 
         if (rows.length > 0) {
             const filteredRows: Array<{ canonical: string; archiveRel: string }> = [];

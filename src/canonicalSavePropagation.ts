@@ -295,21 +295,21 @@ export async function propagateCanonicalSave(
 
     let propagated = 0;
     let copiedArchives = 0;
-    for (const match of mergedMatches.values()) {
+    const tasks = Array.from(mergedMatches.values()).map(async (match) => {
         const dumpArchivePath = path.join(options.romfsPath, ...splitRel(match.archiveRelPath));
         const projectArchivePath = path.join(projectRomfsRoot, ...splitRel(match.archiveRelPath));
         if (
             pathContainsBlacklistedArchiveType(match.canonicalPath, options.archiveTypeBlacklist) ||
             pathContainsBlacklistedArchiveType(match.archiveRelPath, options.archiveTypeBlacklist)
         ) {
-            continue;
+            return { propagated: false, copied: false };
         }
         if (pathMatchesBlacklistedFileSuffix(match.canonicalPath, mergedFileExtensionBlacklist)) {
-            continue;
+            return { propagated: false, copied: false };
         }
 
         if (pathsEqual(projectArchivePath, primaryArchive)) {
-            continue;
+            return { propagated: false, copied: false };
         }
 
         const prepareResult = await ensureArchiveInProject(
@@ -318,10 +318,7 @@ export async function propagateCanonicalSave(
             options.output,
         );
         if (!prepareResult.ready) {
-            continue;
-        }
-        if (prepareResult.copied) {
-            copiedArchives++;
+            return { propagated: false, copied: false };
         }
 
         try {
@@ -342,12 +339,23 @@ export async function propagateCanonicalSave(
                     options.bridgeEnv,
                 );
             }
-            propagated++;
+            return { propagated: true, copied: prepareResult.copied };
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             options.output.appendLine(
                 `[canonical-save] Failed to propagate to ${projectArchivePath}: ${message}`,
             );
+            return { propagated: false, copied: prepareResult.copied };
+        }
+    });
+
+    const results = await Promise.all(tasks);
+    for (const res of results) {
+        if (res.propagated) {
+            propagated++;
+        }
+        if (res.copied) {
+            copiedArchives++;
         }
     }
 

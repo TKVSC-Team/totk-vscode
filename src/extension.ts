@@ -397,7 +397,7 @@ class SarcProvider implements vscode.FileSystemProvider {
                     return new TextEncoder().encode(`Error reading file: ${message}`);
                 }
             }
-            const raw = fs.readFileSync(fsPath);
+            const raw = await fs.promises.readFile(fsPath);
             this.fileContentCache.set(uri.toString(), raw);
             // For non-editable binary files opened from archive-related trees, show external-tool actions.
             if ((uri.scheme === 'totk-dump' || uri.scheme === 'sarc') && isLikelyBinaryBuffer(raw) && !isArchiveFile(fsPath)) {
@@ -478,7 +478,7 @@ class SarcProvider implements vscode.FileSystemProvider {
         if (this.isMutatableDiskPath(fsPath)) {
             if (isEditableFile(fsPath)) {
                 if (!fs.existsSync(fsPath)) {
-                    fs.writeFileSync(fsPath, content);
+                    await fs.promises.writeFile(fsPath, content);
                     logger.showSavedToast(fsPath);
                     this.fileContentCache.set(uri.toString(), new TextDecoder().decode(content));
                     return;
@@ -515,7 +515,7 @@ class SarcProvider implements vscode.FileSystemProvider {
                 logger.info(`Skipping write for unchanged binary file: ${fsPath}`);
                 return;
             }
-            fs.writeFileSync(fsPath, content);
+            await fs.promises.writeFile(fsPath, content);
             this.fileContentCache.set(uri.toString(), content);
             return;
         }
@@ -525,60 +525,69 @@ class SarcProvider implements vscode.FileSystemProvider {
 
         try {
             logger.info(`Writing back to: ${diskArchive} / ${filePath}`);
-            if (isEditableFile(fsPath) && content.length > 0 && !isLikelyBinaryBuffer(content)) {
-                logger.showProcessingToast(fsPath);
-                const yamlContent = new TextDecoder().decode(content);
+            await vscode.window.withProgress(
+                {
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Saving and repacking ${path.basename(diskArchive)}...`,
+                    cancellable: false,
+                },
+                async () => {
+                    if (isEditableFile(fsPath) && content.length > 0 && !isLikelyBinaryBuffer(content)) {
+                        logger.showProcessingToast(fsPath);
+                        const yamlContent = new TextDecoder().decode(content);
 
-                const cached = this.fileContentCache.get(uri.toString());
-                if (cached !== undefined && cached === yamlContent) {
-                    logger.info(`Skipping write and canonical sync for unchanged file inside archive: ${fsPath}`);
-                    return;
+                        const cached = this.fileContentCache.get(uri.toString());
+                        if (cached !== undefined && cached === yamlContent) {
+                            logger.info(`Skipping write and canonical sync for unchanged file inside archive: ${fsPath}`);
+                            return;
+                        }
+
+                        await runBridgeJsonAsync<{ success: boolean }>(
+                            this.requirePython(),
+                            this.bridgePath,
+                            ['write', diskArchive, filePath],
+                            yamlContent,
+                            getBridgeEnv(),
+                        );
+                        await this.onDidWriteArchive?.({
+                            diskArchivePath: diskArchive,
+                            internalPath: filePath,
+                            content,
+                            textContent: yamlContent,
+                        });
+                        logger.showSavedToast(fsPath);
+                        this.fileContentCache.set(uri.toString(), yamlContent);
+                    } else {
+                        const cached = this.fileContentCache.get(uri.toString());
+                        if (cached instanceof Uint8Array && cached.length === content.length && Buffer.compare(cached, content) === 0) {
+                            logger.info(`Skipping write and canonical sync for unchanged binary file inside archive: ${fsPath}`);
+                            return;
+                        }
+
+                        const encoded = Buffer.from(content).toString('base64');
+                        await runBridgeJsonAsync<{ success: boolean }>(
+                            this.requirePython(),
+                            this.bridgePath,
+                            ['write-raw', diskArchive, filePath],
+                            encoded,
+                            getBridgeEnv(),
+                        );
+                        await this.onDidWriteArchive?.({
+                            diskArchivePath: diskArchive,
+                            internalPath: filePath,
+                            content,
+                        });
+                        this.fileContentCache.set(uri.toString(), content);
+                    }
+
+                    for (const key of [...this.fileCache.keys()]) {
+                        if (key.startsWith(`${diskArchive}::`)) {
+                            this.fileCache.delete(key);
+                        }
+                    }
+                    logger.info('Successfully saved and repacked SARC!');
                 }
-
-                await runBridgeJsonAsync<{ success: boolean }>(
-                    this.requirePython(),
-                    this.bridgePath,
-                    ['write', diskArchive, filePath],
-                    yamlContent,
-                    getBridgeEnv(),
-                );
-                await this.onDidWriteArchive?.({
-                    diskArchivePath: diskArchive,
-                    internalPath: filePath,
-                    content,
-                    textContent: yamlContent,
-                });
-                logger.showSavedToast(fsPath);
-                this.fileContentCache.set(uri.toString(), yamlContent);
-            } else {
-                const cached = this.fileContentCache.get(uri.toString());
-                if (cached instanceof Uint8Array && cached.length === content.length && Buffer.compare(cached, content) === 0) {
-                    logger.info(`Skipping write and canonical sync for unchanged binary file inside archive: ${fsPath}`);
-                    return;
-                }
-
-                const encoded = Buffer.from(content).toString('base64');
-                await runBridgeJsonAsync<{ success: boolean }>(
-                    this.requirePython(),
-                    this.bridgePath,
-                    ['write-raw', diskArchive, filePath],
-                    encoded,
-                    getBridgeEnv(),
-                );
-                await this.onDidWriteArchive?.({
-                    diskArchivePath: diskArchive,
-                    internalPath: filePath,
-                    content,
-                });
-                this.fileContentCache.set(uri.toString(), content);
-            }
-
-            for (const key of [...this.fileCache.keys()]) {
-                if (key.startsWith(`${diskArchive}::`)) {
-                    this.fileCache.delete(key);
-                }
-            }
-            logger.info('Successfully saved and repacked SARC!');
+            );
         } catch (error) {
             logger.error('Python Write Error:', error as Error);
             vscode.window.showErrorMessage(`Failed to save: ${error}`);
@@ -857,32 +866,39 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         gameDumpTree.setExternalIndexBuilding(true);
-        romfsIndexBuildPromise = (async () => {
-            try {
-                logger.info(`Starting RomFS search index build at: ${romfsIndexPath}`);
-                await fs.promises.mkdir(context.globalStorageUri.fsPath, { recursive: true });
-                await runBridgeJsonAsync<{ path: string; count: number }>(
-                    pythonExe,
-                    bridgePath,
-                    ['build-romfs-index', romfsIndexPath],
-                    undefined,
-                    getBridgeEnv(),
-                );
-                await writeIndexState(
-                    ROMFS_INDEX_STATE_KEY,
-                    romfsIndexStatePath,
-                    romfsPath,
-                    ROMFS_INDEX_SCHEMA_VERSION,
-                );
-                logger.info('RomFS search index built successfully.');
-                gameDumpTree?.onExternalIndexUpdated();
-            } catch (err) {
-                logger.error('Failed to build RomFS search index:', err as Error);
-            } finally {
-                gameDumpTree?.setExternalIndexBuilding(false);
-                romfsIndexBuildPromise = undefined;
+        romfsIndexBuildPromise = Promise.resolve(vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: 'Building RomFS search index (this can take a few minutes)...',
+                cancellable: false,
+            },
+            async () => {
+                try {
+                    logger.info(`Starting RomFS search index build at: ${romfsIndexPath}`);
+                    await fs.promises.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+                    await runBridgeJsonAsync<{ path: string; count: number }>(
+                        pythonExe,
+                        bridgePath,
+                        ['build-romfs-index', romfsIndexPath],
+                        undefined,
+                        getBridgeEnv(),
+                    );
+                    await writeIndexState(
+                        ROMFS_INDEX_STATE_KEY,
+                        romfsIndexStatePath,
+                        romfsPath,
+                        ROMFS_INDEX_SCHEMA_VERSION,
+                    );
+                    logger.info('RomFS search index built successfully.');
+                    gameDumpTree?.onExternalIndexUpdated();
+                } catch (err) {
+                    logger.error('Failed to build RomFS search index:', err as Error);
+                } finally {
+                    gameDumpTree?.setExternalIndexBuilding(false);
+                    romfsIndexBuildPromise = undefined;
+                }
             }
-        })();
+        ));
         return romfsIndexBuildPromise;
     };
 
@@ -905,33 +921,40 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        canonicalIndexBuildPromise = (async () => {
-            try {
-                logger.info(`Starting canonical path index build at: ${canonicalIndexPath}`);
-                await fs.promises.mkdir(context.globalStorageUri.fsPath, { recursive: true });
-                await runBridgeJsonAsync<{ path: string; count: number }>(
-                    pythonExe,
-                    bridgePath,
-                    ['build-canonical-path-index', canonicalIndexPath],
-                    undefined,
-                    getBridgeEnv(),
-                );
-                await writeIndexState(
-                    CANONICAL_INDEX_STATE_KEY,
-                    canonicalIndexStatePath,
-                    romfsPath,
-                    CANONICAL_INDEX_SCHEMA_VERSION,
-                );
-                logger.info('Canonical path index built successfully.');
-                invalidateCanonicalPathIndex();
-                await clearProjectImportState(projectCanonicalOverlayPath);
-                void importKnownProjectCanonicalPaths();
-            } catch (err) {
-                logger.error('Failed to build canonical path index:', err as Error);
-            } finally {
-                canonicalIndexBuildPromise = undefined;
+        canonicalIndexBuildPromise = Promise.resolve(vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: 'Building Canonical Path Index (this can take a few minutes)...',
+                cancellable: false,
+            },
+            async () => {
+                try {
+                    logger.info(`Starting canonical path index build at: ${canonicalIndexPath}`);
+                    await fs.promises.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+                    await runBridgeJsonAsync<{ path: string; count: number }>(
+                        pythonExe,
+                        bridgePath,
+                        ['build-canonical-path-index', canonicalIndexPath],
+                        undefined,
+                        getBridgeEnv(),
+                    );
+                    await writeIndexState(
+                        CANONICAL_INDEX_STATE_KEY,
+                        canonicalIndexStatePath,
+                        romfsPath,
+                        CANONICAL_INDEX_SCHEMA_VERSION,
+                    );
+                    logger.info('Canonical path index built successfully.');
+                    invalidateCanonicalPathIndex();
+                    await clearProjectImportState(projectCanonicalOverlayPath);
+                    void importKnownProjectCanonicalPaths();
+                } catch (err) {
+                    logger.error('Failed to build canonical path index:', err as Error);
+                } finally {
+                    canonicalIndexBuildPromise = undefined;
+                }
             }
-        })();
+        ));
         return canonicalIndexBuildPromise;
     };
 
@@ -977,26 +1000,40 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
         await buildCanonicalIndex();
-        for (const root of archiveTree.getProjectRoots()) {
-            await ensureProjectCanonicalImport({
-                overlayDbPath: projectCanonicalOverlayPath,
-                projectRoot: root.fsPath,
-                romfsPath,
-                pythonExecutable: pythonExe,
-                bridgePath,
-                bridgeEnv: getBridgeEnv(),
-                output,
-                importSchemaVersion: PROJECT_CANONICAL_IMPORT_SCHEMA_VERSION,
-                shouldIncludeCanonicalPath: async (canonicalPath: string) => {
-                    const existsInBase = await hasBaseCanonicalPath(
-                        canonicalIndexPath,
-                        romfsPath,
-                        canonicalPath,
-                    );
-                    return !existsInBase;
-                },
-            });
+        const roots = archiveTree.getProjectRoots();
+        if (roots.length === 0) {
+            return;
         }
+
+        await vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: 'Scanning project files and mapping canonical paths...',
+                cancellable: false,
+            },
+            async () => {
+                for (const root of roots) {
+                    await ensureProjectCanonicalImport({
+                        overlayDbPath: projectCanonicalOverlayPath,
+                        projectRoot: root.fsPath,
+                        romfsPath,
+                        pythonExecutable: pythonExe,
+                        bridgePath,
+                        bridgeEnv: getBridgeEnv(),
+                        output,
+                        importSchemaVersion: PROJECT_CANONICAL_IMPORT_SCHEMA_VERSION,
+                        shouldIncludeCanonicalPath: async (canonicalPath: string) => {
+                            const existsInBase = await hasBaseCanonicalPath(
+                                canonicalIndexPath,
+                                romfsPath,
+                                canonicalPath,
+                            );
+                            return !existsInBase;
+                        },
+                    });
+                }
+            }
+        );
     };
 
     context.subscriptions.push(
@@ -1294,28 +1331,47 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        let exported = 0;
-        for (const uri of fileUris) {
+        const tasks = fileUris.map(async (uri) => {
             try {
                 const diskArchive = getDiskArchivePath(uri.fsPath);
                 const locator = getLocatorInsideDiskArchive(uri.fsPath, diskArchive);
-                const exportedPath = runBridgeJson<{ path: string }>(
+                const bridgeResult = await runBridgeJsonAsync<{ path: string }>(
                     pythonExe,
                     bridgePath,
                     ['export-temp', diskArchive, locator],
                     undefined,
                     getBridgeEnv(),
-                ).path;
-                const data = fs.readFileSync(exportedPath);
-                fs.unlinkSync(exportedPath);
-
-                const desiredName = path.basename(locator) || path.basename(uri.fsPath);
-                const finalName = pickExportDestinationName(destinationFolder, desiredName);
-                fs.writeFileSync(path.join(destinationFolder, finalName), data);
-                exported++;
+                );
+                const exportedPath = bridgeResult.path;
+                const data = await fs.promises.readFile(exportedPath);
+                try {
+                    await fs.promises.unlink(exportedPath);
+                } catch {
+                    // best effort
+                }
+                return { uri, locator, data };
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 void vscode.window.showErrorMessage(`Export failed for ${uri.fsPath}: ${message}`);
+                return null;
+            }
+        });
+
+        const fetched = await Promise.all(tasks);
+
+        let exported = 0;
+        for (const item of fetched) {
+            if (!item) {
+                continue;
+            }
+            try {
+                const desiredName = path.basename(item.locator) || path.basename(item.uri.fsPath);
+                const finalName = pickExportDestinationName(destinationFolder, desiredName);
+                await fs.promises.writeFile(path.join(destinationFolder, finalName), item.data);
+                exported++;
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                void vscode.window.showErrorMessage(`Export failed for ${item.uri.fsPath}: ${message}`);
             }
         }
 

@@ -591,32 +591,41 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                     return;
                 }
                 try {
-                    const backups = await createBackups(items);
-                    await parallelMap(items, async (entry) => {
-                        const exists = await vscode.workspace.fs.stat(entry.resourceUri).then(
-                            () => true,
-                            () => false,
-                        );
-                        if (!exists) {
-                            return;
+                    await vscode.window.withProgress(
+                        {
+                            location: vscode.ProgressLocation.Notification,
+                            title: `Deleting ${label}...`,
+                            cancellable: false,
+                        },
+                        async () => {
+                            const backups = await createBackups(items);
+                            await parallelMap(items, async (entry) => {
+                                const exists = await vscode.workspace.fs.stat(entry.resourceUri).then(
+                                    () => true,
+                                    () => false,
+                                );
+                                if (!exists) {
+                                    return;
+                                }
+                                const stat = await vscode.workspace.fs.stat(entry.resourceUri);
+                                const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(entry.resourceUri.fsPath);
+                                await vscode.workspace.fs.delete(entry.resourceUri, {
+                                    recursive: isDirectory,
+                                    useTrash: false,
+                                });
+                            });
+                            historyManager.push({
+                                description: `Delete ${label}`,
+                                undo: async () => {
+                                    await restoreBackups(backups);
+                                },
+                                redo: async () => {
+                                    await deleteBackups(backups);
+                                },
+                            });
+                            refreshArchives();
                         }
-                        const stat = await vscode.workspace.fs.stat(entry.resourceUri);
-                        const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(entry.resourceUri.fsPath);
-                        await vscode.workspace.fs.delete(entry.resourceUri, {
-                            recursive: isDirectory,
-                            useTrash: false,
-                        });
-                    });
-                    historyManager.push({
-                        description: `Delete ${label}`,
-                        undo: async () => {
-                            await restoreBackups(backups);
-                        },
-                        redo: async () => {
-                            await deleteBackups(backups);
-                        },
-                    });
-                    refreshArchives();
+                    );
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
                     void vscode.window.showErrorMessage(`Delete failed: ${message}`);
@@ -765,6 +774,8 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 validItems.map((entry) => ({ uri: entry.resourceUri.toString(), move: false })),
             );
             await vscode.commands.executeCommand('setContext', 'totk-editor.archiveClipboardNotEmpty', true);
+            const label = validItems.length === 1 ? path.basename(validItems[0]!.resourceUri.fsPath) : `${validItems.length} items`;
+            void vscode.window.showInformationMessage(`Copied ${label} to clipboard`);
         }),
     );
 
@@ -785,6 +796,8 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 mutableItems.map((entry) => ({ uri: entry.resourceUri.toString(), move: true })),
             );
             await vscode.commands.executeCommand('setContext', 'totk-editor.archiveClipboardNotEmpty', true);
+            const label = mutableItems.length === 1 ? path.basename(mutableItems[0]!.resourceUri.fsPath) : `${mutableItems.length} items`;
+            void vscode.window.showInformationMessage(`Cut ${label} to clipboard`);
         }),
     );
 
@@ -834,46 +847,57 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 } as ArchiveTreeItem;
             });
             const isMove = clipboard[0]!.move;
+            const label = sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`;
+            const progressTitle = isMove ? `Moving ${label}...` : `Copying ${label}...`;
             try {
-                if (isMove) {
-                    const targets = await copyEntries(sources, folderUri, true);
-                    const moves = sources.map((source, index) => ({
-                        src: source.resourceUri,
-                        dest: targets[index]!,
-                    }));
-                    historyManager.push({
-                        description: `Move ${sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`}`,
-                        undo: async () => {
-                            await parallelMap(moves, async (move) => {
-                                await moveEntry(move.dest, move.src);
+                await vscode.window.withProgress(
+                    {
+                        location: vscode.ProgressLocation.Notification,
+                        title: progressTitle,
+                        cancellable: false,
+                    },
+                    async () => {
+                        if (isMove) {
+                            const targets = await copyEntries(sources, folderUri!, true);
+                            const moves = sources.map((source, index) => ({
+                                src: source.resourceUri,
+                                dest: targets[index]!,
+                            }));
+                            historyManager.push({
+                                description: `Move ${sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`}`,
+                                undo: async () => {
+                                    await parallelMap(moves, async (move) => {
+                                        await moveEntry(move.dest, move.src);
+                                    });
+                                },
+                                redo: async () => {
+                                    await parallelMap(moves, async (move) => {
+                                        await moveEntry(move.src, move.dest);
+                                    });
+                                },
                             });
-                        },
-                        redo: async () => {
-                            await parallelMap(moves, async (move) => {
-                                await moveEntry(move.src, move.dest);
+                            await context.workspaceState.update(CLIPBOARD_KEY, []);
+                            await vscode.commands.executeCommand('setContext', 'totk-editor.archiveClipboardNotEmpty', false);
+                        } else {
+                            const targets = await copyEntries(sources, folderUri!, false);
+                            const treeTargets = targets.map((target) => ({
+                                uri: target,
+                                resourceUri: target,
+                                entryName: path.basename(target.fsPath),
+                            } as ArchiveTreeItem));
+                            const backups = await createBackups(treeTargets);
+                            historyManager.push({
+                                description: `Copy ${sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`}`,
+                                undo: async () => {
+                                    await deleteBackups(backups);
+                                },
+                                redo: async () => {
+                                    await restoreBackups(backups);
+                                },
                             });
-                        },
-                    });
-                    await context.workspaceState.update(CLIPBOARD_KEY, []);
-                    await vscode.commands.executeCommand('setContext', 'totk-editor.archiveClipboardNotEmpty', false);
-                } else {
-                    const targets = await copyEntries(sources, folderUri, false);
-                    const treeTargets = targets.map((target) => ({
-                        uri: target,
-                        resourceUri: target,
-                        entryName: path.basename(target.fsPath),
-                    } as ArchiveTreeItem));
-                    const backups = await createBackups(treeTargets);
-                    historyManager.push({
-                        description: `Copy ${sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`}`,
-                        undo: async () => {
-                            await deleteBackups(backups);
-                        },
-                        redo: async () => {
-                            await restoreBackups(backups);
-                        },
-                    });
-                }
+                        }
+                    }
+                );
                 refreshArchives();
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
