@@ -171,6 +171,16 @@
           "light": "./icons/xlnk.svg",
           "dark": "./icons/xlnk.svg"
         }
+      },
+      {
+        "id": "pchtxt",
+        "extensions": [
+          ".pchtxt"
+        ],
+        "aliases": [
+          "Patch Text",
+          "pchtxt"
+        ]
       }
     ],
     "grammars": [
@@ -188,6 +198,11 @@
         "language": "msbt",
         "scopeName": "source.byml",
         "path": "./syntaxes/byml.tmLanguage.json"
+      },
+      {
+        "language": "pchtxt",
+        "scopeName": "source.pchtxt",
+        "path": "./syntaxes/pchtxt.tmLanguage.json"
       }
     ],
     "commands": [

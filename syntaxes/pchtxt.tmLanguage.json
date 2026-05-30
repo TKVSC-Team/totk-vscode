@@ -1,0 +1,45 @@
+{
+  "name": "pchtxt",
+  "scopeName": "source.pchtxt",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#directive" },
+    { "include": "#hex" },
+    { "include": "#string" }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [
+        {
+          "match": "(//.*)$",
+          "name": "comment.line.double-slash.pchtxt"
+        },
+        {
+          "begin": "/\\*",
+          "end": "\\*/",
+          "name": "comment.block.pchtxt"
+        }
+      ]
+    },
+    "directive": {
+      "match": "(@[a-zA-Z0-9_-]+)",
+      "name": "keyword.control.directive.pchtxt"
+    },
+    "hex": {
+      "patterns": [
+        {
+          "match": "\\b(0[xX][0-9a-fA-F]+)\\b",
+          "name": "constant.numeric.hex.pchtxt"
+        },
+        {
+          "match": "\\b([0-9a-fA-F]{8})\\b",
+          "name": "constant.numeric.hex.pchtxt"
+        }
+      ]
+    },
+    "string": {
+      "match": "\"(?:\\\\.|[^\"\\\\])*\"",
+      "name": "string.quoted.double.pchtxt"
+    }
+  }
+}
