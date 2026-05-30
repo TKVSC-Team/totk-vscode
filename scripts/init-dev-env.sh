@@ -1,28 +1,23 @@
 #!/usr/bin/env bash
 #
-# Full setup and build from a fresh clone of totk-vscode.
+# Set up the dev environment from a fresh clone of totk-vscode.
 #
 #   1. Initializes git submodules
 #   2. Installs Node dependencies (root)
 #   3. Creates a Python venv and installs Python dependencies
-#   4. Compiles the extension
-#   5. Optionally packages a .vsix (pass --skip-vsix to skip)
 #
 # Usage:
-#   ./scripts/setup.sh                      # full build + vsix
-#   ./scripts/setup.sh --skip-vsix          # build without vsix
-#   ./scripts/setup.sh --python /path/to/python3.12  # explicit python
+#   ./scripts/init-env.sh
+#   ./scripts/init-env.sh --python /path/to/python3.12  # explicit python
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SKIP_VSIX=false
 PYTHON_CMD=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --skip-vsix) SKIP_VSIX=true; shift ;;
         --python)    PYTHON_CMD="$2"; shift 2 ;;
         *)           echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -71,24 +66,7 @@ fi
 
 PIP="$VENV_DIR/bin/pip"
 echo "  Installing Python dependencies"
-"$PIP" install "$ROOT" --quiet
-
-# ── 4. Compile ─────────────────────────────────────────────────────
-echo ""
-echo "=== Compiling extension ==="
-npm run compile || echo "  Compile finished with warnings. Continuing..."
-
-# ── 5. Package VSIX ────────────────────────────────────────────────
-if [[ "$SKIP_VSIX" == false ]]; then
-    echo ""
-    echo "=== Packaging .vsix ==="
-    npx vsce package
-    VSIX=$(ls -t "$ROOT"/*.vsix 2>/dev/null | head -n1)
-    if [[ -n "$VSIX" ]]; then
-        echo ""
-        echo "  VSIX ready: $(basename "$VSIX")"
-    fi
-fi
+"$PIP" install "$ROOT[dev]" --quiet
 
 echo ""
-echo "=== Setup complete ==="
+echo "=== Dev Environment Setup complete ==="

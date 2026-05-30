@@ -69,7 +69,7 @@ try {
 
     $pip = Join-Path $venvDir 'Scripts' 'pip.exe'
     Write-Host "  Installing Python dependencies"
-    & $pip install $root --quiet
+    & $pip install "$root`[dev`]" --quiet
     if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 
     # ── 4. Compile ─────────────────────────────────────────────────────
