@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import tempfile
+import traceback
 from pathlib import Path
 
 import oead
@@ -32,12 +33,14 @@ from asb_io import (
     write_baev_bytes,
     write_baev_disk,
 )
+from bntx_editor import BntxEditor
 from byml_editor_format import to_editor_text
 from byml_yaml_utils import format_byml_for_editor, normalize_byml_u64_literals
 from msbt_editor_format import from_editor_text as msbt_from_editor_text
 from msbt_editor_format import to_editor_text as msbt_to_editor_text
 from tag_product_format import from_editor_text as tag_product_from_editor_text
 from tag_product_format import to_editor_text as tag_product_to_editor_text
+from txtg_editor import TxtgEditor
 from xlink_io import (
     is_xlnk_binary,
     is_xlnk_extension,
@@ -45,8 +48,6 @@ from xlink_io import (
     write_xlnk_bytes,
 )
 from zstd_totk import compress_container, decompress_container
-from bntx_editor import BntxEditor
-from txtg_editor import TxtgEditor
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stdin.reconfigure(encoding="utf-8")
@@ -587,27 +588,26 @@ def main():
                 metadata_str = sys.argv[4]
                 metadata = json.loads(metadata_str)
                 if internal_path:
-                    from archive_resolve import read_archive_file_bytes
                     file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
                     logical_path = internal_path
                 else:
                     file_data = Path(archive_path).read_bytes()
                     logical_path = archive_path
-                
+
                 try:
                     payload, _, is_zstd = decompress_container(file_data, logical_path, romfs_path)
                 except Exception:
                     payload = file_data
                     is_zstd = False
-                
+
                 editor = TxtgEditor(payload)
                 if 'useSRGB' in metadata and metadata['useSRGB'] is not None:
                     use_srgb = bool(metadata['useSRGB'])
                     fmt = editor.format_id
-                    
+
                     if fmt == 0x101 and editor.texture_setting2 == 32631:
                         fmt = 0x102
-                        
+
                     srgb_map = {
                         0x101: 0x109, 0x109: 0x109, # ASTC 4x4
                         0x102: 0x105, 0x105: 0x105, # ASTC 8x8
@@ -633,7 +633,7 @@ def main():
                             editor.format_id = srgb_map[fmt]
                     elif not use_srgb and fmt in unorm_map:
                         editor.format_id = unorm_map[fmt]
-                        
+
                 channels = ['Red', 'Green', 'Blue', 'Alpha', 'Zero', 'One']
                 ch_map = {c: i for i, c in enumerate(channels)}
                 if 'red' in metadata and metadata['red'] in ch_map:
@@ -644,8 +644,8 @@ def main():
                     editor.comp_b = ch_map[metadata['blue']]
                 if 'alpha' in metadata and metadata['alpha'] in ch_map:
                     editor.comp_a = ch_map[metadata['alpha']]
-                
-                
+
+
                 _save_txtg_file_bytes(archive_path, logical_path, editor.to_bytes(), is_zstd, romfs_path)
                 print(json.dumps({'success': True}))
 
@@ -665,7 +665,7 @@ def main():
                 print(json.dumps({"success": True}))
 
     except Exception as e:
-        import traceback; print(json.dumps({'error': str(e), 'traceback': traceback.format_exc()}))
+        print(json.dumps({'error': str(e), 'traceback': traceback.format_exc()}))
         sys.exit(0)
 
 

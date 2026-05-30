@@ -47,11 +47,11 @@ def _format_channel(ch: int) -> str:
 def _read_bntx_string(data: bytes, offset: int, le: bool) -> str:
     if offset < 0 or offset >= len(data):
         return ""
-        
+
     # If the pointer is literally pointing at the NX block header, it's an empty Nintendo string
     if data[offset:offset+3] == b"NX ":
         return ""
-        
+
     # Try reading as a length-prefixed string (Switch Toolbox style)
     if offset + 2 <= len(data):
         str_len = _read_u16(data, offset, le)
@@ -59,7 +59,7 @@ def _read_bntx_string(data: bytes, offset: int, le: bool) -> str:
         if 0 <= str_len <= 256 and offset + 2 + str_len < len(data):
             if data[offset + 2 + str_len] == 0:
                 return data[offset + 2 : offset + 2 + str_len].decode("utf-8", errors="replace")
-                
+
     # Fallback: treat as a standard C-string starting at offset
     end = data.find(b"\x00", offset)
     if end < 0:
@@ -244,7 +244,7 @@ def _parse_textures(data: bytes) -> list[BntxTexture]:
         else:
             name = f"texture_{i}"
             _log(f"  Texture {i}: nameAddr out of range, using fallback name")
-            
+
         path_addr = _read_i64(data, d + 0x58, le)
         if 0 < path_addr < file_len:
             path = _read_bntx_string(data, path_addr, le)
@@ -307,7 +307,6 @@ def read_texture_data(data: bytes, texture_name: str) -> bytes:
     raise FileNotFoundError(f"Texture not found in BNTX: {texture_name!r}")
 """BNTX (Binary NX TeXture) container editor."""
 
-import struct
 
 
 def bit_length(n: int) -> int:

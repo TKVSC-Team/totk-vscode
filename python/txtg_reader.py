@@ -178,14 +178,14 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
 
     decode_error: str | None = None
     png_path = None
-    
+
     # TOTK textures sometimes disguise ASTC 8x8 as ASTC 4x4. We use ASTC 4x4 block size to decode.
     is_astc_8x8 = False
     if "ASTC_8x8" in fmt_name and decoder_key == "astc":
         is_astc_8x8 = True
         blk_w = 4
         blk_h = 4
-        
+
     if not image_data:
         decode_error = "TXTG has no readable surface payload."
     elif width <= 0 or height <= 0:
@@ -195,7 +195,7 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
     else:
         render_width = width // 2 if is_astc_8x8 else width
         render_height = height // 2 if is_astc_8x8 else height
-        
+
         decode_inputs: list[tuple[str, bytes, int]] = []
         for bh in _iter_block_height_candidates(texture_setting4):
             try:
@@ -334,7 +334,6 @@ def read_txtg_texture_result(txtg_data: bytes, texture_name: str) -> dict:
 """Editor for TOTK TXTG (TexToGo) textures."""
 
 import struct
-import zstandard as zstd
 
 
 class TxtgEditor:
@@ -442,33 +441,32 @@ class TxtgEditor:
         raw_surfaces should be a list of uncompressed image payloads (e.g. mips/arrays).
         """
         header = self._data[:self.header_size]
-        
+
         cctx = zstd.ZstdCompressor()
-        
-        index_table = []
+
         size_table = []
         payload_data = bytearray()
-        
+
         surface_count = len(raw_surfaces)
-        
+
         for surface in raw_surfaces:
             compressed = cctx.compress(surface)
             size_table.append(len(compressed))
             payload_data.extend(compressed)
-            
+
         index_bytes = bytearray(surface_count * 4) # usually zeroed out or offsets
         # TXTG format index table isn't strictly required to have offsets, often zeroes,
         # but let's just make it zeroes for now.
-        
+
         size_bytes = bytearray()
         for size in size_table:
             size_bytes.extend(struct.pack("<Q", size))
-            
+
         new_data = bytearray(header)
         new_data.extend(index_bytes)
         new_data.extend(size_bytes)
         new_data.extend(payload_data)
-        
+
         self._data = new_data
 
     def to_bytes(self) -> bytes:

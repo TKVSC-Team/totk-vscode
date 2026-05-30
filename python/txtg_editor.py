@@ -1,6 +1,8 @@
 import struct
+
 import zstandard as zstd
 from txtg_reader import is_txtg
+
 
 class TxtgEditor:
     def __init__(self, data: bytes):
@@ -104,21 +106,20 @@ class TxtgEditor:
     def replace_image_data(self, raw_surfaces: list[bytes]):
         header = self._data[:self.header_size]
         cctx = zstd.ZstdCompressor()
-        index_table = []
         size_table = []
         payload_data = bytearray()
         surface_count = len(raw_surfaces)
-        
+
         for surface in raw_surfaces:
             compressed = cctx.compress(surface)
             size_table.append(len(compressed))
             payload_data.extend(compressed)
-            
+
         index_bytes = bytearray(surface_count * 4)
         size_bytes = bytearray()
         for size in size_table:
             size_bytes.extend(struct.pack('<Q', size))
-            
+
         new_data = bytearray(header)
         new_data.extend(index_bytes)
         new_data.extend(size_bytes)
