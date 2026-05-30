@@ -24,7 +24,7 @@ export class ArchiveTreeItem extends vscode.TreeItem {
         public readonly entryName: string,
         public readonly resourceUri: vscode.Uri,
         collapsibleState: vscode.TreeItemCollapsibleState,
-        options?: { isRoot?: boolean; contextValue?: string },
+        options?: { isRoot?: boolean; contextValue?: string; isActive?: boolean },
     ) {
         super(entryName, collapsibleState);
         this.resourceUri = resourceUri;
@@ -34,6 +34,9 @@ export class ArchiveTreeItem extends vscode.TreeItem {
         if (options?.isRoot) {
             this.description = path.dirname(resourceUri.fsPath);
             this.tooltip = resourceUri.fsPath;
+            if (options.isActive) {
+                this.iconPath = new vscode.ThemeIcon('star-full');
+            }
         } else if (collapsibleState === vscode.TreeItemCollapsibleState.None) {
             this.command = (isBntxTextureUri(resourceUri) || isTxtgFile(resourceUri.fsPath))
                 ? { command: 'totk-editor.openBntxTexture', title: 'View Texture', arguments: [resourceUri] }
@@ -58,6 +61,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
     readonly onDidChangeRoots = this.onDidChangeRootsEmitter.event;
 
     private roots: vscode.Uri[] = [];
+    private activeProjectRootUri: string | undefined;
 
     private sortRoots(): void {
         this.roots.sort((a, b) =>
@@ -70,6 +74,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
     constructor(private readonly context: vscode.ExtensionContext) {
         const stored = context.globalState.get<string[]>(STORAGE_KEY, []);
         this.roots = stored.map((fsPath) => toSarcUri(vscode.Uri.file(fsPath)));
+        this.activeProjectRootUri = context.globalState.get<string>('totk-editor.activeProjectRoot');
         this.sortRoots();
     }
 
@@ -85,7 +90,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
                         path.basename(root.fsPath),
                         root,
                         vscode.TreeItemCollapsibleState.Collapsed,
-                        { isRoot: true },
+                        { isRoot: true, isActive: root.fsPath === this.activeProjectRootUri },
                     ),
             );
         }
@@ -180,6 +185,23 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
             fsPath: root.fsPath,
             label: path.basename(root.fsPath),
         }));
+    }
+
+    setActiveProject(fsPath: string | undefined): void {
+        this.activeProjectRootUri = fsPath;
+        if (fsPath) {
+            void this.context.globalState.update('totk-editor.activeProjectRoot', fsPath);
+        } else {
+            void this.context.globalState.update('totk-editor.activeProjectRoot', undefined);
+        }
+        this.onDidChangeTreeDataEmitter.fire(undefined);
+    }
+
+    getActiveProject(): string | undefined {
+        if (this.activeProjectRootUri && !this.roots.some((r) => r.fsPath === this.activeProjectRootUri)) {
+            this.setActiveProject(undefined);
+        }
+        return this.activeProjectRootUri;
     }
 
     private async persistRoots(): Promise<void> {
@@ -281,6 +303,14 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
                     }
                 }
             },
+        ),
+        vscode.commands.registerCommand(
+            'totk-editor.setActiveProject',
+            (item: ArchiveTreeItem | undefined) => {
+                if (item && item.resourceUri) {
+                    provider.setActiveProject(item.resourceUri.fsPath);
+                }
+            }
         ),
     );
 

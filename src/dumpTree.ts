@@ -589,6 +589,62 @@ export function registerGameDumpTree(
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
+            'totk-editor.addDumpToActiveProject',
+            async (item: DumpTreeItem | undefined) => {
+                const entries = selectedItems(item).filter(
+                    (entry) =>
+                        entry.contextValue === 'dumpFile' ||
+                        entry.contextValue === 'dumpVirtualFile' ||
+                        entry.contextValue === 'dumpArchive',
+                );
+                if (entries.length === 0) {
+                    void vscode.window.showWarningMessage(
+                        'Select one or more files in TOTK Dump first.',
+                    );
+                    return;
+                }
+
+                const activeFsPath = archiveTree.getActiveProject();
+                let projectRoot: string | undefined;
+                if (activeFsPath) {
+                    projectRoot = activeFsPath;
+                } else {
+                    const projects = archiveTree.getProjectRoots();
+                    projectRoot = await pickProjectRoot(projects);
+                }
+
+                if (!projectRoot) {
+                    return;
+                }
+
+                let copiedCount = 0;
+                for (const entry of entries) {
+                    const copied = await addDumpEntryToProject(
+                        entry.resourceUri.fsPath,
+                        projectRoot,
+                        undefined,
+                        { suppressSuccessMessage: entries.length > 1 },
+                    );
+                    if (copied) {
+                        copiedCount++;
+                    }
+                }
+
+                if (copiedCount > 0) {
+                    if (entries.length > 1) {
+                        void vscode.window.showInformationMessage(
+                            `Added ${copiedCount}/${entries.length} selected items to project.`,
+                        );
+                    }
+                    archiveTree.refresh();
+                    void onProjectCanonicalPathsChanged?.();
+                }
+            },
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
             'totk-editor.addDumpToProject',
             async (item: DumpTreeItem | undefined) => {
                 const entries = selectedItems(item).filter(

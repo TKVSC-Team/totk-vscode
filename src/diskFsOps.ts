@@ -1,36 +1,52 @@
 import * as fs from 'fs';
 
-export function deleteDiskPath(diskPath: string, recursive: boolean): void {
-    if (!fs.existsSync(diskPath)) {
-        return;
-    }
-
-    const stat = fs.statSync(diskPath);
-    if (stat.isDirectory()) {
-        if (recursive) {
-            fs.rmSync(diskPath, { recursive: true, force: true });
-        } else {
-            fs.rmdirSync(diskPath);
+export async function deleteDiskPath(diskPath: string, recursive: boolean): Promise<void> {
+    try {
+        const stat = await fs.promises.stat(diskPath);
+        if (stat.isDirectory()) {
+            if (recursive) {
+                await fs.promises.rm(diskPath, { recursive: true, force: true });
+            } else {
+                await fs.promises.rmdir(diskPath);
+            }
+            return;
         }
-        return;
+        await fs.promises.unlink(diskPath);
+    } catch (err: any) {
+        if (err.code !== 'ENOENT') {
+            throw err;
+        }
     }
-
-    fs.unlinkSync(diskPath);
 }
 
-export function renameDiskPath(oldPath: string, newPath: string, overwrite: boolean): void {
-    if (!overwrite && fs.existsSync(newPath)) {
-        throw new Error(`Destination already exists: ${newPath}`);
+export async function renameDiskPath(oldPath: string, newPath: string, overwrite: boolean): Promise<void> {
+    if (!overwrite) {
+        try {
+            await fs.promises.stat(newPath);
+            throw new Error(`Destination already exists: ${newPath}`);
+        } catch (err: any) {
+            if (err.code !== 'ENOENT') {
+                throw err;
+            }
+        }
     }
 
     const parent = newPath.replace(/[/\\][^/\\]+$/, '');
-    if (parent && !fs.existsSync(parent)) {
-        fs.mkdirSync(parent, { recursive: true });
+    if (parent) {
+        try {
+            await fs.promises.stat(parent);
+        } catch (err: any) {
+            if (err.code === 'ENOENT') {
+                await fs.promises.mkdir(parent, { recursive: true });
+            } else {
+                throw err;
+            }
+        }
     }
 
-    fs.renameSync(oldPath, newPath);
+    await fs.promises.rename(oldPath, newPath);
 }
 
-export function createDiskDirectory(diskPath: string): void {
-    fs.mkdirSync(diskPath, { recursive: true });
+export async function createDiskDirectory(diskPath: string): Promise<void> {
+    await fs.promises.mkdir(diskPath, { recursive: true });
 }

@@ -39,37 +39,44 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
         return new vscode.Disposable(() => undefined);
     }
 
-    stat(uri: vscode.Uri): vscode.FileStat {
+    async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
         const diskPath = uri.fsPath;
-        if (!fs.existsSync(diskPath)) {
-            throw vscode.FileSystemError.FileNotFound(diskPath);
+        try {
+            const stat = await fs.promises.stat(diskPath);
+            return {
+                type: stat.isDirectory() ? vscode.FileType.Directory : vscode.FileType.File,
+                ctime: stat.ctimeMs,
+                mtime: stat.mtimeMs,
+                size: stat.size,
+            };
+        } catch (err: any) {
+            if (err.code === 'ENOENT') {
+                throw vscode.FileSystemError.FileNotFound(diskPath);
+            }
+            throw err;
         }
-
-        const stat = fs.statSync(diskPath);
-        return {
-            type: stat.isDirectory() ? vscode.FileType.Directory : vscode.FileType.File,
-            ctime: stat.ctimeMs,
-            mtime: stat.mtimeMs,
-            size: stat.size,
-        };
     }
 
-    readDirectory(uri: vscode.Uri): [string, vscode.FileType][] {
+    async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
         const diskPath = uri.fsPath;
-        if (!fs.existsSync(diskPath)) {
-            return [];
-        }
-
-        return fs.readdirSync(diskPath, { withFileTypes: true }).map((entry) => {
-            const entryPath = path.join(diskPath, entry.name);
-            if (entry.isDirectory()) {
-                return [entry.name, vscode.FileType.Directory];
-            }
-            if (isArchiveFile(entryPath)) {
+        try {
+            const entries = await fs.promises.readdir(diskPath, { withFileTypes: true });
+            return entries.map((entry) => {
+                const entryPath = path.join(diskPath, entry.name);
+                if (entry.isDirectory()) {
+                    return [entry.name, vscode.FileType.Directory];
+                }
+                if (isArchiveFile(entryPath)) {
+                    return [entry.name, vscode.FileType.File];
+                }
                 return [entry.name, vscode.FileType.File];
+            });
+        } catch (err: any) {
+            if (err.code === 'ENOENT') {
+                return [];
             }
-            return [entry.name, vscode.FileType.File];
-        });
+            throw err;
+        }
     }
 
     async readFile(uri: vscode.Uri): Promise<Uint8Array> {
@@ -78,7 +85,7 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
 
         if (!isEditableFile(diskPath)) {
             logger.debug(`totk-disk: Non-editable raw binary file. Reading directly from disk.`);
-            const raw = fs.readFileSync(diskPath);
+            const raw = await fs.promises.readFile(diskPath);
             this.fileContentCache.set(uri.toString(), raw);
             return raw;
         }
@@ -114,20 +121,24 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
                 logger.info(`totk-disk: Skipping write and canonical sync for unchanged binary file: ${diskPath}`);
                 return;
             }
-            fs.writeFileSync(diskPath, content);
+            await fs.promises.writeFile(diskPath, content);
             logger.showSavedToast(diskPath);
             await this.onDidWriteFile?.({ diskPath, content });
             this.fileContentCache.set(uri.toString(), content);
             return;
         }
 
-        if (!fs.existsSync(diskPath)) {
-            logger.debug(`totk-disk: File does not exist on disk. Writing directly first.`);
-            fs.writeFileSync(diskPath, content);
-            logger.showSavedToast(diskPath);
-            await this.onDidWriteFile?.({ diskPath, content, textContent: text });
-            this.fileContentCache.set(uri.toString(), text);
-            return;
+        try {
+            await fs.promises.stat(diskPath);
+        } catch (err: any) {
+            if (err.code === 'ENOENT') {
+                logger.debug(`totk-disk: File does not exist on disk. Writing directly first.`);
+                await fs.promises.writeFile(diskPath, content);
+                logger.showSavedToast(diskPath);
+                await this.onDidWriteFile?.({ diskPath, content, textContent: text });
+                this.fileContentCache.set(uri.toString(), text);
+                return;
+            }
         }
 
         const cached = this.fileContentCache.get(uri.toString());
@@ -158,27 +169,27 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
         }
     }
 
-    createDirectory(uri: vscode.Uri): void {
+    async createDirectory(uri: vscode.Uri): Promise<void> {
         logger.info(`totk-disk: Creating directory: ${uri.fsPath}`);
-        createDiskDirectory(uri.fsPath);
+        await createDiskDirectory(uri.fsPath);
         this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Created, uri }]);
     }
 
-    delete(uri: vscode.Uri, options: { recursive: boolean }): void {
+    async delete(uri: vscode.Uri, options: { recursive: boolean }): Promise<void> {
         logger.info(`totk-disk: Deleting path (recursive=${options.recursive}): ${uri.fsPath}`);
         this.fileContentCache.delete(uri.toString());
-        deleteDiskPath(uri.fsPath, options.recursive);
+        await deleteDiskPath(uri.fsPath, options.recursive);
         this._onDidChangeFile.fire([{ type: vscode.FileChangeType.Deleted, uri }]);
     }
 
-    rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): void {
+    async rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean }): Promise<void> {
         logger.info(`totk-disk: Renaming path (overwrite=${options.overwrite}) from: ${oldUri.fsPath} to: ${newUri.fsPath}`);
         const cached = this.fileContentCache.get(oldUri.toString());
         if (cached !== undefined) {
             this.fileContentCache.delete(oldUri.toString());
             this.fileContentCache.set(newUri.toString(), cached);
         }
-        renameDiskPath(oldUri.fsPath, newUri.fsPath, options.overwrite);
+        await renameDiskPath(oldUri.fsPath, newUri.fsPath, options.overwrite);
         this._onDidChangeFile.fire([
             { type: vscode.FileChangeType.Deleted, uri: oldUri },
             { type: vscode.FileChangeType.Created, uri: newUri },

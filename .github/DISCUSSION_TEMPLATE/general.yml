@@ -1,0 +1,11 @@
+name: General
+description: General discussion about TKVSC
+labels: ["discussion"]
+body:
+  - type: textarea
+    id: body
+    attributes:
+      label: Discussion
+      description: What would you like to discuss?
+    validations:
+      required: true

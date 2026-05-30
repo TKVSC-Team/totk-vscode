@@ -313,6 +313,11 @@ class SarcProvider implements vscode.FileSystemProvider {
 
         const diskArchive = this.getDiskArchive(fsPath);
         const locator = this.getLocator(fsPath, diskArchive);
+        
+        if (!locator) {
+            return this.statDiskPath(diskArchive);
+        }
+
         const entryType = await this.entryTypeForLocator(diskArchive, locator);
         if (entryType === vscode.FileType.Directory) {
             return { type: entryType, ctime: 0, mtime: 0, size: 0 };
@@ -454,10 +459,10 @@ class SarcProvider implements vscode.FileSystemProvider {
         );
     }
 
-    createDirectory(uri: vscode.Uri): void {
+    async createDirectory(uri: vscode.Uri): Promise<void> {
         const fsPath = uri.fsPath;
         if (this.isMutatableDiskPath(fsPath)) {
-            createDiskDirectory(fsPath);
+            await createDiskDirectory(fsPath);
             this.notifyChanged(uri, vscode.FileChangeType.Created);
             return;
         }
@@ -585,7 +590,7 @@ class SarcProvider implements vscode.FileSystemProvider {
         const fsPath = uri.fsPath;
         this.fileContentCache.delete(uri.toString());
         if (this.isMutatableDiskPath(fsPath)) {
-            deleteDiskPath(fsPath, options.recursive);
+            await deleteDiskPath(fsPath, options.recursive);
             this.notifyChanged(uri, vscode.FileChangeType.Deleted);
             return;
         }
@@ -639,7 +644,7 @@ class SarcProvider implements vscode.FileSystemProvider {
             this.fileContentCache.set(newUri.toString(), cached);
         }
         if (this.isMutatableDiskPath(oldPath) && this.isMutatableDiskPath(newPath)) {
-            renameDiskPath(oldPath, newPath, options.overwrite);
+            await renameDiskPath(oldPath, newPath, options.overwrite);
             this.notifyChanged(oldUri, vscode.FileChangeType.Deleted);
             this.notifyChanged(newUri, vscode.FileChangeType.Created);
             return;

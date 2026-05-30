@@ -260,6 +260,19 @@ async function getUniqueTargetUri(folderUri: vscode.Uri, name: string): Promise<
     }
 }
 
+async function parallelMap<T, R>(items: T[], fn: (item: T) => Promise<R>, limit = 10): Promise<R[]> {
+    const results: R[] = new Array(items.length);
+    let index = 0;
+    const workers = Array(limit).fill(0).map(async () => {
+        while (index < items.length) {
+            const i = index++;
+            results[i] = await fn(items[i]);
+        }
+    });
+    await Promise.all(workers);
+    return results;
+}
+
 async function moveEntry(src: vscode.Uri, dest: vscode.Uri): Promise<void> {
     const isSrcVirtual = isPathInsideArchive(src.fsPath);
     const isDestVirtual = isPathInsideArchive(dest.fsPath);
@@ -278,15 +291,17 @@ async function moveEntry(src: vscode.Uri, dest: vscode.Uri): Promise<void> {
         if (isDirectory) {
             await vscode.workspace.fs.createDirectory(dest);
             const dirEntries = await captureDirectory(src);
-            for (const entry of dirEntries) {
-                const entrySrcUri = vscode.Uri.joinPath(src, entry.relativeUri);
+            const dirs = dirEntries.filter((e) => e.type === 'dir');
+            const files = dirEntries.filter((e) => e.type === 'file');
+            dirs.sort((a, b) => a.relativeUri.length - b.relativeUri.length);
+            for (const entry of dirs) {
                 const entryDestUri = vscode.Uri.joinPath(dest, entry.relativeUri);
-                if (entry.type === 'dir') {
-                    await vscode.workspace.fs.createDirectory(entryDestUri);
-                } else {
-                    await vscode.workspace.fs.writeFile(entryDestUri, entry.content!);
-                }
+                await vscode.workspace.fs.createDirectory(entryDestUri);
             }
+            await parallelMap(files, async (entry) => {
+                const entryDestUri = vscode.Uri.joinPath(dest, entry.relativeUri);
+                await vscode.workspace.fs.writeFile(entryDestUri, entry.content!);
+            });
         } else {
             const data = await vscode.workspace.fs.readFile(src);
             await vscode.workspace.fs.writeFile(dest, data);
@@ -329,15 +344,17 @@ async function copyEntries(
                     if (isDirectory) {
                         await vscode.workspace.fs.createDirectory(target);
                         const dirEntries = await captureDirectory(source.resourceUri);
-                        for (const entry of dirEntries) {
-                            const entrySrcUri = vscode.Uri.joinPath(source.resourceUri, entry.relativeUri);
+                        const dirs = dirEntries.filter((e) => e.type === 'dir');
+                        const files = dirEntries.filter((e) => e.type === 'file');
+                        dirs.sort((a, b) => a.relativeUri.length - b.relativeUri.length);
+                        for (const entry of dirs) {
                             const entryDestUri = vscode.Uri.joinPath(target, entry.relativeUri);
-                            if (entry.type === 'dir') {
-                                await vscode.workspace.fs.createDirectory(entryDestUri);
-                            } else {
-                                await vscode.workspace.fs.writeFile(entryDestUri, entry.content!);
-                            }
+                            await vscode.workspace.fs.createDirectory(entryDestUri);
                         }
+                        await parallelMap(files, async (entry) => {
+                            const entryDestUri = vscode.Uri.joinPath(target, entry.relativeUri);
+                            await vscode.workspace.fs.writeFile(entryDestUri, entry.content!);
+                        });
                     } else {
                         const data = await vscode.workspace.fs.readFile(source.resourceUri);
                         await vscode.workspace.fs.writeFile(target, data);
@@ -438,69 +455,63 @@ async function writeCapturedEntriesConcurrent(baseUri: vscode.Uri, entries: Capt
 
 async function createBackups(items: ArchiveTreeItem[]): Promise<DeletedItemBackup[]> {
     const backups: DeletedItemBackup[] = [];
-    await Promise.all(
-        items.map(async (item) => {
-            if (!item.resourceUri) {
-                return;
+    await parallelMap(items, async (item) => {
+        if (!item.resourceUri) {
+            return;
+        }
+        const isVirtual = isPathInsideArchive(item.resourceUri.fsPath);
+        const resolvedUri = isVirtual ? item.resourceUri : toFileUri(item.resourceUri);
+        try {
+            const stat = await vscode.workspace.fs.stat(resolvedUri);
+            const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(resolvedUri.fsPath);
+            if (isDirectory) {
+                const dirEntries = await captureDirectory(resolvedUri);
+                backups.push({
+                    uri: resolvedUri,
+                    type: 'dir',
+                    dirEntries,
+                });
+            } else {
+                const fileContent = await vscode.workspace.fs.readFile(resolvedUri);
+                backups.push({
+                    uri: resolvedUri,
+                    type: 'file',
+                    fileContent,
+                });
             }
-            const isVirtual = isPathInsideArchive(item.resourceUri.fsPath);
-            const resolvedUri = isVirtual ? item.resourceUri : toFileUri(item.resourceUri);
-            try {
-                const stat = await vscode.workspace.fs.stat(resolvedUri);
-                const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(resolvedUri.fsPath);
-                if (isDirectory) {
-                    const dirEntries = await captureDirectory(resolvedUri);
-                    backups.push({
-                        uri: resolvedUri,
-                        type: 'dir',
-                        dirEntries,
-                    });
-                } else {
-                    const fileContent = await vscode.workspace.fs.readFile(resolvedUri);
-                    backups.push({
-                        uri: resolvedUri,
-                        type: 'file',
-                        fileContent,
-                    });
-                }
-            } catch (err) {
-                console.error('Failed to create backup for ' + resolvedUri.toString(), err);
-            }
-        })
-    );
+        } catch (err) {
+            console.error('Failed to create backup for ' + resolvedUri.toString(), err);
+        }
+    });
     return backups;
 }
 
 async function restoreBackups(backups: DeletedItemBackup[]): Promise<void> {
-    await Promise.all(
-        backups.map(async (backup) => {
-            if (backup.type === 'file') {
-                await vscode.workspace.fs.writeFile(backup.uri, backup.fileContent!);
-            } else {
-                await vscode.workspace.fs.createDirectory(backup.uri);
-                if (backup.dirEntries) {
-                    await writeCapturedEntriesConcurrent(backup.uri, backup.dirEntries);
-                }
+    await parallelMap(backups, async (backup) => {
+        if (backup.type === 'file') {
+            await vscode.workspace.fs.writeFile(backup.uri, backup.fileContent!);
+        } else {
+            await vscode.workspace.fs.createDirectory(backup.uri);
+            if (backup.dirEntries) {
+                await writeCapturedEntriesConcurrent(backup.uri, backup.dirEntries);
             }
-        })
-    );
+        }
+    });
 }
 
 async function deleteBackups(backups: DeletedItemBackup[]): Promise<void> {
-    await Promise.all(
-        backups.map(async (backup) => {
-            try {
-                const stat = await vscode.workspace.fs.stat(backup.uri);
-                const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(backup.uri.fsPath);
-                await vscode.workspace.fs.delete(backup.uri, {
-                    recursive: isDirectory,
-                    useTrash: false,
-                });
-            } catch {
-                // Already deleted or not found
-            }
-        })
-    );
+    await parallelMap(backups, async (backup) => {
+        try {
+            const stat = await vscode.workspace.fs.stat(backup.uri);
+            const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(backup.uri.fsPath);
+            await vscode.workspace.fs.delete(backup.uri, {
+                recursive: isDirectory,
+                useTrash: false,
+            });
+        } catch {
+            // Already deleted or not found
+        }
+    });
 }
 
 class ArchiveHistoryManager {
@@ -581,13 +592,13 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 }
                 try {
                     const backups = await createBackups(items);
-                    for (const entry of items) {
+                    await parallelMap(items, async (entry) => {
                         const exists = await vscode.workspace.fs.stat(entry.resourceUri).then(
                             () => true,
                             () => false,
                         );
                         if (!exists) {
-                            continue;
+                            return;
                         }
                         const stat = await vscode.workspace.fs.stat(entry.resourceUri);
                         const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(entry.resourceUri.fsPath);
@@ -595,7 +606,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                             recursive: isDirectory,
                             useTrash: false,
                         });
-                    }
+                    });
                     historyManager.push({
                         description: `Delete ${label}`,
                         undo: async () => {
@@ -833,14 +844,14 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                     historyManager.push({
                         description: `Move ${sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`}`,
                         undo: async () => {
-                            for (const move of moves) {
+                            await parallelMap(moves, async (move) => {
                                 await moveEntry(move.dest, move.src);
-                            }
+                            });
                         },
                         redo: async () => {
-                            for (const move of moves) {
+                            await parallelMap(moves, async (move) => {
                                 await moveEntry(move.src, move.dest);
-                            }
+                            });
                         },
                     });
                     await context.workspaceState.update(CLIPBOARD_KEY, []);
@@ -1266,14 +1277,14 @@ export class ArchiveTreeDragDrop
             historyManager.push({
                 description: `Drag & Drop Move ${sources.length === 1 ? sources[0]!.entryName : `${sources.length} items`}`,
                 undo: async () => {
-                    for (const move of moves) {
+                    await parallelMap(moves, async (move) => {
                         await moveEntry(move.dest, move.src);
-                    }
+                    });
                 },
                 redo: async () => {
-                    for (const move of moves) {
+                    await parallelMap(moves, async (move) => {
                         await moveEntry(move.src, move.dest);
-                    }
+                    });
                 },
             });
             refreshArchives();

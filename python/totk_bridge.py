@@ -403,9 +403,10 @@ def write_file_content(
             return read_archive_file_bytes(archive_path, logical_path, romfs_path)
         except Exception:
             import re
+
             parent = Path(logical_path).parent
             name = Path(logical_path).name
-            cleaned_name = re.sub(r'_\d+(\..+)?$', r'\1', name)
+            cleaned_name = re.sub(r"_\d+(\..+)?$", r"\1", name)
             romfs_file_path = Path(romfs_path) / parent / cleaned_name
             if romfs_file_path.exists() and romfs_file_path.is_file():
                 return romfs_file_path.read_bytes()

@@ -250,6 +250,14 @@
         "title": "TOTK: Set Game Dump Path"
       },
       {
+        "command": "totk-editor.setActiveProject",
+        "title": "Set as Active Project"
+      },
+      {
+        "command": "totk-editor.addDumpToActiveProject",
+        "title": "Add to Active Project"
+      },
+      {
         "command": "totk-editor.addDumpToProject",
         "title": "Add to Project…"
       },
@@ -442,6 +450,11 @@
           "when": "view == totk-editor.archives && viewItem == archiveRoot"
         },
         {
+          "command": "totk-editor.setActiveProject",
+          "when": "view == totk-editor.archives && viewItem == archiveRoot",
+          "group": "1_active"
+        },
+        {
           "command": "totk-editor.archiveNewFile",
           "when": "view == totk-editor.archives && (viewItem == archiveRoot || viewItem == archiveDir || viewItem == archiveVirtualDir || viewItem == archivePackage)",
           "group": "1_create@1"
@@ -512,9 +525,14 @@
           "group": "5_export@1"
         },
         {
+          "command": "totk-editor.addDumpToActiveProject",
+          "when": "view == totk-editor.gameDump && (viewItem == dumpFile || viewItem == dumpVirtualFile || viewItem == dumpArchive)",
+          "group": "2_add@1"
+        },
+        {
           "command": "totk-editor.addDumpToProject",
           "when": "view == totk-editor.gameDump && (viewItem == dumpFile || viewItem == dumpVirtualFile || viewItem == dumpArchive)",
-          "group": "2_add"
+          "group": "2_add@2"
         },
         {
           "command": "totk-editor.configureFilteringRules",
@@ -792,20 +810,21 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "lint-fix": "eslint src --fix",
+    "fix": "eslint src --fix && python -m ruff check --fix && python -m ruff format",
     "test": "vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "^22.19.19",
+    "@types/node": "^25.9.1",
     "@types/vscode": "^1.120.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.1",
-    "esbuild": "^0.27.3",
-    "eslint": "^9.39.3",
+    "esbuild": "^0.28.0",
+    "eslint": "^10.4.1",
     "npm-run-all": "^4.1.5",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0"
   },
   "dependencies": {
     "sql.js": "^1.14.1"
