@@ -488,7 +488,10 @@ def render_texture_to_png(bntx_data: bytes, texture_name: str) -> str | None:
     _log(f"Saved PNG: {tmp_path}")
     return tmp_path
 
-def extract_texture_linear(bntx_data: bytes, texture_name: str) -> tuple[int, int, str, bytes, int, int] | None:
+
+def extract_texture_linear(
+    bntx_data: bytes, texture_name: str
+) -> tuple[int, int, str, bytes, int, int] | None:
     """Extract raw deswizzled linear bytes and metadata for native export."""
     textures = _parse_textures(bntx_data)
     tex = None
