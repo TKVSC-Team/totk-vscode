@@ -259,6 +259,11 @@
         "icon": "$(folder-opened)"
       },
       {
+        "command": "totk-editor.importTKMMProjects",
+        "title": "TOTK: Import TKMM Projects",
+        "icon": "$(cloud-download)"
+      },
+      {
         "command": "totk-editor.refreshArchives",
         "title": "TOTK: Refresh Projects",
         "icon": "$(refresh)"
@@ -491,6 +496,11 @@
         },
         {
           "command": "totk-editor.addProjectFolders",
+          "when": "view == totk-editor.archives",
+          "group": "navigation"
+        },
+        {
+          "command": "totk-editor.importTKMMProjects",
           "when": "view == totk-editor.archives",
           "group": "navigation"
         },

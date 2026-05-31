@@ -438,11 +438,72 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
         }
     };
 
+    const importTKMMProjects = async (): Promise<void> => {
+        const recentJsonPaths: string[] = [];
+        const homeDir = require('os').homedir();
+        if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+            recentJsonPaths.push(path.join(process.env.LOCALAPPDATA, '.tk-studio', 'recent.json'));
+        } else {
+            recentJsonPaths.push(path.join(homeDir, '.local', 'share', 'tk-studio', 'recent.json'));
+            recentJsonPaths.push(path.join(homeDir, '.local', 'share', '.tk-studio', 'recent.json'));
+            recentJsonPaths.push(path.join(homeDir, '.config', 'tk-studio', 'recent.json'));
+            recentJsonPaths.push(path.join(homeDir, '.config', '.tk-studio', 'recent.json'));
+            recentJsonPaths.push(path.join(homeDir, '.tk-studio', 'recent.json'));
+            recentJsonPaths.push(path.join(homeDir, 'Library', 'Application Support', 'tk-studio', 'recent.json'));
+            recentJsonPaths.push(path.join(homeDir, 'Library', 'Application Support', '.tk-studio', 'recent.json'));
+        }
+
+        let foundPath: string | undefined;
+        for (const p of recentJsonPaths) {
+            try {
+                const stat = await vscode.workspace.fs.stat(vscode.Uri.file(p));
+                if (stat.type === vscode.FileType.File) {
+                    foundPath = p;
+                    break;
+                }
+            } catch {
+                // Ignore
+            }
+        }
+
+        if (!foundPath) {
+            void vscode.window.showWarningMessage('TOTK Archives: Could not find TKMM recent.json. Please make sure you have opened projects in TKMM before.');
+            return;
+        }
+
+        try {
+            const data = await vscode.workspace.fs.readFile(vscode.Uri.file(foundPath));
+            const projects = JSON.parse(Buffer.from(data).toString('utf-8')) as string[];
+            if (Array.isArray(projects)) {
+                let addedCount = 0;
+                for (const p of projects) {
+                    try {
+                        const stat = await vscode.workspace.fs.stat(vscode.Uri.file(p));
+                        if (stat.type === vscode.FileType.Directory) {
+                            await provider.addRoot(vscode.Uri.file(p));
+                            addedCount++;
+                        }
+                    } catch {
+                        // Project directory might have been deleted or moved
+                    }
+                }
+                void focusArchiveSidebar();
+                void vscode.window.showInformationMessage(`TOTK Archives: Imported ${addedCount} TKMM project(s).`);
+            } else {
+                void vscode.window.showErrorMessage('TOTK Archives: Invalid format in TKMM recent.json.');
+            }
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            void vscode.window.showErrorMessage(`TOTK Archives: Failed to read TKMM recent.json: ${message}`);
+        }
+    };
+
     context.subscriptions.push(
         vscode.commands.registerCommand('totk-editor.addWorkspaceToArchives', addWorkspaceToArchives),
         // Backwards-compat alias for an older mistyped command id.
         vscode.commands.registerCommand('totk-edit.addWorkspaceToArchives', addWorkspaceToArchives),
         vscode.commands.registerCommand('totk-editor.addProjectFolders', addProjectFolders),
+        vscode.commands.registerCommand('totk-editor.importTKMMProjects', importTKMMProjects),
     );
 
     context.subscriptions.push(
