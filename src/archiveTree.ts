@@ -210,7 +210,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
     }
 
     private async ensureRomfsFolder(rootUri: vscode.Uri): Promise<void> {
-        const createRomfs = vscode.workspace.getConfiguration('totk-editor').get<boolean>('createRomfsOnImport', true);
+        const createRomfs = vscode.workspace.getConfiguration('TKVSC').get<boolean>('createRomfsOnImport', true);
         if (!createRomfs) {
             return;
         }

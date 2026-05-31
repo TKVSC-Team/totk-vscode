@@ -22,7 +22,7 @@ function extensionName(filePath: string): string {
 export function getAampExtensions(): Set<string> {
     const base = baseExtensions ?? new Set<string>();
     const extra = vscode.workspace
-        .getConfiguration('totk-editor')
+        .getConfiguration('TKVSC')
         .get<string[]>('extraAampExtensions', [])
         .map((ext) => ext.toLowerCase().replace(/^\./, ''));
     return new Set([...base, ...extra]);

@@ -24,7 +24,7 @@ class ExtensionLogger {
 
     private getLogLevel(): LogLevel {
         try {
-            const config = vscode.workspace.getConfiguration('totk-editor');
+            const config = vscode.workspace.getConfiguration('TKVSC');
             const levelStr = config.get<string>('logLevel', 'Info');
             switch (levelStr) {
                 case 'Debug': return LogLevel.Debug;
@@ -40,7 +40,7 @@ class ExtensionLogger {
 
     private shouldShowToast(): boolean {
         try {
-            const config = vscode.workspace.getConfiguration('totk-editor');
+            const config = vscode.workspace.getConfiguration('TKVSC');
             return config.get<boolean>('enableToastNotifications', true);
         } catch {
             return true;

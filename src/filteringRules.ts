@@ -236,7 +236,7 @@ async function updateGlobalConfigArray(
     settingName: string,
     updater: (current: string[]) => string[]
 ): Promise<void> {
-    const config = vscode.workspace.getConfiguration('totk-editor');
+    const config = vscode.workspace.getConfiguration('TKVSC');
     const inspection = config.inspect<string[]>(settingName);
     const currentList = inspection?.globalValue ?? inspection?.defaultValue ?? [];
     const updatedList = updater(currentList);

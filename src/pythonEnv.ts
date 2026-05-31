@@ -239,7 +239,7 @@ export function getSystemPythonCandidates(): PythonLauncher[] {
         candidates.push(launcher);
     };
 
-    const configured = vscode.workspace.getConfiguration('totk-editor').get<string>('pythonPath', '').trim();
+    const configured = vscode.workspace.getConfiguration('TKVSC').get<string>('pythonPath', '').trim();
     if (configured) {
         add({ executable: configured, prefixArgs: [] });
     }
@@ -322,7 +322,7 @@ export async function configurePythonPath(
     executable: string,
 ): Promise<boolean> {
     logger.info(`Configuring manual pythonPath: ${executable}`);
-    const config = vscode.workspace.getConfiguration('totk-editor');
+    const config = vscode.workspace.getConfiguration('TKVSC');
     await config.update('pythonPath', executable, vscode.ConfigurationTarget.Global);
     const python = await ensurePythonEnvironment(context, true);
     if (python) {
@@ -362,7 +362,7 @@ export async function pickDetectedPython(context: vscode.ExtensionContext): Prom
 
     const choice = await vscode.window.showQuickPick(supported, {
         title: 'Select Python for TKVSC',
-        placeHolder: 'CMD may list python3 on PATH even when Cursor cannot see it - pick the full path below.',
+        placeHolder: 'CMD may list python3 on PATH even when VSCode cannot see it - pick the full path below.',
     });
     if (!choice) {
         return;
@@ -533,7 +533,7 @@ export function ensurePythonEnvironment(
 
 export async function promptPythonSetup(context: vscode.ExtensionContext): Promise<void> {
     const choice = await vscode.window.showErrorMessage(
-        'TKVSC could not find Python 3.10+. Cursor/VS Code often use a different PATH than CMD - set the full path to python.exe, or pick from detected installs.',
+        'TKVSC could not find Python 3.10+. VSCode often uses a different PATH than CMD - set the full path to python.exe, or pick from detected installs.',
         'Pick Python',
         'Browse for python.exe',
         'Retry Setup',

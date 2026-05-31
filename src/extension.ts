@@ -100,7 +100,7 @@ function isLikelyBinaryBuffer(data: Uint8Array): boolean {
 }
 
 function getBridgeEnv(): NodeJS.ProcessEnv {
-    const config = vscode.workspace.getConfiguration('totk-editor');
+    const config = vscode.workspace.getConfiguration('TKVSC');
     const romfsPath = resolveRomfsPath();
     const extraAamp = config.get<string[]>('extraAampExtensions', []);
     return {
@@ -746,9 +746,9 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         }),
         vscode.commands.registerCommand('totk-editor.runSetup', async () => {
-            await context.globalState.update('totk-editor.hasPromptedRomfsPath', false);
-            await context.globalState.update('totk-editor.hasPromptedProjectsPath', false);
-            await context.globalState.update('totk-editor.hasPromptedTKMMImport', false);
+            await context.globalState.update('TKVSC.hasPromptedRomfsPath', false);
+            await context.globalState.update('TKVSC.hasPromptedProjectsPath', false);
+            await context.globalState.update('TKVSC.hasPromptedTKMMImport', false);
             void runFirstTimeSetup(context);
         }),
         vscode.commands.registerCommand('totk-editor.pickPython', () => pickDetectedPython(context)),
@@ -815,19 +815,19 @@ export async function activate(context: vscode.ExtensionContext) {
     let archiveTree: ReturnType<typeof registerArchiveTree> | undefined;
 
     const shouldPropagateCanonicalSaves = (): boolean => {
-        const config = vscode.workspace.getConfiguration('totk-editor');
+        const config = vscode.workspace.getConfiguration('TKVSC');
         return config.get<boolean>('enableCanonicalSavePropagation', true);
     };
     const getCanonicalBlacklistPrefixes = (): string[] => {
-        const config = vscode.workspace.getConfiguration('totk-editor');
+        const config = vscode.workspace.getConfiguration('TKVSC');
         return config.get<string[]>('canonicalSyncBlacklistPrefixes', ['Mals', 'UI']);
     };
     const getCanonicalArchiveTypeBlacklist = (): string[] => {
-        const config = vscode.workspace.getConfiguration('totk-editor');
+        const config = vscode.workspace.getConfiguration('TKVSC');
         return config.get<string[]>('canonicalSyncArchiveTypeBlacklist', ['.sarc', '.blarc']);
     };
     const getCanonicalFileExtensionBlacklist = (): string[] => {
-        const config = vscode.workspace.getConfiguration('totk-editor');
+        const config = vscode.workspace.getConfiguration('TKVSC');
         return config.get<string[]>('canonicalSyncFileExtensionBlacklist', []);
     };
 
@@ -1138,12 +1138,12 @@ export async function activate(context: vscode.ExtensionContext) {
             void vscode.window.showInformationMessage('TKVSC: Canonical path index rebuilt.');
         }),
         vscode.commands.registerCommand('totk-editor.canonicalSyncOn', async () => {
-            const config = vscode.workspace.getConfiguration('totk-editor');
+            const config = vscode.workspace.getConfiguration('TKVSC');
             await config.update('enableCanonicalSavePropagation', false, vscode.ConfigurationTarget.Global);
             void vscode.window.showInformationMessage('TKVSC: Canonical sync disabled.');
         }),
         vscode.commands.registerCommand('totk-editor.canonicalSyncOff', async () => {
-            const config = vscode.workspace.getConfiguration('totk-editor');
+            const config = vscode.workspace.getConfiguration('TKVSC');
             await config.update('enableCanonicalSavePropagation', true, vscode.ConfigurationTarget.Global);
             void vscode.window.showInformationMessage('TKVSC: Canonical sync enabled.');
         }),
@@ -1328,7 +1328,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
-            if (event.affectsConfiguration('totk-editor.romfsPath')) {
+            if (event.affectsConfiguration('TKVSC.romfsPath')) {
                 void buildRomfsIndex();
                 void buildCanonicalIndex();
                 invalidateCanonicalPathIndex();
@@ -1505,7 +1505,7 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void> {
-    const romfsPathPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedRomfsPath');
+    const romfsPathPrompted = context.globalState.get<boolean>('TKVSC.hasPromptedRomfsPath');
     if (!romfsPathPrompted) {
         let validRomfsSelected = false;
         while (!validRomfsSelected) {
@@ -1526,7 +1526,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                     const folderName = path.basename(fsPath).toLowerCase();
                     
                     if (folderName === 'romfs') {
-                        const config = vscode.workspace.getConfiguration('totk-editor');
+                        const config = vscode.workspace.getConfiguration('TKVSC');
                         await config.update('romfsPath', fsPath, vscode.ConfigurationTarget.Global);
                         void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${fsPath}`);
                         validRomfsSelected = true;
@@ -1536,7 +1536,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                             const hasRomfs = entries.some(([name, type]) => type === vscode.FileType.Directory && name.toLowerCase() === 'romfs');
                             if (hasRomfs) {
                                 const newPath = path.join(fsPath, 'romfs');
-                                const config = vscode.workspace.getConfiguration('totk-editor');
+                                const config = vscode.workspace.getConfiguration('TKVSC');
                                 await config.update('romfsPath', newPath, vscode.ConfigurationTarget.Global);
                                 void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${newPath}`);
                                 validRomfsSelected = true;
@@ -1555,12 +1555,12 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                 break;
             }
         }
-        void context.globalState.update('totk-editor.hasPromptedRomfsPath', true);
+        void context.globalState.update('TKVSC.hasPromptedRomfsPath', true);
     }
 
-    const projectsPathPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedProjectsPath');
+    const projectsPathPrompted = context.globalState.get<boolean>('TKVSC.hasPromptedProjectsPath');
     if (!projectsPathPrompted) {
-        void context.globalState.update('totk-editor.hasPromptedProjectsPath', true);
+        void context.globalState.update('TKVSC.hasPromptedProjectsPath', true);
         const pathChoice = await vscode.window.showInformationMessage(
             'TKVSC: Please select a default directory where new projects will be saved.',
             'Browse',
@@ -1574,16 +1574,16 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                 openLabel: 'Select Default Project Folder'
             });
             if (folderUri && folderUri.length > 0) {
-                const config = vscode.workspace.getConfiguration('totk-editor');
+                const config = vscode.workspace.getConfiguration('TKVSC');
                 await config.update('projectsPath', folderUri[0].fsPath, vscode.ConfigurationTarget.Global);
                 void vscode.window.showInformationMessage(`TKVSC: Default project folder set to ${folderUri[0].fsPath}`);
             }
         }
     }
 
-    const tkmmPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedTKMMImport');
+    const tkmmPrompted = context.globalState.get<boolean>('TKVSC.hasPromptedTKMMImport');
     if (!tkmmPrompted) {
-        void context.globalState.update('totk-editor.hasPromptedTKMMImport', true);
+        void context.globalState.update('TKVSC.hasPromptedTKMMImport', true);
         const tkmmPath = await getTkmmRecentJsonPath();
         if (tkmmPath) {
             void vscode.window.showInformationMessage(

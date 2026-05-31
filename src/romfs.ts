@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 export function resolveRomfsPath(): string {
     const configured = vscode.workspace
-        .getConfiguration('totk-editor')
+        .getConfiguration('TKVSC')
         .get<string>('romfsPath', '')
         .trim();
     if (configured) {

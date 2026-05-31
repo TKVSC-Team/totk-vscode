@@ -567,7 +567,7 @@ export function registerGameDumpTree(
 
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
-            if (event.affectsConfiguration('totk-editor.romfsPath')) {
+            if (event.affectsConfiguration('TKVSC.romfsPath')) {
                 provider.onRomfsPathChanged();
             }
         }),

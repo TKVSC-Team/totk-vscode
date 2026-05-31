@@ -723,7 +723,7 @@
     "configuration": {
       "title": "TKVSC",
       "properties": {
-        "totk-editor.logLevel": {
+        "TKVSC.logLevel": {
           "type": "string",
           "enum": [
             "Debug",
@@ -734,32 +734,32 @@
           "default": "Info",
           "markdownDescription": "Determine the verbosity of logs written to the Output Channel."
         },
-        "totk-editor.enableToastNotifications": {
+        "TKVSC.enableToastNotifications": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Enable pop-up toast notifications in VS Code for Warnings and Errors."
         },
-        "totk-editor.pythonPath": {
+        "TKVSC.pythonPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Full path to **python.exe** (Python 3.10+). Use this when `python3` works in CMD but the extension says Python was not found - Cursor/VS Code often start with a shorter PATH than your terminal. Run **TKVSC: Browse for python.exe** or **TKVSC: Select Python** to set this automatically."
+          "markdownDescription": "Full path to **python.exe** (Python 3.10+). Use this when `python3` works in CMD but the extension says Python was not found - Run **TKVSC: Browse for python.exe** or **TKVSC: Select Python** to set this automatically."
         },
-        "totk-editor.projectsPath": {
+        "TKVSC.projectsPath": {
           "type": "string",
           "default": "",
           "markdownDescription": "Default path where new projects will be created."
         },
-        "totk-editor.romfsPath": {
+        "TKVSC.romfsPath": {
           "type": "string",
           "default": "",
           "markdownDescription": "Path to your extracted game **RomFS** (game dump) folder. Must contain `Pack/ZsDic.pack.zs`. **Required** to open or save any `.zs` file (`.pack.zs`, `.byml.zs`, `.bcett.byml.zs`, etc.)."
         },
-        "totk-editor.createRomfsOnImport": {
+        "TKVSC.createRomfsOnImport": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Automatically create a `romfs` folder when importing a project if there is no `romfs` or `exefs` folder next to the `.tkproj`."
         },
-        "totk-editor.tagProductFormat": {
+        "TKVSC.tagProductFormat": {
           "type": "string",
           "enum": [
             "json",
@@ -768,12 +768,12 @@
           "default": "yaml",
           "markdownDescription": "Format to use for displaying Tag.Product.rstbl.byml files (JSON or YAML)."
         },
-        "totk-editor.bymlInlineContainerMaxCount": {
+        "TKVSC.bymlInlineContainerMaxCount": {
           "type": "integer",
           "default": 1,
           "markdownDescription": "The maximum number of child nodes allowed in a list/array or map/hash for it to still be formatted as an inline container (e.g. `[1]` or `{a: 1}`)."
         },
-        "totk-editor.extraAampExtensions": {
+        "TKVSC.extraAampExtensions": {
           "type": "array",
           "items": {
             "type": "string"
@@ -781,12 +781,12 @@
           "default": [],
           "markdownDescription": "Additional file extensions (without dot) treated as **AAMP** parameter files, e.g. `bcustom`. See `aamp-extensions.json` in the extension folder for the built-in list."
         },
-        "totk-editor.enableCanonicalSavePropagation": {
+        "TKVSC.enableCanonicalSavePropagation": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "When enabled, saving a file inside an archive updates all matching canonical-path instances across project archives. Missing matching archives are copied from the configured game dump first."
         },
-        "totk-editor.canonicalSyncBlacklistPrefixes": {
+        "TKVSC.canonicalSyncBlacklistPrefixes": {
           "type": "array",
           "items": {
             "type": "string"
@@ -794,7 +794,7 @@
           "default": [],
           "markdownDescription": "Canonical path folder prefixes excluded from synchronized save propagation. Matching is case-insensitive and checks full canonical path prefixes. This is NOT the RomFS path!"
         },
-        "totk-editor.canonicalSyncArchiveTypeBlacklist": {
+        "TKVSC.canonicalSyncArchiveTypeBlacklist": {
           "type": "array",
           "items": {
             "type": "string"
@@ -805,7 +805,7 @@
           ],
           "markdownDescription": "Archive file extensions that disable canonical synchronized edits for paths inside those archive types (for example nested `.sarc`/`.blarc`). Matching is case-insensitive."
         },
-        "totk-editor.canonicalSyncFileExtensionBlacklist": {
+        "TKVSC.canonicalSyncFileExtensionBlacklist": {
           "type": "array",
           "items": {
             "type": "string"

@@ -108,7 +108,7 @@ To demonstrate with a direct comparison, modifying the defense of every level of
 
 ### Python troubleshooting
 
-**`python3` works in CMD but the extension cannot find Python?** Cursor and VS Code are often launched without your full user PATH (unlike a terminal you opened yourself). Fix:
+**`python3` works in CMD but the extension cannot find Python?** VSCode is often launched without your full user PATH (unlike a terminal you opened yourself). Fix:
 
 1. **TKVSC: Select Python (from detected installs)** - scans `where python3`, common install folders, and `py`.
 2. **TKVSC: Browse for python.exe** - point at the real interpreter (e.g. `%LocalAppData%\Programs\Python\Python312\python.exe`).
