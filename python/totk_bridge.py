@@ -742,6 +742,30 @@ def main():
                         Path(yaml_path).write_text(yaml_text, encoding="utf-8")
                         os.unlink(out_path)
                         out_path = yaml_path
+                    elif kind == "aamp":
+                        from aamp_io import read_aamp_content
+                        yaml_text = read_aamp_content(file_data, internal_path, romfs_path)
+                        fd, yaml_path = tempfile.mkstemp(prefix="totk-cvt-", suffix=target_ext)
+                        os.close(fd)
+                        Path(yaml_path).write_text(yaml_text, encoding="utf-8")
+                        os.unlink(out_path)
+                        out_path = yaml_path
+
+                elif target_ext in [".json", ".txt"] and kind == "msbt":
+                    from msbt_editor_format import to_editor_text
+                    res_json = _read_msbt_payload(file_data, internal_path, romfs_path)
+                    labels = res_json.get("metadata", {}).get("labels", {})
+                    
+                    if target_ext == ".json":
+                        output_text = json.dumps(labels, indent=2, ensure_ascii=False)
+                    else:
+                        output_text = to_editor_text(labels)
+                        
+                    fd, txt_path = tempfile.mkstemp(prefix="totk-cvt-", suffix=target_ext)
+                    os.close(fd)
+                    Path(txt_path).write_text(output_text, encoding="utf-8")
+                    os.unlink(out_path)
+                    out_path = txt_path
 
                 print(json.dumps({"path": out_path}))
 

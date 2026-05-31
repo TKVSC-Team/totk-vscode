@@ -1369,10 +1369,15 @@ export async function activate(context: vscode.ExtensionContext) {
         '.byml': { 'BYML': ['byml'], 'YAML': ['yaml'] },
         '.bgyml': { 'BYML': ['bgyml'], 'YAML': ['yaml'] },
         '.txtg': { 'TexToGo Image': ['txtg'], 'DDS': ['dds'], 'PNG': ['png'], 'JPEG': ['jpg'], 'TGA': ['tga'], 'BMP': ['bmp'] },
+        '.msbt': { 'Message Text': ['msbt'], 'JSON': ['json'], 'Text': ['txt'] },
     };
 
     const getFiltersForExtension = (ext: string): Record<string, string[]> => {
-        return EXPORT_FILTERS[ext.toLowerCase()] ?? { 'Original format': [ext.replace('.', '') || '*'] };
+        const rawExt = ext.replace('.', '').toLowerCase();
+        if (getAampExtensions().has(rawExt)) {
+            return { 'AAMP Parameter': [rawExt], 'YAML': ['yaml'] };
+        }
+        return EXPORT_FILTERS[ext.toLowerCase()] ?? { 'Original format': [rawExt || '*'] };
     };
 
     context.subscriptions.push(
