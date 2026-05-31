@@ -39,7 +39,33 @@ export class TkprojEditorProvider implements vscode.CustomTextEditorProvider {
     ): Promise<void> {
         webviewPanel.webview.options = { enableScripts: true };
 
+        if (document.getText().trim() === '') {
+            const defaultData: TkprojData = {
+                Mod: {
+                    Name: "New Project",
+                    Author: "Unknown",
+                    Version: "1.0.0",
+                    Description: "",
+                    Id: generateUlidNumber(),
+                    Contributors: [],
+                    Dependencies: []
+                },
+                Flags: {
+                    TrackRemovedRsDbEntries: false
+                }
+            };
+            const edit = new vscode.WorkspaceEdit();
+            edit.insert(document.uri, new vscode.Position(0, 0), JSON.stringify(defaultData, null, 2));
+            await vscode.workspace.applyEdit(edit);
+            await document.save();
+        }
+
+        let isUpdatingFromWebview = false;
+
         const update = () => {
+            if (isUpdatingFromWebview) {
+                return;
+            }
             try {
                 const data = JSON.parse(document.getText()) as TkprojData;
                 webviewPanel.webview.html = buildHtml(data);
@@ -64,14 +90,22 @@ export class TkprojEditorProvider implements vscode.CustomTextEditorProvider {
             if (msg.type === 'update' && msg.field && msg.value !== undefined) {
                 const data = JSON.parse(document.getText()) as TkprojData;
                 applyField(data, msg.field, msg.value as string);
-                await writeBack(document, data);
-            }
-            if (msg.type === 'updateContributors' && msg.contributors) {
+                isUpdatingFromWebview = true;
+                try {
+                    await writeBack(document, data);
+                } finally {
+                    isUpdatingFromWebview = false;
+                }
+            } else if (msg.type === 'updateContributors' && msg.contributors) {
                 const data = JSON.parse(document.getText()) as TkprojData;
                 data.Mod.Contributors = msg.contributors;
-                await writeBack(document, data);
-            }
-            if (msg.type === 'browseThumbnail') {
+                isUpdatingFromWebview = true;
+                try {
+                    await writeBack(document, data);
+                } finally {
+                    isUpdatingFromWebview = false;
+                }
+            } else if (msg.type === 'browseThumbnail') {
                 const result = await vscode.window.showOpenDialog({
                     canSelectMany: false,
                     filters: { Images: ['png', 'jpg', 'jpeg', 'webp'] },
@@ -128,6 +162,17 @@ function escHtml(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function generateUlidNumber(): string {
+    let id = '';
+    for (let i = 0; i < 26; i++) {
+        id += Math.floor(Math.random() * 10).toString();
+    }
+    if (id === '00000000000000000000000001') {
+        return generateUlidNumber();
+    }
+    return id;
+}
+
 function buildContributorRows(contributors: TkprojContributor[]): string {
     if (!contributors.length) {
         return '';
@@ -135,9 +180,9 @@ function buildContributorRows(contributors: TkprojContributor[]): string {
     return contributors.map((c, i) => /* html */`
         <div class="contrib-row" data-idx="${i}">
             <input type="text" class="contrib-name" placeholder="Name" value="${escHtml(c.Author ?? '')}"
-                onchange="updateContrib()" />
+                oninput="updateContrib()" />
             <input type="text" class="contrib-work" placeholder="Contribution (e.g. Models; Textures)"
-                value="${escHtml(c.Contribution ?? '')}" onchange="updateContrib()" />
+                value="${escHtml(c.Contribution ?? '')}" oninput="updateContrib()" />
             <button class="btn btn-sm btn-danger" onclick="removeContrib(${i})">-</button>
         </div>`).join('');
 }
@@ -255,22 +300,22 @@ function buildHtml(data: TkprojData): string {
             <div class="field">
                 <label>Name</label>
                 <input type="text" id="name" value="${escHtml(mod.Name ?? '')}"
-                    onchange="send('name', this.value)" />
+                    oninput="send('name', this.value)" />
             </div>
             <div class="field">
                 <label>Author</label>
                 <input type="text" id="author" value="${escHtml(mod.Author ?? '')}"
-                    onchange="send('author', this.value)" />
+                    oninput="send('author', this.value)" />
             </div>
             <div class="field">
                 <label>Version</label>
                 <input type="text" id="version" value="${escHtml(mod.Version ?? '')}"
-                    onchange="send('version', this.value)" />
+                    oninput="send('version', this.value)" />
             </div>
             <div class="field">
                 <label>Description (Markdown supported)</label>
                 <textarea id="description"
-                    onchange="send('description', this.value)">${escHtml(mod.Description ?? '')}</textarea>
+                    oninput="send('description', this.value)">${escHtml(mod.Description ?? '')}</textarea>
             </div>
         </div>
     </div>
@@ -294,7 +339,7 @@ function buildHtml(data: TkprojData): string {
                 <label>Thumbnail Path</label>
                 <div class="thumb-row">
                     <input type="text" id="thumbnailPath" value="${escHtml(thumbPath)}"
-                        onchange="send('thumbnailPath', this.value)" />
+                        oninput="send('thumbnailPath', this.value)" />
                     <button class="btn" onclick="browse()">Browse...</button>
                 </div>
             </div>
@@ -336,8 +381,8 @@ function buildHtml(data: TkprojData): string {
             div.className = 'contrib-row';
             div.dataset.idx = idx;
             div.innerHTML =
-                '<input type="text" class="contrib-name" placeholder="Name" onchange="updateContrib()" />' +
-                '<input type="text" class="contrib-work" placeholder="Contribution (e.g. Models; Textures)" onchange="updateContrib()" />' +
+                '<input type="text" class="contrib-name" placeholder="Name" oninput="updateContrib()" />' +
+                '<input type="text" class="contrib-work" placeholder="Contribution (e.g. Models; Textures)" oninput="updateContrib()" />' +
                 '<button class="btn btn-sm btn-danger" onclick="removeContrib(' + idx + ')">-</button>';
             list.appendChild(div);
         }

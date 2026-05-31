@@ -514,7 +514,7 @@ class SarcProvider implements vscode.FileSystemProvider {
 
             const cached = this.fileContentCache.get(uri.toString());
             if (cached instanceof Uint8Array && cached.length === content.length && Buffer.compare(cached, content) === 0) {
-                logger.info(`Skipping write for unchanged binary file: ${fsPath}`);
+                logger.info(`Skipping write for unchanged file: ${fsPath}`);
                 return;
             }
             await fs.promises.writeFile(fsPath, content);
@@ -562,7 +562,7 @@ class SarcProvider implements vscode.FileSystemProvider {
                     } else {
                         const cached = this.fileContentCache.get(uri.toString());
                         if (cached instanceof Uint8Array && cached.length === content.length && Buffer.compare(cached, content) === 0) {
-                            logger.info(`Skipping write and canonical sync for unchanged binary file inside archive: ${fsPath}`);
+                            logger.info(`Skipping write and canonical sync for unchanged file inside archive: ${fsPath}`);
                             return;
                         }
 

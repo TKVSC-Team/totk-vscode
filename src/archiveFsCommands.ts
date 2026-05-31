@@ -648,11 +648,20 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 if (!entry?.resourceUri || !isDiskMutableItem(entry)) {
                     return;
                 }
+                if (entry.entryName.toLowerCase().endsWith('.tkproj')) {
+                    void vscode.window.showErrorMessage('Project files must be named exactly ".tkproj" and cannot be renamed.');
+                    return;
+                }
                 const newName = await vscode.window.showInputBox({
                     prompt: 'New name',
                     value: entry.entryName,
-                    validateInput: (value) =>
-                        value.trim() ? undefined : 'Name cannot be empty',
+                    validateInput: (value) => {
+                        if (!value.trim()) return 'Name cannot be empty';
+                        if (value.toLowerCase().endsWith('.tkproj') && value.toLowerCase() !== '.tkproj') {
+                            return 'Project file must be named exactly ".tkproj"';
+                        }
+                        return undefined;
+                    }
                 });
                 if (!newName || newName === entry.entryName) {
                     return;
@@ -709,8 +718,13 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 }
                 const name = await vscode.window.showInputBox({
                     prompt: 'New file name',
-                    validateInput: (value) =>
-                        value.trim() ? undefined : 'Name cannot be empty',
+                    validateInput: (value) => {
+                        if (!value.trim()) return 'Name cannot be empty';
+                        if (value.toLowerCase().endsWith('.tkproj') && value.toLowerCase() !== '.tkproj') {
+                            return 'Project file must be named exactly ".tkproj"';
+                        }
+                        return undefined;
+                    }
                 });
                 if (!name) {
                     return;
@@ -732,7 +746,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                         },
                     });
                     refreshArchives();
-                    await vscode.window.showTextDocument(target);
+                    await vscode.commands.executeCommand('vscode.open', target);
                 } catch (error) {
                     const message = error instanceof Error ? error.message : String(error);
                     void vscode.window.showErrorMessage(`Create file failed: ${message}`);
