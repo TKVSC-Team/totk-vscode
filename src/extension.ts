@@ -1619,30 +1619,39 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                 });
                 if (folderUri && folderUri.length > 0) {
                     const fsPath = folderUri[0].fsPath;
-                    const folderName = path.basename(fsPath).toLowerCase();
                     
-                    if (folderName === 'romfs') {
+                    const zsdicPath = path.join(fsPath, 'Pack', 'ZsDic.pack.zs');
+                    if (fs.existsSync(zsdicPath)) {
                         const config = vscode.workspace.getConfiguration('TKVSC');
                         await config.update('romfsPath', fsPath, vscode.ConfigurationTarget.Global);
                         void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${fsPath}`);
                         validRomfsSelected = true;
                     } else {
+                        let foundNested = false;
                         try {
                             const entries = await vscode.workspace.fs.readDirectory(folderUri[0]);
-                            const hasRomfs = entries.some(([name, type]) => type === vscode.FileType.Directory && name.toLowerCase() === 'romfs');
-                            if (hasRomfs) {
-                                const newPath = path.join(fsPath, 'romfs');
-                                const config = vscode.workspace.getConfiguration('TKVSC');
-                                await config.update('romfsPath', newPath, vscode.ConfigurationTarget.Global);
-                                void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${newPath}`);
-                                validRomfsSelected = true;
-                                continue;
+                            for (const [name, type] of entries) {
+                                if (type === vscode.FileType.Directory) {
+                                    const nestedPath = path.join(fsPath, name);
+                                    if (fs.existsSync(path.join(nestedPath, 'Pack', 'ZsDic.pack.zs'))) {
+                                        const config = vscode.workspace.getConfiguration('TKVSC');
+                                        await config.update('romfsPath', nestedPath, vscode.ConfigurationTarget.Global);
+                                        void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${nestedPath}`);
+                                        validRomfsSelected = true;
+                                        foundNested = true;
+                                        break;
+                                    }
+                                }
                             }
                         } catch {
                             // ignore
                         }
                         
-                        await vscode.window.showWarningMessage('TKVSC: The selected directory must be named "romfs" or contain a "romfs" folder. Please choose a different directory.', { modal: true });
+                        if (foundNested) {
+                            continue;
+                        }
+                        
+                        await vscode.window.showWarningMessage('TKVSC: The selected directory must contain a "Pack/ZsDic.pack.zs" file. Please choose a valid game dump directory.', { modal: true });
                     }
                 } else {
                     break;
