@@ -740,6 +740,7 @@ export async function activate(context: vscode.ExtensionContext) {
             const python = await ensurePythonEnvironment(context, true);
             if (python) {
                 void vscode.window.showInformationMessage('TOTK Editor: Python environment is ready.');
+                void runFirstTimeSetup(context);
             } else {
                 await promptPythonSetup(context);
             }
@@ -1291,67 +1292,7 @@ export async function activate(context: vscode.ExtensionContext) {
         void buildCanonicalIndex();
         void importKnownProjectCanonicalPaths();
 
-        const romfsPathPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedRomfsPath');
-        if (!romfsPathPrompted) {
-            void context.globalState.update('totk-editor.hasPromptedRomfsPath', true);
-            const pathChoice = await vscode.window.showInformationMessage(
-                'TOTK Editor: Please select your RomFS (game dump) directory.',
-                'Browse',
-                'Skip'
-            );
-            if (pathChoice === 'Browse') {
-                const folderUri = await vscode.window.showOpenDialog({
-                    canSelectFiles: false,
-                    canSelectFolders: true,
-                    canSelectMany: false,
-                    openLabel: 'Select RomFS Folder'
-                });
-                if (folderUri && folderUri.length > 0) {
-                    const config = vscode.workspace.getConfiguration('totk-editor');
-                    await config.update('romfsPath', folderUri[0].fsPath, vscode.ConfigurationTarget.Global);
-                    void vscode.window.showInformationMessage(`TOTK Editor: RomFS path set to ${folderUri[0].fsPath}`);
-                }
-            }
-        }
-
-        const projectsPathPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedProjectsPath');
-        if (!projectsPathPrompted) {
-            void context.globalState.update('totk-editor.hasPromptedProjectsPath', true);
-            const pathChoice = await vscode.window.showInformationMessage(
-                'TOTK Editor: Please select a default directory where new projects will be saved.',
-                'Browse',
-                'Skip'
-            );
-            if (pathChoice === 'Browse') {
-                const folderUri = await vscode.window.showOpenDialog({
-                    canSelectFiles: false,
-                    canSelectFolders: true,
-                    canSelectMany: false,
-                    openLabel: 'Select Default Project Folder'
-                });
-                if (folderUri && folderUri.length > 0) {
-                    const config = vscode.workspace.getConfiguration('totk-editor');
-                    await config.update('projectsPath', folderUri[0].fsPath, vscode.ConfigurationTarget.Global);
-                    void vscode.window.showInformationMessage(`TOTK Editor: Default project folder set to ${folderUri[0].fsPath}`);
-                }
-            }
-        }
-        const tkmmPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedTKMMImport');
-        if (!tkmmPrompted) {
-            void context.globalState.update('totk-editor.hasPromptedTKMMImport', true);
-            const tkmmPath = await getTkmmRecentJsonPath();
-            if (tkmmPath) {
-                void vscode.window.showInformationMessage(
-                    'TOTK Editor: Would you like to import your existing projects from TKMM?',
-                    'Yes',
-                    'No'
-                ).then(choice => {
-                    if (choice === 'Yes') {
-                        void vscode.commands.executeCommand('totk-editor.importTKMMProjects');
-                    }
-                });
-            }
-        }
+        void runFirstTimeSetup(context);
     }).catch(async (err) => {
         logger.error('Error in background Python setup:', err as Error);
         await promptPythonSetup(context);
@@ -1555,6 +1496,71 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(openArchive);
+}
+
+async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void> {
+    const romfsPathPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedRomfsPath');
+    if (!romfsPathPrompted) {
+        void context.globalState.update('totk-editor.hasPromptedRomfsPath', true);
+        const pathChoice = await vscode.window.showInformationMessage(
+            'TOTK Editor: Please select your RomFS (game dump) directory.',
+            'Browse',
+            'Skip'
+        );
+        if (pathChoice === 'Browse') {
+            const folderUri = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                openLabel: 'Select RomFS Folder'
+            });
+            if (folderUri && folderUri.length > 0) {
+                const config = vscode.workspace.getConfiguration('totk-editor');
+                await config.update('romfsPath', folderUri[0].fsPath, vscode.ConfigurationTarget.Global);
+                void vscode.window.showInformationMessage(`TOTK Editor: RomFS path set to ${folderUri[0].fsPath}`);
+            }
+        }
+    }
+
+    const projectsPathPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedProjectsPath');
+    if (!projectsPathPrompted) {
+        void context.globalState.update('totk-editor.hasPromptedProjectsPath', true);
+        const pathChoice = await vscode.window.showInformationMessage(
+            'TOTK Editor: Please select a default directory where new projects will be saved.',
+            'Browse',
+            'Skip'
+        );
+        if (pathChoice === 'Browse') {
+            const folderUri = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                openLabel: 'Select Default Project Folder'
+            });
+            if (folderUri && folderUri.length > 0) {
+                const config = vscode.workspace.getConfiguration('totk-editor');
+                await config.update('projectsPath', folderUri[0].fsPath, vscode.ConfigurationTarget.Global);
+                void vscode.window.showInformationMessage(`TOTK Editor: Default project folder set to ${folderUri[0].fsPath}`);
+            }
+        }
+    }
+
+    const tkmmPrompted = context.globalState.get<boolean>('totk-editor.hasPromptedTKMMImport');
+    if (!tkmmPrompted) {
+        void context.globalState.update('totk-editor.hasPromptedTKMMImport', true);
+        const tkmmPath = await getTkmmRecentJsonPath();
+        if (tkmmPath) {
+            void vscode.window.showInformationMessage(
+                'TOTK Editor: Would you like to import your existing projects from TKMM?',
+                'Yes',
+                'No'
+            ).then(choice => {
+                if (choice === 'Yes') {
+                    void vscode.commands.executeCommand('totk-editor.importTKMMProjects');
+                }
+            });
+        }
+    }
 }
 
 export function deactivate() { }
