@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as os from 'os';
 import * as path from 'path';
 import { logger } from './logger';
 import * as fs from 'fs';
@@ -714,9 +715,36 @@ class SarcProvider implements vscode.FileSystemProvider {
     }
 }
 
+function cleanupOldTempFiles() {
+    try {
+        const tmpdir = os.tmpdir();
+        const files = fs.readdirSync(tmpdir);
+        const prefixes = ['totk-tex-', 'totk-txtg-', 'totk-tool-', 'totk-cvt-', 'totk-xlnk-'];
+        
+        for (const file of files) {
+            if (prefixes.some(p => file.startsWith(p))) {
+                try {
+                    const fullPath = path.join(tmpdir, file);
+                    const stat = fs.statSync(fullPath);
+                    // Delete files older than 1 hour to avoid deleting temp files currently in use by another VS Code window
+                    if (stat.isFile() && Date.now() - stat.mtimeMs > 3600000) {
+                        fs.unlinkSync(fullPath);
+                    }
+                } catch { }
+            }
+        }
+    } catch (e) {
+        logger.error('Failed to cleanup old temp files:', e as Error);
+    }
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     logger.init(context);
     logger.info('Activating TKVSC extension...');
+    
+    // Clean up leftover temp files from previous sessions
+    cleanupOldTempFiles();
+    
     initAampExtensions(context.extensionPath);
     initCoreFsExtensions(context.extensionPath);
     initTextureViewer(context.extensionUri);

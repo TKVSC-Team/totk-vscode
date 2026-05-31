@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const panels = new Map<string, vscode.WebviewPanel>();
+const panelTempFiles = new Map<string, string>();
 let extensionUri: vscode.Uri | undefined;
 
 export function initTextureViewer(extUri: vscode.Uri): void {
@@ -19,10 +20,30 @@ export function openTextureViewer(
 ): void {
     const key = textureName;
     const existing = panels.get(key);
+    
     if (existing) {
+        // We are replacing the content of an existing panel.
+        // Clean up the previous temp file so it doesn't leak.
+        const oldTempFile = panelTempFiles.get(key);
+        if (oldTempFile && oldTempFile !== result.pngPath) {
+            try {
+                fs.unlinkSync(oldTempFile);
+            } catch { }
+        }
+        
+        if (result.pngPath) {
+            panelTempFiles.set(key, result.pngPath);
+        } else {
+            panelTempFiles.delete(key);
+        }
+
         existing.reveal();
         existing.webview.html = buildHtml(result, existing.webview);
         return;
+    }
+
+    if (result.pngPath) {
+        panelTempFiles.set(key, result.pngPath);
     }
 
     const localRoots = extensionUri
@@ -43,10 +64,12 @@ export function openTextureViewer(
     panels.set(key, panel);
     panel.onDidDispose(() => {
         panels.delete(key);
-        if (result.pngPath) {
+        const currentTempFile = panelTempFiles.get(key);
+        if (currentTempFile) {
             try {
-                fs.unlinkSync(result.pngPath);
+                fs.unlinkSync(currentTempFile);
             } catch { }
+            panelTempFiles.delete(key);
         }
     });
 
