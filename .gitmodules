@@ -4,9 +4,6 @@
 [submodule "vendor/asb"]
 	path = vendor/asb
 	url = https://github.com/TKVSC-Team/asb.git
-[submodule "vendor/py-xlink2"]
-	path = vendor/py-xlink2
-	url = https://github.com/TKVSC-Team/py-xlink2.git
 [submodule "vendor/pymsbt"]
 	path = vendor/pymsbt
 	url = https://github.com/TKVSC-Team/pymsbt.git
