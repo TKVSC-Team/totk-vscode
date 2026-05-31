@@ -740,6 +740,11 @@
           "default": "",
           "markdownDescription": "Full path to **python.exe** (Python 3.10+). Use this when `python3` works in CMD but the extension says Python was not found - Cursor/VS Code often start with a shorter PATH than your terminal. Run **TOTK: Browse for python.exe** or **TOTK: Select Python** to set this automatically."
         },
+        "totk-editor.projectsPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Default path where new projects will be created."
+        },
         "totk-editor.romfsPath": {
           "type": "string",
           "default": "",

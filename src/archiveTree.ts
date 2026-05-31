@@ -384,6 +384,37 @@ export async function focusArchiveSidebar(): Promise<void> {
     await vscode.commands.executeCommand('totk-editor.archives.focus');
 }
 
+export async function getTkmmRecentJsonPath(): Promise<string | undefined> {
+    const recentJsonPaths: string[] = [];
+    const homeDir = require('os').homedir();
+    if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+        recentJsonPaths.push(path.join(process.env.LOCALAPPDATA, '.tk-studio', 'recent.json'));
+    } else if (process.platform === 'darwin') {
+        recentJsonPaths.push(path.join(homeDir, 'Library', 'Application Support', '.tk-studio', 'recent.json'));
+    } else {
+        // Linux and other Unix-like systems
+        if (process.env.XDG_DATA_HOME) {
+            recentJsonPaths.push(path.join(process.env.XDG_DATA_HOME, '.tk-studio', 'recent.json'));
+        } else {
+            recentJsonPaths.push(path.join(homeDir, '.local', 'share', '.tk-studio', 'recent.json'));
+        }
+    }
+
+    let foundPath: string | undefined;
+    for (const p of recentJsonPaths) {
+        try {
+            const stat = await vscode.workspace.fs.stat(vscode.Uri.file(p));
+            if (stat.type === vscode.FileType.File) {
+                foundPath = p;
+                break;
+            }
+        } catch {
+            // Ignore
+        }
+    }
+    return foundPath;
+}
+
 export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTreeProvider {
     extensionUri = context.extensionUri;
     const provider = new ArchiveTreeProvider(context);
@@ -439,32 +470,7 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
     };
 
     const importTKMMProjects = async (): Promise<void> => {
-        const recentJsonPaths: string[] = [];
-        const homeDir = require('os').homedir();
-        if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
-            recentJsonPaths.push(path.join(process.env.LOCALAPPDATA, '.tk-studio', 'recent.json'));
-        } else {
-            recentJsonPaths.push(path.join(homeDir, '.local', 'share', 'tk-studio', 'recent.json'));
-            recentJsonPaths.push(path.join(homeDir, '.local', 'share', '.tk-studio', 'recent.json'));
-            recentJsonPaths.push(path.join(homeDir, '.config', 'tk-studio', 'recent.json'));
-            recentJsonPaths.push(path.join(homeDir, '.config', '.tk-studio', 'recent.json'));
-            recentJsonPaths.push(path.join(homeDir, '.tk-studio', 'recent.json'));
-            recentJsonPaths.push(path.join(homeDir, 'Library', 'Application Support', 'tk-studio', 'recent.json'));
-            recentJsonPaths.push(path.join(homeDir, 'Library', 'Application Support', '.tk-studio', 'recent.json'));
-        }
-
-        let foundPath: string | undefined;
-        for (const p of recentJsonPaths) {
-            try {
-                const stat = await vscode.workspace.fs.stat(vscode.Uri.file(p));
-                if (stat.type === vscode.FileType.File) {
-                    foundPath = p;
-                    break;
-                }
-            } catch {
-                // Ignore
-            }
-        }
+        const foundPath = await getTkmmRecentJsonPath();
 
         if (!foundPath) {
             void vscode.window.showWarningMessage('TOTK Archives: Could not find TKMM recent.json. Please make sure you have opened projects in TKMM before.');

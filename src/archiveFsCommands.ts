@@ -656,7 +656,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                     prompt: 'New name',
                     value: entry.entryName,
                     validateInput: (value) => {
-                        if (!value.trim()) return 'Name cannot be empty';
+                        if (!value.trim()) {return 'Name cannot be empty';}
                         if (value.toLowerCase().endsWith('.tkproj') && value.toLowerCase() !== '.tkproj') {
                             return 'Project file must be named exactly ".tkproj"';
                         }
@@ -719,7 +719,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 const name = await vscode.window.showInputBox({
                     prompt: 'New file name',
                     validateInput: (value) => {
-                        if (!value.trim()) return 'Name cannot be empty';
+                        if (!value.trim()) {return 'Name cannot be empty';}
                         if (value.toLowerCase().endsWith('.tkproj') && value.toLowerCase() !== '.tkproj') {
                             return 'Project file must be named exactly ".tkproj"';
                         }
