@@ -420,11 +420,11 @@
       },
       {
         "command": "totk-editor.setActiveOption",
-        "title": "TKMM: Unset Active Option"
+        "title": "TKMM: Set as Active Option"
       },
       {
         "command": "totk-editor.clearActiveOption",
-        "title": "TKMM: Use Base Project as Active"
+        "title": "TKMM: Unset active option"
       }
     ],
     "viewsContainers": {
