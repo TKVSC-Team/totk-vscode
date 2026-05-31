@@ -468,7 +468,7 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
         vscode.commands.registerCommand(
             'totk-editor.setLogicalProjectRoot',
             async (item: ArchiveTreeItem | undefined) => {
-                if (!item) return;
+                if (!item) {return;}
                 const workspaceRoot = provider.workspaceRoots.find(r => item.resourceUri.fsPath.startsWith(r.fsPath));
                 if (workspaceRoot) {
                     await provider.setLogicalProjectRoot(workspaceRoot.fsPath, item.resourceUri.fsPath);
@@ -597,7 +597,7 @@ async function findValidModFolders(rootUri: vscode.Uri, maxDepth: number = 3): P
     const validFolders: vscode.Uri[] = [];
     
     async function scan(currentUri: vscode.Uri, depth: number) {
-        if (depth > maxDepth) return;
+        if (depth > maxDepth) {return;}
         
         try {
             const entries = await vscode.workspace.fs.readDirectory(currentUri);
