@@ -365,6 +365,10 @@
         "title": "Export..."
       },
       {
+        "command": "totk-editor.explorerExport",
+        "title": "Export..."
+      },
+      {
         "command": "totk-editor.exportYaml",
         "title": "TKVSC: Export Current File to YAML"
       },
@@ -621,12 +625,12 @@
         },
         {
           "command": "totk-editor.archiveExport",
-          "when": "view == totk-editor.archives && viewItem == archiveVirtualFile",
+          "when": "view == totk-editor.archives && (viewItem == archiveVirtualFile || viewItem == archiveFile || viewItem == archivePackage)",
           "group": "5_export@1"
         },
         {
           "command": "totk-editor.dumpExport",
-          "when": "view == totk-editor.gameDump && viewItem == dumpVirtualFile",
+          "when": "view == totk-editor.gameDump && (viewItem == dumpVirtualFile || viewItem == dumpFile || viewItem == dumpArchive)",
           "group": "5_export@1"
         },
         {
@@ -665,6 +669,11 @@
           "command": "totk-editor.archivePaste",
           "when": "totk-editor.archiveClipboardNotEmpty",
           "group": "9_cutcopypaste"
+        },
+        {
+          "command": "totk-editor.explorerExport",
+          "when": "resourceExtname == .txtg || resourceExtname == .bntx || resourceExtname == .bftex || resourceExtname == .byml || resourceExtname == .bgyml || resourceExtname == .bfmdl || resourceExtname == .bfska",
+          "group": "5_export@1"
         }
       ]
     },

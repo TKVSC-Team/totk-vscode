@@ -121,6 +121,7 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
         flex: 0 0 auto;
         display: flex;
         flex-direction: column;
+        align-items: flex-start;
         gap: 0;
     }
     .image-toolbar {
@@ -157,6 +158,8 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
         border: 1px solid var(--vscode-panel-border, #444);
         display: inline-flex;
     }
+    .checker-bg.bg-dark { background: #111; }
+    .checker-bg.bg-light { background: #eee; }
     .image-panel img {
         image-rendering: pixelated;
     }
@@ -304,6 +307,9 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
             <button class="size-toggle" id="sizeBtn" onclick="toggleSize()" title="Toggle size">
                 <img src="${resizeIconUri}" alt="resize" width="16" height="16" />
             </button>
+            <button class="size-toggle" onclick="toggleBg()" title="Toggle background" style="font-size:14px; font-weight:bold;">
+                B
+            </button>
             <span class="size-label" id="sizeLabel">${scaledW}\u00d7${scaledH}</span>
         </div>` : ''}
         ${imgSrc
@@ -367,6 +373,15 @@ function buildHtml(result: BntxTextureResult, webview: vscode.Webview): string {
                 img.classList.remove('scaled');
                 label.textContent = 'Original (${texW}\u00d7${texH})';
             }
+        }
+        let bgState = 0; // 0=checker, 1=dark, 2=light
+        function toggleBg() {
+            bgState = (bgState + 1) % 3;
+            document.querySelectorAll('.checker-bg').forEach(el => {
+                el.classList.remove('bg-dark', 'bg-light');
+                if (bgState === 1) el.classList.add('bg-dark');
+                else if (bgState === 2) el.classList.add('bg-light');
+            });
         }
         function saveMetadata() {
             const data = {

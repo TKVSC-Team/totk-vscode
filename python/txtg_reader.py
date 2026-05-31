@@ -20,6 +20,7 @@ _FORMAT_MAP: dict[int, tuple[str, int, int, int, str]] = {
     0x202: ("BC1_UNORM", 8, 4, 4, "bc1"),
     0x203: ("BC1_SRGB", 8, 4, 4, "bc1"),
     0x302: ("BC1_UNORM", 8, 4, 4, "bc1"),
+    0x303: ("BC1_SRGB", 8, 4, 4, "bc1"),
     0x505: ("BC3_SRGB", 16, 4, 4, "bc3"),
     0x602: ("BC4_UNORM", 8, 4, 4, "bc4"),
     0x606: ("BC4_UNORM", 8, 4, 4, "bc4"),
@@ -429,19 +430,25 @@ class TxtgEditor:
 
     @property
     def texture_setting2(self) -> int:
+        if len(self._data) < 0x48:
+            return 0
         return struct.unpack_from("<I", self._data, 0x44)[0]
 
     @texture_setting2.setter
     def texture_setting2(self, value: int):
-        struct.pack_into("<I", self._data, 0x44, value)
+        if len(self._data) >= 0x48:
+            struct.pack_into("<I", self._data, 0x44, value)
 
     @property
     def texture_setting4(self) -> int:
+        if len(self._data) < 0x50:
+            return 0
         return struct.unpack_from("<I", self._data, 0x4C)[0]
 
     @texture_setting4.setter
     def texture_setting4(self, value: int):
-        struct.pack_into("<I", self._data, 0x4C, value)
+        if len(self._data) >= 0x50:
+            struct.pack_into("<I", self._data, 0x4C, value)
 
     def replace_image_data(self, raw_surfaces: list[bytes]):
         """

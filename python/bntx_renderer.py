@@ -487,3 +487,29 @@ def render_texture_to_png(bntx_data: bytes, texture_name: str) -> str | None:
 
     _log(f"Saved PNG: {tmp_path}")
     return tmp_path
+
+def extract_texture_linear(bntx_data: bytes, texture_name: str) -> tuple[int, int, str, bytes, int, int] | None:
+    """Extract raw deswizzled linear bytes and metadata for native export."""
+    textures = _parse_textures(bntx_data)
+    tex = None
+    for t in textures:
+        if t.name == texture_name:
+            tex = t
+            break
+    if tex is None:
+        return None
+
+    fmt_name, bpp, blk_w, blk_h, decoder_key = _fmt_info(tex.format_id)
+    if tex.data_offset <= 0 or tex.data_size <= 0:
+        return None
+
+    raw_data = bntx_data[tex.data_offset : tex.data_offset + tex.data_size]
+
+    if tex.tile_mode == 1:
+        linear = _deswizzle_pitch_linear(tex.width, tex.height, blk_w, blk_h, bpp, raw_data)
+    else:
+        linear = _deswizzle_block_linear(
+            tex.width, tex.height, blk_w, blk_h, bpp, tex.block_height_log2, raw_data
+        )
+
+    return tex.width, tex.height, decoder_key, linear, tex.mip_count, tex.format_id

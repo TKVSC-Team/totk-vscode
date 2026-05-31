@@ -1326,6 +1326,27 @@ export async function activate(context: vscode.ExtensionContext) {
         }),
     );
 
+    const EXPORT_FILTERS: Record<string, Record<string, string[]>> = {
+        '.bntx': { 'Binary Texture': ['bntx'], 'DDS': ['dds'], 'PNG': ['png'], 'JPEG': ['jpg'], 'TGA': ['tga'], 'BMP': ['bmp'] },
+        '.bftex': { 'Binary Texture': ['bftex'], 'DDS': ['dds'], 'PNG': ['png'], 'JPEG': ['jpg'], 'TGA': ['tga'], 'BMP': ['bmp'] },
+        '.nutexb': { 'Smash Ultimate Texture': ['nutexb'], 'DDS': ['dds'], 'PNG': ['png'], 'JPEG': ['jpg'], 'TGA': ['tga'], 'BMP': ['bmp'] },
+        '.bfmdl': { 'Bfres Model': ['bfmdl'], 'FBX': ['fbx'], 'DAE': ['dae'], 'OBJ': ['obj'] },
+        '.bfobj': { 'Bfres Object': ['bfobj'], 'DAE': ['dae'] },
+        '.bfska': { 'Bfres Skeletal Animation': ['bfska'], 'Maya Anim': ['anim'], 'SE Anim': ['seanim'], 'SMD': ['smd'], 'CHR0': ['chr0'] },
+        '.bfmaa': { 'Bfres Material Animation': ['bfmaa'], 'YAML': ['yaml'] },
+        '.bfshu': { 'Bfres Shader Param Animation': ['bfshu'], 'YAML': ['yaml'] },
+        '.bftsh': { 'Bfres Texture SRT Animation': ['bftsh'], 'YAML': ['yaml'] },
+        '.bfcsh': { 'Bfres Color Animation': ['bfcsh'], 'YAML': ['yaml'] },
+        '.bftxp': { 'Bfres Texture Pattern Animation': ['bftxp'], 'YAML': ['yaml'], 'GIF': ['gif'] },
+        '.byml': { 'BYML': ['byml'], 'YAML': ['yaml'] },
+        '.bgyml': { 'BYML': ['bgyml'], 'YAML': ['yaml'] },
+        '.txtg': { 'TexToGo Image': ['txtg'], 'DDS': ['dds'], 'PNG': ['png'], 'JPEG': ['jpg'], 'TGA': ['tga'], 'BMP': ['bmp'] },
+    };
+
+    const getFiltersForExtension = (ext: string): Record<string, string[]> => {
+        return EXPORT_FILTERS[ext.toLowerCase()] ?? { 'Original format': [ext.replace('.', '') || '*'] };
+    };
+
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration('TKVSC.romfsPath')) {
@@ -1339,14 +1360,13 @@ export async function activate(context: vscode.ExtensionContext) {
     const exportFromArchiveSelection = async (
         sourceUris: vscode.Uri[],
     ): Promise<void> => {
-        const archiveUris = sourceUris.filter((uri) => isPathInsideArchive(uri.fsPath));
-        if (archiveUris.length === 0) {
-            void vscode.window.showWarningMessage('Select one or more files inside an archive first.');
+        if (sourceUris.length === 0) {
+            void vscode.window.showWarningMessage('Select one or more files to export.');
             return;
         }
 
         const fileUris: vscode.Uri[] = [];
-        for (const uri of archiveUris) {
+        for (const uri of sourceUris) {
             try {
                 const stat = await vscode.workspace.fs.stat(uri);
                 if (stat.type === vscode.FileType.File) {
@@ -1361,35 +1381,54 @@ export async function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        const picked = await vscode.window.showOpenDialog({
-            canSelectMany: false,
-            canSelectFiles: false,
-            canSelectFolders: true,
-            title: 'Choose export destination folder',
-            openLabel: 'Export Here',
-        });
-        const destinationFolder = picked?.[0]?.fsPath;
-        if (!destinationFolder) {
-            return;
-        }
+        if (fileUris.length === 1) {
+            const singleUri = fileUris[0];
+            const originalName = path.basename(singleUri.fsPath);
+            const extMatch = originalName.match(/(\.[a-zA-Z0-9]+)$/);
+            let ext = extMatch ? extMatch[1] : '';
+            
+            // Handle extensionless files inside BNTX (they are just the texture names)
+            if (!ext && (singleUri.fsPath.includes('.bntx') || singleUri.fsPath.includes('.bftex') || singleUri.fsPath.includes('.nutexb'))) {
+                ext = '.bftex';
+            }
+            
+            const filters = getFiltersForExtension(ext);
 
-        const pythonExe = getPython();
-        if (!pythonExe) {
-            await promptPythonSetup(context);
-            return;
-        }
+            const destUri = await vscode.window.showSaveDialog({
+                title: 'Export As...',
+                defaultUri: vscode.Uri.file(originalName),
+                filters
+            });
 
-        const tasks = fileUris.map(async (uri) => {
+            if (!destUri) {
+                return;
+            }
+
+            const pythonExe = getPython();
+            if (!pythonExe) {
+                await promptPythonSetup(context);
+                return;
+            }
+
             try {
-                const diskArchive = getDiskArchivePath(uri.fsPath);
-                const locator = getLocatorInsideDiskArchive(uri.fsPath, diskArchive);
-                const bridgeResult = await runBridgeJsonAsync<{ path: string }>(
+                const diskArchive = getDiskArchivePath(singleUri.fsPath);
+                const locator = getLocatorInsideDiskArchive(singleUri.fsPath, diskArchive);
+                
+                // Get the target format extension
+                const targetExt = path.extname(destUri.fsPath).toLowerCase();
+
+                const bridgeResult = await runBridgeJsonAsync<{ path: string; error?: string }>(
                     pythonExe,
                     bridgePath,
-                    ['export-temp', diskArchive, locator],
+                    ['export-converted', diskArchive, locator, targetExt],
                     undefined,
                     getBridgeEnv(),
                 );
+                
+                if (bridgeResult.error) {
+                    throw new Error(bridgeResult.error);
+                }
+                
                 const exportedPath = bridgeResult.path;
                 const data = await fs.promises.readFile(exportedPath);
                 try {
@@ -1397,36 +1436,84 @@ export async function activate(context: vscode.ExtensionContext) {
                 } catch {
                     // best effort
                 }
-                return { uri, locator, data };
+                
+                await vscode.workspace.fs.writeFile(destUri, data);
+                void vscode.window.showInformationMessage(`Exported to ${destUri.fsPath}`);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
-                void vscode.window.showErrorMessage(`Export failed for ${uri.fsPath}: ${message}`);
-                return null;
+                void vscode.window.showErrorMessage(`Export failed for ${singleUri.fsPath}: ${message}`);
             }
-        });
-
-        const fetched = await Promise.all(tasks);
-
-        let exported = 0;
-        for (const item of fetched) {
-            if (!item) {
-                continue;
+        } else {
+            const picked = await vscode.window.showOpenDialog({
+                canSelectMany: false,
+                canSelectFiles: false,
+                canSelectFolders: true,
+                title: 'Choose export destination folder (Batch Export)',
+                openLabel: 'Export Here',
+            });
+            const destinationFolder = picked?.[0]?.fsPath;
+            if (!destinationFolder) {
+                return;
             }
-            try {
-                const desiredName = path.basename(item.locator) || path.basename(item.uri.fsPath);
-                const finalName = pickExportDestinationName(destinationFolder, desiredName);
-                await fs.promises.writeFile(path.join(destinationFolder, finalName), item.data);
-                exported++;
-            } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                void vscode.window.showErrorMessage(`Export failed for ${item.uri.fsPath}: ${message}`);
-            }
-        }
 
-        if (exported > 0) {
-            void vscode.window.showInformationMessage(
-                `Exported ${exported}/${fileUris.length} file(s) to ${destinationFolder}`,
-            );
+            const pythonExe = getPython();
+            if (!pythonExe) {
+                await promptPythonSetup(context);
+                return;
+            }
+
+            const tasks = fileUris.map(async (uri) => {
+                try {
+                    const diskArchive = getDiskArchivePath(uri.fsPath);
+                    const locator = getLocatorInsideDiskArchive(uri.fsPath, diskArchive);
+                    const bridgeResult = await runBridgeJsonAsync<{ path: string; error?: string }>(
+                        pythonExe,
+                        bridgePath,
+                        ['export-temp', diskArchive, locator],
+                        undefined,
+                        getBridgeEnv(),
+                    );
+                    if (bridgeResult.error) {
+                        throw new Error(bridgeResult.error);
+                    }
+                    const exportedPath = bridgeResult.path;
+                    const data = await fs.promises.readFile(exportedPath);
+                    try {
+                        await fs.promises.unlink(exportedPath);
+                    } catch {
+                        // best effort
+                    }
+                    return { uri, locator, data };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    void vscode.window.showErrorMessage(`Export failed for ${uri.fsPath}: ${message}`);
+                    return null;
+                }
+            });
+
+            const fetched = await Promise.all(tasks);
+
+            let exported = 0;
+            for (const item of fetched) {
+                if (!item) {
+                    continue;
+                }
+                try {
+                    const desiredName = path.basename(item.locator) || path.basename(item.uri.fsPath);
+                    const finalName = pickExportDestinationName(destinationFolder, desiredName);
+                    await fs.promises.writeFile(path.join(destinationFolder, finalName), item.data);
+                    exported++;
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    void vscode.window.showErrorMessage(`Export failed for ${item.uri.fsPath}: ${message}`);
+                }
+            }
+
+            if (exported > 0) {
+                void vscode.window.showInformationMessage(
+                    `Exported ${exported}/${fileUris.length} file(s) to ${destinationFolder}`,
+                );
+            }
         }
     };
 
@@ -1444,6 +1531,15 @@ export async function activate(context: vscode.ExtensionContext) {
                 const uris = selectedUrisFromTree(item, getDumpSelection());
                 await exportFromArchiveSelection(uris);
             },
+        ),
+        vscode.commands.registerCommand(
+            'totk-editor.explorerExport',
+            async (uri?: vscode.Uri, selectedUris?: vscode.Uri[]) => {
+                const uris = selectedUris && selectedUris.length > 0 ? selectedUris : (uri ? [uri] : []);
+                if (uris.length > 0) {
+                    await exportFromArchiveSelection(uris);
+                }
+            }
         ),
     );
 

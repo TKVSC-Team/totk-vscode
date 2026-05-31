@@ -106,8 +106,13 @@ def _read_txtg_texture_result(file_data: bytes, texture_name: str, logical_path:
 
 
 def export_archive_file_to_temp(archive_path: str, internal_path: str, romfs_path: str = "") -> str:
-    file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
-    file_name = Path(internal_path).name or "file.bin"
+    if not internal_path:
+        file_data = Path(archive_path).read_bytes()
+        file_name = Path(archive_path).name or "file.bin"
+    else:
+        file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
+        file_name = Path(internal_path).name or "file.bin"
+        
     safe_name = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in file_name)
     fd, tmp_path = tempfile.mkstemp(prefix="totk-tool-", suffix=f"-{safe_name}")
     with os.fdopen(fd, "wb") as out:
@@ -586,6 +591,142 @@ def main():
                         }
                     )
                 )
+
+            elif command == "export-converted":
+                internal_path = sys.argv[3]
+                target_ext = sys.argv[4].lower()
+                if internal_path:
+                    file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
+                    logical_path = internal_path
+                else:
+                    file_data = Path(archive_path).read_bytes()
+                    logical_path = archive_path
+                    
+                kind = _file_kind(logical_path, file_data, romfs_path)
+                
+                out_path = export_archive_file_to_temp(archive_path, internal_path, romfs_path)
+                
+                if target_ext in [".png", ".jpg", ".jpeg", ".bmp", ".tga", ".dds"]:
+                    png_path = None
+                    is_txtg = kind == "txtg" or logical_path.lower().endswith(".txtg") or file_data[4:8] == b"6PK0"
+                    
+                    bntx_data = None
+                    tex_name = None
+                    
+                    if is_txtg:
+                        from txtg_reader import read_txtg_texture_result
+                        tex_name = Path(logical_path).name or "texture"
+                        res = read_txtg_texture_result(file_data, tex_name)
+                        png_path = res.get("pngPath")
+                    else:
+                        bntx_ctx = _resolve_bntx_for_read(archive_path, internal_path, romfs_path)
+                        if bntx_ctx is not None:
+                            bntx_data, tex_name = bntx_ctx
+                            from bntx_renderer import render_texture_to_png
+                            png_path = render_texture_to_png(bntx_data, tex_name)
+                            
+                    if png_path:
+                        try:
+                            from PIL import Image
+                            img = Image.open(png_path)
+                            fd, cvt_path = tempfile.mkstemp(prefix="totk-cvt-", suffix=target_ext)
+                            os.close(fd)
+                            
+                            if target_ext == ".dds":
+                                native_dds_bytes = None
+                                if not is_txtg and bntx_data is not None and tex_name is not None:
+                                    from bntx_renderer import extract_texture_linear
+                                    extracted = extract_texture_linear(bntx_data, tex_name)
+                                    if extracted is not None:
+                                        tex_width, tex_height, decoder_key, linear, mip_count, format_id = extracted
+                                        if decoder_key.startswith("bc"):
+                                            dxgi_map = {
+                                                0x1A: 72 if (format_id & 0xFF) == 0x06 else 71,
+                                                0x1B: 75 if (format_id & 0xFF) == 0x06 else 74,
+                                                0x1C: 78 if (format_id & 0xFF) == 0x06 else 77,
+                                                0x1D: 81 if (format_id & 0xFF) == 0x02 else 80,
+                                                0x1E: 84 if (format_id & 0xFF) == 0x02 else 83,
+                                                0x1F: 96 if (format_id & 0xFF) == 0x02 else 95,
+                                                0x20: 99 if (format_id & 0xFF) == 0x06 else 98,
+                                            }
+                                            dxgi_format = dxgi_map.get(format_id >> 8)
+                                            if dxgi_format is not None:
+                                                header = bytearray(148)
+                                                header[0:4] = b"DDS "
+                                                header[4:8] = (124).to_bytes(4, "little")
+                                                header[8:12] = (0x1 | 0x2 | 0x4 | 0x1000 | 0x80000).to_bytes(4, "little") 
+                                                header[12:16] = tex_height.to_bytes(4, "little")
+                                                header[16:20] = tex_width.to_bytes(4, "little")
+                                                header[20:24] = len(linear).to_bytes(4, "little") 
+                                                header[24:28] = (1).to_bytes(4, "little") 
+                                                header[28:32] = (mip_count).to_bytes(4, "little") 
+                                                
+                                                header[76:80] = (32).to_bytes(4, "little") 
+                                                header[80:84] = (0x4).to_bytes(4, "little") 
+                                                header[84:88] = b"DX10"
+                                                
+                                                header[108:112] = (0x1000).to_bytes(4, "little") 
+                                                
+                                                header[128:132] = dxgi_format.to_bytes(4, "little")
+                                                header[132:136] = (3).to_bytes(4, "little") 
+                                                header[136:140] = (0).to_bytes(4, "little") 
+                                                header[140:144] = (1).to_bytes(4, "little") 
+                                                header[144:148] = (0).to_bytes(4, "little") 
+                                                
+                                                native_dds_bytes = bytes(header) + linear
+
+                                if native_dds_bytes is not None:
+                                    with open(cvt_path, "wb") as f:
+                                        f.write(native_dds_bytes)
+                                else:
+                                    img = img.convert("RGBA")
+                                    width, height = img.size
+                                    pixels = img.tobytes("raw", "RGBA")
+                                    header = bytearray(128)
+                                    header[0:4] = b"DDS "
+                                    header[4:8] = (124).to_bytes(4, "little")
+                                    header[8:12] = (0x100F).to_bytes(4, "little") 
+                                    header[12:16] = height.to_bytes(4, "little")
+                                    header[16:20] = width.to_bytes(4, "little")
+                                    header[20:24] = (width * 4).to_bytes(4, "little")
+                                    header[24:28] = (1).to_bytes(4, "little")
+                                    header[28:32] = (1).to_bytes(4, "little")
+                                    header[76:80] = (32).to_bytes(4, "little")
+                                    header[80:84] = (0x41).to_bytes(4, "little")
+                                    header[88:92] = (32).to_bytes(4, "little")
+                                    header[92:96] = (0x000000FF).to_bytes(4, "little")
+                                    header[96:100] = (0x0000FF00).to_bytes(4, "little")
+                                    header[100:104] = (0x00FF0000).to_bytes(4, "little")
+                                    header[104:108] = (0xFF000000).to_bytes(4, "little")
+                                    header[108:112] = (0x1000).to_bytes(4, "little")
+                                    with open(cvt_path, "wb") as f:
+                                        f.write(header)
+                                        f.write(pixels)
+                            else:
+                                if target_ext in [".jpg", ".jpeg"] and img.mode in ("RGBA", "P"):
+                                    img = img.convert("RGB")
+                                img.save(cvt_path)
+                                
+                            img.close()
+                            os.unlink(png_path)
+                            if os.path.exists(out_path):
+                                os.unlink(out_path)
+                            out_path = cvt_path
+                        except Exception:
+                            import traceback
+                            traceback.print_exc()
+                            out_path = png_path
+                                
+                elif target_ext in [".yaml", ".yml"]:
+                    if kind == "byml" or kind == "bgyml":
+                        yaml_text = read_byml_content(file_data, internal_path, romfs_path)
+                        fd, yaml_path = tempfile.mkstemp(prefix="totk-cvt-", suffix=target_ext)
+                        os.close(fd)
+                        Path(yaml_path).write_text(yaml_text, encoding="utf-8")
+                        os.unlink(out_path)
+                        out_path = yaml_path
+                
+                print(json.dumps({"path": out_path}))
 
             elif command == "write-raw":
                 internal_path = sys.argv[3]
