@@ -420,7 +420,7 @@
       },
       {
         "command": "totk-editor.setActiveOption",
-        "title": "TKMM: Set as Active Option"
+        "title": "TKMM: Unset Active Option"
       },
       {
         "command": "totk-editor.clearActiveOption",
@@ -551,18 +551,23 @@
           "group": "1_active@2"
         },
         {
+          "command": "totk-editor.setActiveOption",
+          "when": "view == totk-editor.archives && viewItem == tkmmOption",
+          "group": "1_active@2"
+        },
+        {
           "command": "totk-editor.clearActiveOption",
-          "when": "view == totk-editor.archives && viewItem == archiveRoot",
+          "when": "view == totk-editor.archives && (viewItem == archiveRoot || viewItem == tkmmOptionActive)",
           "group": "1_active@3"
         },
         {
           "command": "totk-editor.archiveRename",
-          "when": "view == totk-editor.archives && (viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir || viewItem == tkmmOptionsRoot || viewItem == tkmmOptionGroup || viewItem == tkmmOption)",
+          "when": "view == totk-editor.archives && (viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir || viewItem == tkmmOptionsRoot || viewItem == tkmmOptionGroup || viewItem == tkmmOption || viewItem == tkmmOptionActive)",
           "group": "7_modification@1"
         },
         {
           "command": "totk-editor.archiveDelete",
-          "when": "view == totk-editor.archives && (viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir || viewItem == tkmmOptionsRoot || viewItem == tkmmOptionGroup || viewItem == tkmmOption)",
+          "when": "view == totk-editor.archives && (viewItem == archiveFile || viewItem == archiveVirtualFile || viewItem == archivePackage || viewItem == archiveDir || viewItem == archiveVirtualDir || viewItem == tkmmOptionsRoot || viewItem == tkmmOptionGroup || viewItem == tkmmOption || viewItem == tkmmOptionActive)",
           "group": "7_modification@2"
         },
         {

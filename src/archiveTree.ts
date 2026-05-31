@@ -133,6 +133,7 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
                     if (contextValue === 'tkmmOption' && activeTkmmOption) {
                         if (element.entryName === activeTkmmOption.group && name === activeTkmmOption.option) {
                             isActiveOption = true;
+                            contextValue = 'tkmmOptionActive';
                         }
                     }
 
@@ -382,7 +383,7 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
         vscode.commands.registerCommand(
             'totk-editor.setActiveOption',
             async (item: ArchiveTreeItem | undefined) => {
-                if (item?.contextValue === 'tkmmOption') {
+                if (item?.contextValue === 'tkmmOption' || item?.contextValue === 'tkmmOptionActive') {
                     const optionName = item.entryName;
                     const groupName = path.basename(path.dirname(item.resourceUri.fsPath));
                     const rootUri = path.dirname(path.dirname(path.dirname(item.resourceUri.fsPath)));
@@ -395,9 +396,13 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
         vscode.commands.registerCommand(
             'totk-editor.clearActiveOption',
             async (item: ArchiveTreeItem | undefined) => {
+                let rootUri: string | undefined;
                 if (item?.contextValue === 'archiveRoot') {
-                    const rootUri = item.resourceUri.fsPath;
-                    
+                    rootUri = item.resourceUri.fsPath;
+                } else if (item?.contextValue === 'tkmmOptionActive') {
+                    rootUri = path.dirname(path.dirname(path.dirname(item.resourceUri.fsPath)));
+                }
+                if (rootUri) {
                     await setActiveTkmmOption(context, rootUri, undefined, undefined);
                     provider.refresh();
                 }
