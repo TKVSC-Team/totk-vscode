@@ -107,13 +107,15 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
     async getChildren(element?: ArchiveTreeItem): Promise<ArchiveTreeItem[]> {
         if (!element) {
             return this.roots.map(
-                (root) =>
-                    new ArchiveTreeItem(
+                (root) => {
+                    const logicalPath = this.logicalRoots.get(root.fsPath) || root.fsPath;
+                    return new ArchiveTreeItem(
                         path.basename(root.fsPath),
                         root,
                         vscode.TreeItemCollapsibleState.Collapsed,
-                        { isRoot: true, isActive: root.fsPath === this.activeProjectRootUri },
-                    ),
+                        { isRoot: true, isActive: logicalPath === this.activeProjectRootUri },
+                    );
+                }
             );
         }
 
@@ -178,14 +180,20 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
                         }
                     }
 
-                    return new ArchiveTreeItem(
+                    const item = new ArchiveTreeItem(
                         name,
                         childUri,
                         isDirectory
                             ? vscode.TreeItemCollapsibleState.Collapsed
                             : vscode.TreeItemCollapsibleState.None,
-                        { contextValue, isActive: isActiveOption || contextValue === 'archiveProjectDirActive' },
+                        { contextValue, isActive: isActiveOption },
                     );
+                    
+                    if (contextValue === 'archiveProjectDirActive') {
+                        item.description = '(Project Root)';
+                    }
+                    
+                    return item;
                 }));
             return children;
         } catch (error) {
