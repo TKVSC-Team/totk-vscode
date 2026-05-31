@@ -355,7 +355,7 @@ export function registerArchiveTree(context: vscode.ExtensionContext): ArchiveTr
                 } else if (item?.contextValue === 'tkmmOptionsRoot') {
                     rootUri = path.dirname(item.resourceUri.fsPath);
                 }
-                if (!rootUri) return;
+                if (!rootUri) {return;}
                 
                 const groupName = await vscode.window.showInputBox({ prompt: 'Enter Option Group Name' });
                 if (groupName) {

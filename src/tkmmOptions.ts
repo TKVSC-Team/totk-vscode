@@ -127,7 +127,7 @@ export async function askForTkmmOption(projectRoot: string): Promise<TkmmOptionR
             placeHolder: 'Choose an option group, Base Project, or create a new one'
         });
 
-        if (!pickedGroup) return undefined;
+        if (!pickedGroup) {return undefined;}
 
         if (pickedGroup.label === '$(arrow-left) Back') {
             return 'BACK';
@@ -140,7 +140,7 @@ export async function askForTkmmOption(projectRoot: string): Promise<TkmmOptionR
         let selectedGroupName = pickedGroup.label.replace('$(folder) ', '');
         if (pickedGroup.label === '$(add) Create New Option Group...') {
             const newName = await vscode.window.showInputBox({ prompt: 'Enter new Option Group name' });
-            if (!newName) continue;
+            if (!newName) {continue;}
             await createTkmmOptionGroup(projectRoot, newName);
             selectedGroupName = newName;
         }
@@ -158,7 +158,7 @@ export async function askForTkmmOption(projectRoot: string): Promise<TkmmOptionR
                 placeHolder: 'Choose an option or create a new one'
             });
 
-            if (!pickedOption) return undefined;
+            if (!pickedOption) {return undefined;}
 
             if (pickedOption.label === '$(arrow-left) Back to Option Groups') {
                 break; // Break inner loop, goes back to group selection
@@ -167,7 +167,7 @@ export async function askForTkmmOption(projectRoot: string): Promise<TkmmOptionR
             let selectedOptionName = pickedOption.label.replace('$(folder) ', '');
             if (pickedOption.label === '$(add) Create New Option...') {
                 const newName = await vscode.window.showInputBox({ prompt: `Enter new Option name for '${selectedGroupName}'` });
-                if (!newName) continue;
+                if (!newName) {continue;}
                 await createTkmmOption(projectRoot, selectedGroupName, newName);
                 selectedOptionName = newName;
             }

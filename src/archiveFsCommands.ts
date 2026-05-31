@@ -1297,7 +1297,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                 // Ignore permissions errors etc.
             }
             const parent = path.dirname(current);
-            if (parent === current) break;
+            if (parent === current) {break;}
             current = parent;
         }
 
@@ -1348,7 +1348,7 @@ export function registerArchiveFileCommands(context: vscode.ExtensionContext): v
                         { suppressSuccessMessage: true },
                         tkmmOption
                     );
-                    if (success) addedCount++;
+                    if (success) {addedCount++;}
                 }
             }
         );

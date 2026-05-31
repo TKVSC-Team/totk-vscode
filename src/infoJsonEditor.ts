@@ -4,7 +4,7 @@ let faIconsFullData: Record<string, { path: string; viewBox: string }> | null = 
 let faIconsCache: string[] | null = null;
 
 async function getFaIconsData(context: vscode.ExtensionContext) {
-    if (faIconsFullData && faIconsCache) return { keys: faIconsCache, data: faIconsFullData };
+    if (faIconsFullData && faIconsCache) {return { keys: faIconsCache, data: faIconsFullData };}
     try {
         const iconsPath = vscode.Uri.joinPath(context.extensionUri, 'vendor', 'fa-icons.json');
         const content = await vscode.workspace.fs.readFile(iconsPath);
