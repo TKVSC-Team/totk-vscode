@@ -188,7 +188,6 @@ function buildHtml(data: InfoJsonData, iconsList: string[], iconsData: Record<st
         margin-bottom: 20px;
         border: 1px solid var(--vscode-panel-border, #333);
         border-radius: 6px;
-        overflow: hidden;
     }
     .section-header {
         background: var(--vscode-sideBarSectionHeader-background, #252526);
@@ -198,6 +197,8 @@ function buildHtml(data: InfoJsonData, iconsList: string[], iconsData: Record<st
         text-transform: uppercase;
         letter-spacing: 0.5px;
         color: var(--vscode-sideBarSectionHeader-foreground, #bbb);
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
     }
     .section-body { padding: 14px; }
     .field { margin-bottom: 14px; }
@@ -247,6 +248,46 @@ function buildHtml(data: InfoJsonData, iconsList: string[], iconsData: Record<st
         display: flex;
         justify-content: center;
         align-items: center;
+    }
+    .autocomplete-wrapper {
+        position: relative;
+        flex: 1;
+    }
+    .autocomplete-wrapper input {
+        width: 100%;
+    }
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--vscode-dropdown-background, #3c3c3c);
+        border: 1px solid var(--vscode-dropdown-border, #555);
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .autocomplete-dropdown.show {
+        display: block;
+    }
+    .autocomplete-item {
+        padding: 6px 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        color: var(--vscode-dropdown-foreground, #ccc);
+    }
+    .autocomplete-item:hover {
+        background: var(--vscode-list-hoverBackground, #2a2d2e);
+    }
+    .autocomplete-item svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+        flex-shrink: 0;
     }
     .icon-preview svg {
         max-width: 100%;
@@ -303,11 +344,10 @@ function buildHtml(data: InfoJsonData, iconsList: string[], iconsData: Record<st
                     <div class="icon-preview">
                         ${icon && iconsData[icon] ? `<svg viewBox="${iconsData[icon].viewBox}"><path d="${iconsData[icon].path}"></path></svg>` : ''}
                     </div>
-                    <input type="text" id="iconName" list="icon-list" value="${escHtml(icon)}"
-                        onchange="send('iconName', this.value)" />
-                    <datalist id="icon-list">
-                        ${iconsList.map(i => `<option value="${escHtml(i)}"></option>`).join('\n                        ')}
-                    </datalist>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="iconName" value="${escHtml(icon)}" autocomplete="off" placeholder="Search FontAwesome..." />
+                        <div id="icon-dropdown" class="autocomplete-dropdown"></div>
+                    </div>
                 </div>
             </div>
             <div class="field">
@@ -331,6 +371,70 @@ function buildHtml(data: InfoJsonData, iconsList: string[], iconsData: Record<st
         function browse() {
             vscode.postMessage({ type: 'browseThumbnail' });
         }
+        
+        const iconsData = ${JSON.stringify(iconsData)};
+        const iconInput = document.getElementById('iconName');
+        const iconDropdown = document.getElementById('icon-dropdown');
+        const iconPreview = document.querySelector('.icon-preview');
+
+        function updatePreview(val) {
+            if (iconsData[val]) {
+                iconPreview.innerHTML = \`<svg viewBox="\${iconsData[val].viewBox}"><path d="\${iconsData[val].path}"></path></svg>\`;
+            } else {
+                iconPreview.innerHTML = '';
+            }
+        }
+
+        function renderDropdown(filterText) {
+            const lowerFilter = (filterText || '').toLowerCase();
+            let html = '';
+            let count = 0;
+            for (const [name, data] of Object.entries(iconsData)) {
+                if (name.toLowerCase().includes(lowerFilter)) {
+                    html += \`<div class="autocomplete-item" data-value="\${name}">
+                        <svg viewBox="\${data.viewBox}"><path d="\${data.path}"></path></svg>
+                        <span>\${name}</span>
+                    </div>\`;
+                    count++;
+                    if (count > 200) break; // Limit dom nodes for performance
+                }
+            }
+            iconDropdown.innerHTML = html;
+        }
+
+        iconInput.addEventListener('focus', () => {
+            renderDropdown(iconInput.value);
+            iconDropdown.classList.add('show');
+        });
+
+        iconInput.addEventListener('input', () => {
+            renderDropdown(iconInput.value);
+            iconDropdown.classList.add('show');
+            updatePreview(iconInput.value);
+        });
+
+        iconInput.addEventListener('change', () => {
+            send('iconName', iconInput.value);
+            updatePreview(iconInput.value);
+        });
+
+        iconInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                iconDropdown.classList.remove('show');
+            }, 200);
+        });
+
+        iconDropdown.addEventListener('mousedown', (e) => {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                e.preventDefault(); // Prevent blur from firing
+                const val = item.getAttribute('data-value');
+                iconInput.value = val;
+                iconDropdown.classList.remove('show');
+                updatePreview(val);
+                send('iconName', val);
+            }
+        });
     </script>
 </body>
 </html>`;

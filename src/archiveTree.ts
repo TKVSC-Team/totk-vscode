@@ -173,10 +173,16 @@ export class ArchiveTreeProvider implements vscode.TreeDataProvider<ArchiveTreeI
                     }
 
                     let isActiveOption = false;
-                    if (contextValue === 'tkmmOption' && activeTkmmOption) {
-                        if (element.entryName === activeTkmmOption.group && name === activeTkmmOption.option) {
-                            isActiveOption = true;
-                            contextValue = 'tkmmOptionActive';
+                    if (activeTkmmOption) {
+                        if (contextValue === 'tkmmOption') {
+                            if (element.entryName === activeTkmmOption.group && name === activeTkmmOption.option) {
+                                isActiveOption = true;
+                                contextValue = 'tkmmOptionActive';
+                            }
+                        } else if (contextValue === 'tkmmOptionGroup') {
+                            if (name === activeTkmmOption.group) {
+                                isActiveOption = true;
+                            }
                         }
                     }
 
