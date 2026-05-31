@@ -73,6 +73,11 @@ export async function addDumpEntryToProject(
     try {
         await ensureParentDirectory(copyPaths.destination);
         await fs.promises.copyFile(copyPaths.source, copyPaths.destination);
+        try {
+            await fs.promises.chmod(copyPaths.destination, 0o666);
+        } catch (e) {
+            // Ignore chmod errors
+        }
         if (!options?.suppressSuccessMessage) {
             void vscode.window.showInformationMessage(
                 `Added to project: ${path.relative(normalizePath(projectRoot), copyPaths.destination)}`,

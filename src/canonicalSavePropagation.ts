@@ -168,6 +168,11 @@ async function ensureArchiveInProject(
 
     await fs.promises.mkdir(path.dirname(projectArchivePath), { recursive: true });
     await fs.promises.copyFile(dumpArchivePath, projectArchivePath);
+    try {
+        await fs.promises.chmod(projectArchivePath, 0o666);
+    } catch (e) {
+        // Ignore chmod errors
+    }
     output.appendLine(`[canonical-save] Copied archive into project: ${projectArchivePath}`);
     return { ready: true, copied: true };
 }

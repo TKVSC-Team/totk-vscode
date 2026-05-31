@@ -344,6 +344,11 @@ async function copyEntries(
                         toFileUri(target),
                         { overwrite: false },
                     );
+                    try {
+                        await fs.promises.chmod(target.fsPath, 0o666);
+                    } catch (e) {
+                        // Ignore chmod errors
+                    }
                 } else {
                     const stat = await vscode.workspace.fs.stat(source.resourceUri);
                     const isDirectory = stat.type === vscode.FileType.Directory && !isArchiveFile(source.resourceUri.fsPath);
