@@ -121,7 +121,7 @@ export function registerExternalToolSupport(
         const python = options.getPython();
         if (!python) {
             throw new Error(
-                'Python environment is not ready. Run "TOTK: Set Up Python Environment" first.',
+                'Python environment is not ready. Run "TKVSC: Set Up Python Environment" first.',
             );
         }
 

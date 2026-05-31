@@ -656,7 +656,7 @@ export async function migrateSarcWorkspaceFolders(
     }
 
     void vscode.window.showInformationMessage(
-        'TOTK Editor: Archive browsing moved to the **TOTK Archives** sidebar tab. Your workspace uses normal files again.',
+        'TKVSC: Archive browsing moved to the **TOTK Archives** sidebar tab. Your workspace uses normal files again.',
     );
 }
 

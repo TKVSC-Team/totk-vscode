@@ -245,27 +245,27 @@
     "commands": [
       {
         "command": "totk-editor.openPack",
-        "title": "TOTK: Open Archive (.pack, .sarc, .genvb, .blarc, .bfarc, .bntx)",
+        "title": "TKVSC: Open Archive (.pack, .sarc, .genvb, .blarc, .bfarc, .bntx)",
         "icon": "$(package)"
       },
       {
         "command": "totk-editor.addWorkspaceToArchives",
-        "title": "TOTK: Add workspace folder to Projects",
+        "title": "TKVSC: Add workspace folder to Projects",
         "icon": "$(repo-create)"
       },
       {
         "command": "totk-editor.addProjectFolders",
-        "title": "TOTK: Add Projects via File Explorer",
+        "title": "TKVSC: Add Projects via File Explorer",
         "icon": "$(folder-opened)"
       },
       {
         "command": "totk-editor.importTKMMProjects",
-        "title": "TOTK: Import TKMM Projects",
+        "title": "TKVSC: Import TKMM Projects",
         "icon": "$(cloud-download)"
       },
       {
         "command": "totk-editor.refreshArchives",
-        "title": "TOTK: Refresh Projects",
+        "title": "TKVSC: Refresh Projects",
         "icon": "$(refresh)"
       },
       {
@@ -289,12 +289,12 @@
       },
       {
         "command": "totk-editor.refreshGameDump",
-        "title": "TOTK: Refresh Game Dump",
+        "title": "TKVSC: Refresh Game Dump",
         "icon": "$(refresh)"
       },
       {
         "command": "totk-editor.openRomfsSettings",
-        "title": "TOTK: Set Game Dump Path"
+        "title": "TKVSC: Set Game Dump Path"
       },
       {
         "command": "totk-editor.setActiveProject",
@@ -366,47 +366,47 @@
       },
       {
         "command": "totk-editor.exportYaml",
-        "title": "TOTK: Export Current File to YAML"
+        "title": "TKVSC: Export Current File to YAML"
       },
       {
         "command": "totk-editor.openEditableFile",
-        "title": "TOTK: Open File (Supported Formats)"
+        "title": "TKVSC: Open File (Supported Formats)"
       },
       {
         "command": "totk-editor.runSetup",
-        "title": "TOTK: Run First-Time Setup (RomFS, Projects, TKMM)"
+        "title": "TKVSC: Run First-Time Setup (RomFS, Projects, TKMM)"
       },
       {
         "command": "totk-editor.setupPython",
-        "title": "TOTK: Set Up Python Environment"
+        "title": "TKVSC: Set Up Python Environment"
       },
       {
         "command": "totk-editor.pickPython",
-        "title": "TOTK: Select Python (from detected installs)"
+        "title": "TKVSC: Select Python (from detected installs)"
       },
       {
         "command": "totk-editor.browsePython",
-        "title": "TOTK: Browse for python.exe (must be Python 3.12)"
+        "title": "TKVSC: Browse for python.exe (must be Python 3.12)"
       },
       {
         "command": "totk-editor.rebuildRomfsIndex",
-        "title": "TOTK: Rebuild Game Dump Search Index"
+        "title": "TKVSC: Rebuild Game Dump Search Index"
       },
       {
         "command": "totk-editor.rebuildCanonicalPathIndex",
-        "title": "TOTK: Rebuild Canonical Path Index"
+        "title": "TKVSC: Rebuild Canonical Path Index"
       },
       {
         "command": "totk-editor.useTotkIcons",
-        "title": "TOTK: File Icon Theme Help"
+        "title": "TKVSC: File Icon Theme Help"
       },
       {
         "command": "totk-editor.externalTools.open",
-        "title": "TOTK: Open with Associated External Tool"
+        "title": "TKVSC: Open with Associated External Tool"
       },
       {
         "command": "totk-editor.externalTools.choose",
-        "title": "TOTK: Choose External Tool for Current File"
+        "title": "TKVSC: Choose External Tool for Current File"
       },
       {
         "command": "totk-editor.archiveImportFile",
@@ -721,7 +721,7 @@
       }
     ],
     "configuration": {
-      "title": "TOTK Editor",
+      "title": "TKVSC",
       "properties": {
         "totk-editor.logLevel": {
           "type": "string",
@@ -742,7 +742,7 @@
         "totk-editor.pythonPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Full path to **python.exe** (Python 3.10+). Use this when `python3` works in CMD but the extension says Python was not found - Cursor/VS Code often start with a shorter PATH than your terminal. Run **TOTK: Browse for python.exe** or **TOTK: Select Python** to set this automatically."
+          "markdownDescription": "Full path to **python.exe** (Python 3.10+). Use this when `python3` works in CMD but the extension says Python was not found - Cursor/VS Code often start with a shorter PATH than your terminal. Run **TKVSC: Browse for python.exe** or **TKVSC: Select Python** to set this automatically."
         },
         "totk-editor.projectsPath": {
           "type": "string",

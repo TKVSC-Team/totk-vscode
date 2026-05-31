@@ -162,7 +162,7 @@ class SarcProvider implements vscode.FileSystemProvider {
         const python = this.getPython();
         if (!python) {
             throw new Error(
-                'Python environment is not ready. Run "TOTK: Set Up Python Environment" or install Python 3.10+.',
+                'Python environment is not ready. Run "TKVSC: Set Up Python Environment" or install Python 3.10+.',
             );
         }
         return python;
@@ -407,7 +407,7 @@ class SarcProvider implements vscode.FileSystemProvider {
                 return new TextEncoder().encode(
                     formatExternalToolPrompt(
                         fsPath,
-                        'TOTK Editor does not have a built-in parser for this file type yet.',
+                        'TKVSC does not have a built-in parser for this file type yet.',
                     ),
                 );
             }
@@ -432,7 +432,7 @@ class SarcProvider implements vscode.FileSystemProvider {
             if (shouldOfferExternalToolPrompt(content)) {
                 const reason = content.startsWith('Error reading file:')
                     ? content
-                    : 'TOTK Editor does not have a built-in parser for this file type yet.';
+                    : 'TKVSC does not have a built-in parser for this file type yet.';
                 return new TextEncoder().encode(formatExternalToolPrompt(filePath, reason));
             }
 
@@ -716,17 +716,17 @@ class SarcProvider implements vscode.FileSystemProvider {
 
 export async function activate(context: vscode.ExtensionContext) {
     logger.init(context);
-    logger.info('Activating TOTK Editor extension...');
+    logger.info('Activating TKVSC extension...');
     initAampExtensions(context.extensionPath);
     initCoreFsExtensions(context.extensionPath);
     initTextureViewer(context.extensionUri);
     setExtensionPath(context.extensionPath);
     setCanonicalIndexExtensionPath(context.extensionPath);
     setProjectCanonicalOverlayExtensionPath(context.extensionPath);
-    logger.info('TOTK Editor dependencies initialized.');
+    logger.info('TKVSC dependencies initialized.');
     
     const output: vscode.OutputChannel = {
-        name: 'TOTK Editor',
+        name: 'TKVSC',
         append: (value: string) => logger.info(value),
         appendLine: (value: string) => logger.info(value),
         clear: () => {},
@@ -739,7 +739,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('totk-editor.setupPython', async () => {
             const python = await ensurePythonEnvironment(context, true);
             if (python) {
-                void vscode.window.showInformationMessage('TOTK Editor: Python environment is ready.');
+                void vscode.window.showInformationMessage('TKVSC: Python environment is ready.');
                 void runFirstTimeSetup(context);
             } else {
                 await promptPythonSetup(context);
@@ -1116,9 +1116,9 @@ export async function activate(context: vscode.ExtensionContext) {
                 await promptPythonSetup(context);
                 return;
             }
-            void vscode.window.showInformationMessage('TOTK Editor: Rebuilding RomFS search index...');
+            void vscode.window.showInformationMessage('TKVSC: Rebuilding RomFS search index...');
             await buildRomfsIndex(true);
-            void vscode.window.showInformationMessage('TOTK Editor: RomFS search index rebuilt.');
+            void vscode.window.showInformationMessage('TKVSC: RomFS search index rebuilt.');
         }),
         vscode.commands.registerCommand('totk-editor.rebuildCanonicalPathIndex', async () => {
             const romfsPath = resolveRomfsPath();
@@ -1133,19 +1133,19 @@ export async function activate(context: vscode.ExtensionContext) {
                 await promptPythonSetup(context);
                 return;
             }
-            void vscode.window.showInformationMessage('TOTK Editor: Rebuilding canonical path index...');
+            void vscode.window.showInformationMessage('TKVSC: Rebuilding canonical path index...');
             await buildCanonicalIndex(true);
-            void vscode.window.showInformationMessage('TOTK Editor: Canonical path index rebuilt.');
+            void vscode.window.showInformationMessage('TKVSC: Canonical path index rebuilt.');
         }),
         vscode.commands.registerCommand('totk-editor.canonicalSyncOn', async () => {
             const config = vscode.workspace.getConfiguration('totk-editor');
             await config.update('enableCanonicalSavePropagation', false, vscode.ConfigurationTarget.Global);
-            void vscode.window.showInformationMessage('TOTK Editor: Canonical sync disabled.');
+            void vscode.window.showInformationMessage('TKVSC: Canonical sync disabled.');
         }),
         vscode.commands.registerCommand('totk-editor.canonicalSyncOff', async () => {
             const config = vscode.workspace.getConfiguration('totk-editor');
             await config.update('enableCanonicalSavePropagation', true, vscode.ConfigurationTarget.Global);
-            void vscode.window.showInformationMessage('TOTK Editor: Canonical sync enabled.');
+            void vscode.window.showInformationMessage('TKVSC: Canonical sync enabled.');
         }),
     );
 
@@ -1510,7 +1510,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
         let validRomfsSelected = false;
         while (!validRomfsSelected) {
             const pathChoice = await vscode.window.showInformationMessage(
-                'TOTK Editor: Please select your RomFS (game dump) directory.',
+                'TKVSC: Please select your RomFS (game dump) directory.',
                 'Browse',
                 'Skip'
             );
@@ -1528,7 +1528,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                     if (folderName === 'romfs') {
                         const config = vscode.workspace.getConfiguration('totk-editor');
                         await config.update('romfsPath', fsPath, vscode.ConfigurationTarget.Global);
-                        void vscode.window.showInformationMessage(`TOTK Editor: RomFS path set to ${fsPath}`);
+                        void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${fsPath}`);
                         validRomfsSelected = true;
                     } else {
                         try {
@@ -1538,7 +1538,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                                 const newPath = path.join(fsPath, 'romfs');
                                 const config = vscode.workspace.getConfiguration('totk-editor');
                                 await config.update('romfsPath', newPath, vscode.ConfigurationTarget.Global);
-                                void vscode.window.showInformationMessage(`TOTK Editor: RomFS path set to ${newPath}`);
+                                void vscode.window.showInformationMessage(`TKVSC: RomFS path set to ${newPath}`);
                                 validRomfsSelected = true;
                                 continue;
                             }
@@ -1546,7 +1546,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
                             // ignore
                         }
                         
-                        await vscode.window.showWarningMessage('TOTK Editor: The selected directory must be named "romfs" or contain a "romfs" folder. Please choose a different directory.', { modal: true });
+                        await vscode.window.showWarningMessage('TKVSC: The selected directory must be named "romfs" or contain a "romfs" folder. Please choose a different directory.', { modal: true });
                     }
                 } else {
                     break;
@@ -1562,7 +1562,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
     if (!projectsPathPrompted) {
         void context.globalState.update('totk-editor.hasPromptedProjectsPath', true);
         const pathChoice = await vscode.window.showInformationMessage(
-            'TOTK Editor: Please select a default directory where new projects will be saved.',
+            'TKVSC: Please select a default directory where new projects will be saved.',
             'Browse',
             'Skip'
         );
@@ -1576,7 +1576,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
             if (folderUri && folderUri.length > 0) {
                 const config = vscode.workspace.getConfiguration('totk-editor');
                 await config.update('projectsPath', folderUri[0].fsPath, vscode.ConfigurationTarget.Global);
-                void vscode.window.showInformationMessage(`TOTK Editor: Default project folder set to ${folderUri[0].fsPath}`);
+                void vscode.window.showInformationMessage(`TKVSC: Default project folder set to ${folderUri[0].fsPath}`);
             }
         }
     }
@@ -1587,7 +1587,7 @@ async function runFirstTimeSetup(context: vscode.ExtensionContext): Promise<void
         const tkmmPath = await getTkmmRecentJsonPath();
         if (tkmmPath) {
             void vscode.window.showInformationMessage(
-                'TOTK Editor: Would you like to import your existing projects from TKMM?',
+                'TKVSC: Would you like to import your existing projects from TKMM?',
                 'Yes',
                 'No'
             ).then(choice => {

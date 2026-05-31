@@ -29,7 +29,7 @@ export class TotkDiskFileSystemProvider implements vscode.FileSystemProvider {
         const python = this.getPython();
         if (!python) {
             throw new Error(
-                'Python environment is not ready. Run "TOTK: Set Up Python Environment" or install Python 3.10+.',
+                'Python environment is not ready. Run "TKVSC: Set Up Python Environment" or install Python 3.10+.',
             );
         }
         return python;

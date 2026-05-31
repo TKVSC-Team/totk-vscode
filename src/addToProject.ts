@@ -52,7 +52,7 @@ export async function addDumpEntryToProject(
         : resolveRomfsPath() || resolveRomfsForProject(projectRoot);
     if (!dumpRoot) {
         void vscode.window.showErrorMessage(
-            'TOTK Editor: Set **totk-editor.romfsPath** to your game dump folder first.',
+            'TKVSC: Set **totk-editor.romfsPath** to your game dump folder first.',
         );
         return false;
     }

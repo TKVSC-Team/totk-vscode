@@ -15,7 +15,7 @@ export async function migrateOffStandaloneIconTheme(
     const previous = context.globalState.get<string>(PREVIOUS_ICON_THEME_KEY);
     await workbench.update('iconTheme', previous ?? null, true);
     void vscode.window.showInformationMessage(
-        'TOTK: Switched you off the partial TOTK icon theme. Pick your preferred File Icon Theme again - TOTK file icons still apply via language icons.',
+        'TKVSC: Switched you off the partial TOTK icon theme. Pick your preferred File Icon Theme again - TOTK file icons still apply via language icons.',
     );
 }
 

@@ -327,7 +327,7 @@ export async function configurePythonPath(
     const python = await ensurePythonEnvironment(context, true);
     if (python) {
         logger.info(`Manual pythonPath successfully configured and bootstrapped: ${executable}`);
-        void vscode.window.showInformationMessage(`TOTK Editor: Using ${executable}`);
+        void vscode.window.showInformationMessage(`TKVSC: Using ${executable}`);
         return true;
     }
     logger.error(`Manual pythonPath failed verification or bootstrapping: ${executable}`);
@@ -355,13 +355,13 @@ export async function pickDetectedPython(context: vscode.ExtensionContext): Prom
         const failed = detected.length
             ? 'Found Python installs, but none are version 3.10 or newer.'
             : 'No working Python installs were found. Use Browse if python3 works in CMD but not here.';
-        void vscode.window.showErrorMessage(`TOTK Editor: ${failed}`);
+        void vscode.window.showErrorMessage(`TKVSC: ${failed}`);
         await browseForPython(context);
         return;
     }
 
     const choice = await vscode.window.showQuickPick(supported, {
-        title: 'Select Python for TOTK Editor',
+        title: 'Select Python for TKVSC',
         placeHolder: 'CMD may list python3 on PATH even when Cursor cannot see it - pick the full path below.',
     });
     if (!choice) {
@@ -416,7 +416,7 @@ async function bootstrapPython(context: vscode.ExtensionContext): Promise<string
     const pyprojectPath = path.join(context.extensionPath, 'pyproject.toml');
     if (!fs.existsSync(pyprojectPath)) {
         logger.error(`pyproject.toml is missing from the extension package at: ${pyprojectPath}`);
-        void vscode.window.showErrorMessage('TOTK Editor: pyproject.toml is missing from the extension package.');
+        void vscode.window.showErrorMessage('TKVSC: pyproject.toml is missing from the extension package.');
         return undefined;
     }
     logger.debug(`Found pyproject.toml at: ${pyprojectPath}`);
@@ -460,7 +460,7 @@ async function bootstrapPython(context: vscode.ExtensionContext): Promise<string
     return vscode.window.withProgress(
         {
             location: vscode.ProgressLocation.Notification,
-            title: 'TOTK Editor',
+            title: 'TKVSC',
             cancellable: false,
         },
         async (progress) => {
@@ -521,7 +521,7 @@ export function ensurePythonEnvironment(
                 cachedPython = undefined;
                 const message = error instanceof Error ? error.message : String(error);
                 logger.error('Python environment bootstrap failed:', error as Error);
-                void vscode.window.showErrorMessage(`TOTK Editor: Python setup failed - ${message}`);
+                void vscode.window.showErrorMessage(`TKVSC: Python setup failed - ${message}`);
                 return undefined;
             });
     } else {
@@ -533,7 +533,7 @@ export function ensurePythonEnvironment(
 
 export async function promptPythonSetup(context: vscode.ExtensionContext): Promise<void> {
     const choice = await vscode.window.showErrorMessage(
-        'TOTK Editor could not find Python 3.10+. Cursor/VS Code often use a different PATH than CMD - set the full path to python.exe, or pick from detected installs.',
+        'TKVSC could not find Python 3.10+. Cursor/VS Code often use a different PATH than CMD - set the full path to python.exe, or pick from detected installs.',
         'Pick Python',
         'Browse for python.exe',
         'Retry Setup',

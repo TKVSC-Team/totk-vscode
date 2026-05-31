@@ -16,10 +16,10 @@ class ExtensionLogger {
      */
     public init(context: vscode.ExtensionContext) {
         if (!this.outputChannel) {
-            this.outputChannel = vscode.window.createOutputChannel('TOTK Editor', 'log');
+            this.outputChannel = vscode.window.createOutputChannel('TKVSC', 'log');
             context.subscriptions.push(this.outputChannel);
         }
-        this.info('TOTK Editor: Logger initialized.');
+        this.info('TKVSC: Logger initialized.');
     }
 
     private getLogLevel(): LogLevel {
@@ -57,7 +57,7 @@ class ExtensionLogger {
             const filename = path.basename(filePath);
             const dotIndex = filename.indexOf('.');
             const filetype = dotIndex !== -1 ? filename.substring(dotIndex) : 'file';
-            this.info(`TOTK Editor: Processing (${filetype})... - ${filePath}`);
+            this.info(`TKVSC: Processing (${filetype})... - ${filePath}`);
         } catch {
             // ignore
         }
@@ -68,7 +68,7 @@ class ExtensionLogger {
             const filename = path.basename(filePath);
             const dotIndex = filename.indexOf('.');
             const filetype = dotIndex !== -1 ? filename.substring(dotIndex) : 'file';
-            this.info(`TOTK Editor: Saved (${filetype}) - ${filePath}`);
+            this.info(`TKVSC: Saved (${filetype}) - ${filePath}`);
         } catch {
             // ignore
         }
@@ -91,7 +91,7 @@ class ExtensionLogger {
             this.write('WARN', message, args);
             if (this.shouldShowToast()) {
                 const formatted = args.length ? `${message} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}` : message;
-                void vscode.window.showWarningMessage(`TOTK Editor: ${formatted}`);
+                void vscode.window.showWarningMessage(`TKVSC: ${formatted}`);
             }
         }
     }
@@ -103,7 +103,7 @@ class ExtensionLogger {
             this.write('ERROR', `${errMessage}${stack}`, args);
             if (this.shouldShowToast()) {
                 const formatted = args.length ? `${errMessage} ${args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')}` : errMessage;
-                void vscode.window.showErrorMessage(`TOTK Editor: ${formatted}`);
+                void vscode.window.showErrorMessage(`TKVSC: ${formatted}`);
             }
         }
     }
