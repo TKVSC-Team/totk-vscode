@@ -142,12 +142,13 @@ See: [CONTRIBUTING.md](./.github/CONTRIBUTING.md)
 **Clonephaze** - [GitHub Template Refactor](https://github.com/TKVSC-Team/totk-vscode/pull/62)
 
 ### Third-Parties
-**dt13245**: [ASB fork](https://github.com/TKVSC-Team/asb), [AINB fork](https://github.com/TKVSC-Team/AINB), and [XLink2](https://github.com/dt-12345/xlink2) binaries integrated into codebase\
+**dt13245**: [ASB fork](https://github.com/TKVSC-Team/asb), [AINB fork](https://github.com/TKVSC-Team/AINB), and [XLink2](https://github.com/dt-12345/xlink2) (legacy version) binaries integrated into codebase\
+**P1gyy**: [pymsbt fork](https://github.com/TKVSC-Team/pymsbt) integrated into codebase\
+**AeonSake**: [MSBT Editor](https://gitlab.com/AeonSake/msbt-editor) - TotK Config included\
+**LordBubbles**: [TKMM](https://tkmm.org/) - Assistance with implementing TKMM compatibility\
 **KillzXGaming**: [Switch Toolbox](https://github.com/KillzXGaming/Switch-Toolbox) - image handling referenced\
 **Arch Leaders**: [NX Editor](https://github.com/NX-Editor/NxEditor) - text formatting referenced\
 **SolidLink**: [Totkbits](https://github.com/SolidLink95/TotkBits) - Tag.Product and text formatting referenced\
-**AeonSake**: [MSBT Editor](https://gitlab.com/AeonSake/msbt-editor) - TotK Config included\
-**P1gyy**: [pymsbt fork](https://github.com/TKVSC-Team/pymsbt) integrated into codebase
 
 ## Help and Community
 
