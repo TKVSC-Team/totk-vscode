@@ -522,7 +522,7 @@
         },
         {
           "command": "totk-editor.setActiveProject",
-          "when": "view == totk-editor.archives && (viewItem == archiveRoot || viewItem == archiveProjectDir || viewItem == archiveProjectDirActive)",
+          "when": "view == totk-editor.archives && viewItem == archiveRoot",
           "group": "1_active"
         },
         {
