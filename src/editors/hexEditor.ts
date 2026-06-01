@@ -255,6 +255,36 @@ export function openHexEditor(uri: vscode.Uri, extensionUri: vscode.Uri, isReadO
                 logger.info(`[HexEditor] Save failed: ${msg}`);
                 vscode.window.showErrorMessage(`Failed to save changes: ${msg}`);
             }
+        } else if (message.type === 'evaluate-hexpat') {
+            try {
+                const python = getPython();
+                if (!python) {
+                    throw new Error('Python environment is not ready.');
+                }
+                const bridgePath = path.join(extensionUri.fsPath, 'python', 'totk_bridge.py');
+                const env = getBridgeEnv();
+
+                // Create a temp file with the binary data
+                const tempBin = path.join(os.tmpdir(), `totk-bin-temp-${Date.now()}`);
+                await fs.promises.writeFile(tempBin, Buffer.from(message.base64Data, 'base64'));
+
+                try {
+                    const result = await runBridgeJsonAsync<{ ast: any }>(
+                        python,
+                        bridgePath,
+                        ['evaluate-hexpat', tempBin],
+                        message.hexpatCode,
+                        env,
+                    );
+                    panel.webview.postMessage({ type: 'evaluate-hexpat-result', ast: result?.ast || [] });
+                } finally {
+                    try { fs.unlinkSync(tempBin); } catch {}
+                }
+            } catch (err) {
+                logger.info(`[HexEditor] Error evaluating hexpat: ${err}`);
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                panel.webview.postMessage({ type: 'evaluate-hexpat-error', error: errorMessage });
+            }
         }
     });
 
@@ -1811,6 +1841,9 @@ function buildHtml(
         function executePattern() {
             if (!currentPatternFilename) return;
 
+            const activePattern = communityPatterns.find(p => p.filename === currentPatternFilename);
+            const currentPatternContent = activePattern ? activePattern.content : "";
+
             const overlay = document.getElementById("runnerOverlay");
             overlay.classList.add("active");
 
@@ -1825,24 +1858,144 @@ function buildHtml(
                 try {
                     if (currentPatternFilename === "sarc.hexpat") {
                         parseSarcPattern(astTree);
+                        renderVisibleRows();
+                        switchHexpatTab('ast');
                     } else if (currentPatternFilename === "aamp.hexpat") {
                         parseAampPattern(astTree);
+                        renderVisibleRows();
+                        switchHexpatTab('ast');
                     } else if (currentPatternFilename === "byml.hexpat") {
                         parseBymlPattern(astTree);
+                        renderVisibleRows();
+                        switchHexpatTab('ast');
                     } else {
-                        astTree.innerHTML = '<div style="color: var(--vscode-gitDecoration-addedResourceForeground, #4ec9b0); font-weight: bold; text-align: center; padding-top: 30px;">Pattern compiled successfully.</div>';
+                        // Dynamically evaluate via hexpyt on backend
+                        astTree.innerHTML = '<div style="color: var(--vscode-descriptionForeground, #cccccc); font-weight: bold; text-align: center; padding-top: 30px;">Evaluating pattern via Hexpyt...</div>';
+                        const base64Data = uint8ArrayToBase64(fileBytes);
+                        vscodeApi.postMessage({ type: 'evaluate-hexpat', base64Data: base64Data, hexpatCode: currentPatternContent });
                     }
                 } catch (e) {
                     console.error("[HexEditor] Parsing error:", e);
                     astTree.innerHTML = '<div style="color: var(--vscode-errorForeground, #ff6b6b); font-weight: bold; padding: 10px;">Parsing Error: ' + escapeHtml(e.message) + '</div>';
                 }
-
-                // Render highlighting on the grid
-                renderVisibleRows();
-                
-                // Switch to AST View tab to showcase result
-                switchHexpatTab('ast');
             }, 550);
+        }
+
+        window.addEventListener('message', event => {
+            const message = event.data;
+            if (message.type === 'init') {
+                // ...
+            } else if (message.type === 'evaluate-hexpat-result') {
+                const overlay = document.getElementById("runnerOverlay");
+                if (overlay) overlay.classList.remove("active");
+                const astTree = document.getElementById("astTree");
+                if (astTree) {
+                    astTree.innerHTML = "";
+                    highlightArray.fill(0);
+                    preHighlightAst(message.ast);
+                    renderGenericAst(message.ast, astTree);
+                }
+                renderVisibleRows();
+                switchHexpatTab('ast');
+            } else if (message.type === 'evaluate-hexpat-error') {
+                const overlay = document.getElementById("runnerOverlay");
+                if (overlay) overlay.classList.remove("active");
+                const astTree = document.getElementById("astTree");
+                if (astTree) {
+                    astTree.innerHTML = '<div style="color: var(--vscode-errorForeground, #ff6b6b); font-weight: bold; padding: 10px;">Evaluation Error: ' + escapeHtml(message.error) + '</div>';
+                }
+            }
+        });
+
+        function preHighlightAst(astNodes) {
+            if (!astNodes || astNodes.length === 0) return;
+            let colorIdx = 1;
+            for (const node of astNodes) {
+                const start = node.start_offset;
+                const size  = node.size;
+                if (start == null || size == null || isNaN(start) || isNaN(size)) continue; // guard
+                const end = Math.min(start + size, highlightArray.length);
+                for (let i = start; i < end; i++) {
+                    highlightArray[i] = colorIdx;
+                }
+                colorIdx = (colorIdx % 8) + 1;
+            }
+        }
+
+        function renderGenericAst(astNodes, container) {
+            if (!astNodes || astNodes.length === 0) {
+                container.innerHTML = '<div style="color: var(--vscode-gitDecoration-addedResourceForeground, #4ec9b0); font-weight: bold; text-align: center; padding-top: 30px;">Pattern evaluated successfully. (No structures found)</div>';
+                return;
+            }
+
+            function processNode(node, parentEl, indent) {
+                const isArray = node.type === "Array";
+                const safeStart = node.start_offset ?? 0;
+                const safeSize  = node.size ?? 1;
+
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "ast-item";
+                itemDiv.style.marginLeft = indent + "px";
+                itemDiv.dataset.offset = String(safeStart);
+                itemDiv.dataset.size   = String(safeSize);
+
+                const hasChildren = node.children && node.children.length > 0;
+                
+                const rowDiv = document.createElement("div");
+                rowDiv.className = "ast-row";
+                rowDiv.onclick = (e) => {
+                    const off = parseInt(itemDiv.dataset.offset, 10);
+                    const sz = parseInt(itemDiv.dataset.size, 10);
+                    const endOff = off + sz - 1;
+                    selectAstRange(off, endOff >= off ? endOff : off, e);
+                    if (hasChildren) {
+                        toggleAstChildren(rowDiv);
+                    }
+                };
+
+                let arrowHtml = "";
+                if (hasChildren) {
+                    // Start collapsed by default for deep items, but maybe expand top-level?
+                    // We'll keep them expanded if indent == 0, else collapsed.
+                    const isExpanded = indent === 0;
+                    arrowHtml = '<span class="ast-arrow' + (isExpanded ? '' : ' collapsed') + '">' + (isExpanded ? '▼' : '▶') + '</span>';
+                } else {
+                    arrowHtml = '<span style="display:inline-block; width:16px;"></span>';
+                }
+
+                let valueHtml = "";
+                if (node.value !== undefined) {
+                    valueHtml = '<span class="ast-value">: ' + escapeHtml(node.value) + '</span>';
+                } else {
+                    valueHtml = '<span class="ast-value">: ' + escapeHtml(node.type) + '</span>';
+                }
+
+                const endOffset = safeStart + safeSize - 1;
+                const offsetHtml = '<span class="ast-offset">0x' + safeStart.toString(16).toUpperCase().padStart(2, '0') +
+                    (safeSize > 1 ? ' - 0x' + endOffset.toString(16).toUpperCase().padStart(2, '0') : '') + '</span>';
+
+                rowDiv.innerHTML = arrowHtml +
+                    '<span class="ast-name">' + escapeHtml(node.name) + '</span>' +
+                    valueHtml + offsetHtml;
+
+                itemDiv.appendChild(rowDiv);
+
+                if (hasChildren) {
+                    const childrenDiv = document.createElement("div");
+                    const isExpanded = indent === 0;
+                    childrenDiv.className = "ast-children" + (isExpanded ? "" : " collapsed");
+                    node.children.forEach(child => {
+                        processNode(child, childrenDiv, 16);
+                    });
+                    itemDiv.appendChild(childrenDiv);
+                }
+
+                parentEl.appendChild(itemDiv);
+            }
+
+            astNodes.forEach(node => {
+                processNode(node, container, 0);
+            });
         }
 
         function parseSarcPattern(astTree) {
@@ -2110,11 +2263,31 @@ function buildHtml(
             event.stopPropagation();
             selectedOffset = start;
             selectionStart = start;
-            selectionEnd = end;
+            selectionEnd   = end;
             updateSelectionsUI();
             updateInspector();
-            
-            navigateToOffset(start, false);
+
+            // Scroll to start — inline the scroll logic instead of calling
+            // navigateToOffset() which would clobber selectionEnd via startSelectionAt()
+            const targetRow       = Math.floor(start / 16);
+            const targetScrollTop = targetRow * ROW_HEIGHT;
+            const viewport        = document.getElementById("gridViewport");
+            const viewportHeight  = viewport.clientHeight;
+            if (targetScrollTop < viewport.scrollTop ||
+                targetScrollTop > viewport.scrollTop + viewportHeight - ROW_HEIGHT * 2) {
+                viewport.scrollTop = Math.max(0, targetScrollTop - viewportHeight / 2);
+            }
+            renderVisibleRows();
+
+            // Flash animation on the first byte only
+            setTimeout(() => {
+                const hexEl = document.getElementById("hex-" + start);
+                if (hexEl) {
+                    hexEl.style.transition = "all 0.2s";
+                    hexEl.style.transform = "scale(1.2)";
+                    setTimeout(() => hexEl.style.transform = "none", 200);
+                }
+            }, 50);
         }
 
         function toggleAstChildren(el) {
@@ -2139,6 +2312,25 @@ function buildHtml(
             if (bytes < 1024) return bytes + " B";
             if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
             return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+        }
+
+        function escapeHtml(value) {
+            if (value === undefined || value === null) return "";
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function uint8ArrayToBase64(bytes) {
+            let binary = '';
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
         }
     </script>
 </body>

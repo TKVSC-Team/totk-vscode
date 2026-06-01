@@ -542,6 +542,89 @@ def main():
                 out.write(compressed)
             print(json.dumps({"path": tmp_path}))
 
+        elif command == "evaluate-hexpat":
+            input_path = sys.argv[2]
+            file_data = Path(input_path).read_bytes()
+            hexpat_code = sys.stdin.read()
+
+            hexpyt_src = os.path.abspath(os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "vendor", "hexpyt", "src"))
+            if hexpyt_src not in sys.path:
+                sys.path.insert(0, hexpyt_src)
+
+
+            try:
+                from compiler import compile_text
+                import primitives
+            except ImportError as e:
+                print(json.dumps({"error": f"Failed to load hexpat compiler: {e}"}))
+                sys.exit(0)
+
+            try:
+                python_code = compile_text(hexpat_code)
+            except Exception as e:
+                print(json.dumps({"error": f"Hexpat compile error: {e}"}))
+                sys.exit(0)
+
+            local_env = {
+                "byts": file_data,
+                "primitives": primitives,
+            }
+            for k in dir(primitives):
+                if not k.startswith("_"):
+                    local_env[k] = getattr(primitives, k)
+
+            exec(python_code, local_env, local_env)
+
+            ast_nodes = []
+
+            def dump_ast(obj, name):
+                if isinstance(obj, primitives.Struct):
+                    node = {
+                        "name": name,
+                        "type": obj.__class__.__name__,
+                        "start_offset": int(obj.address()),
+                        "size": int(obj.size()),
+                        "children": []
+                    }
+                    if hasattr(obj, "value"):
+                        try:
+                            node["value"] = str(obj.value())
+                        except Exception:
+                            pass
+                    for k, v in obj.__dict__.items():
+                        if not k.startswith("_") and k != "value":
+                            child = dump_ast(v, k)
+                            if child:
+                                node["children"].append(child)
+                    return node
+                elif isinstance(obj, list):
+                    if len(obj) == 0: return None
+                    if not isinstance(obj[0], primitives.Struct): return None
+                    start = int(obj[0].address())
+                    end = int(obj[-1].dollar())
+                    node = {
+                        "name": name,
+                        "type": "Array",
+                        "start_offset": start,
+                        "size": end - start,
+                        "children": []
+                    }
+                    for i, item in enumerate(obj):
+                        child = dump_ast(item, f"[{i}]")
+                        if child:
+                            node["children"].append(child)
+                    return node
+                return None
+
+            for k, v in local_env.items():
+                if isinstance(v, primitives.Struct) and not k.startswith("_") and type(v) != type:
+                    node = dump_ast(v, k)
+                    if node:
+                        ast_nodes.append(node)
+
+            print(json.dumps({"ast": ast_nodes}))
+
         else:
             archive_path = sys.argv[2]
 

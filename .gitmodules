@@ -13,3 +13,6 @@
 [submodule "vendor/py-bntx"]
 	path = vendor/py-bntx
 	url = https://github.com/TKVSC-Team/py-bntx.git
+[submodule "vendor/hexpyt"]
+	path = vendor/hexpyt
+	url = https://github.com/TKVSC-Team/hexpyt.git
