@@ -483,7 +483,7 @@
     "viewsWelcome": [
       {
         "view": "totk-editor.archives",
-        "contents": "Browse `.pack`, `.sarc`, `.genvb`, `.blarc`, `.bfarc`, and `.bntx` as expandable trees in the **TOTK Archives** sidebar tab.\n\n[Add Projects via File Explorer](command:totk-editor.addProjectFolders)"
+        "contents": "You don't currently have any Project Folders, please add one using the button below.\n\n[Add Projects via File Explorer](command:totk-editor.addProjectFolders)"
       },
       {
         "view": "totk-editor.gameDump",
