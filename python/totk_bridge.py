@@ -150,9 +150,11 @@ def _save_bntx_file_bytes(
         Path(archive_path).write_bytes(new_bytes)
 
 
-def _save_txtg_file_bytes(
+def _save_logical_file_bytes(
     archive_path: str, logical_path: str, new_bytes: bytes, is_zstd: bool, romfs_path: str
 ):
+    """Write a payload back to its location: recompress if the source was
+    zstd, then write into the containing archive or directly to disk."""
     if is_zstd:
         new_bytes = compress_container(
             new_bytes, logical_path or archive_path, romfs_path, was_zstd=True, was_yaz0=False
@@ -163,6 +165,12 @@ def _save_txtg_file_bytes(
         write_archive_file_bytes(archive_path, logical_path, new_bytes, romfs_path)
     else:
         Path(archive_path).write_bytes(new_bytes)
+
+
+def _save_txtg_file_bytes(
+    archive_path: str, logical_path: str, new_bytes: bytes, is_zstd: bool, romfs_path: str
+):
+    _save_logical_file_bytes(archive_path, logical_path, new_bytes, is_zstd, romfs_path)
 
 
 def _txtg_extract_linear_mips(txtg_bytes: bytes):
@@ -1101,6 +1109,131 @@ def main():
                     )
                 except Exception as e:
                     print(json.dumps({"error": str(e)}))
+
+            elif command == "replace-bars-audio":
+                import struct as _struct
+
+                import bwav_writer
+                from bars_io import parse_bars
+                from bars_writer import rebuild_bars
+
+                internal_path = sys.argv[3] if len(sys.argv) > 3 else ""
+                entry_index = int(sys.argv[4]) if len(sys.argv) > 4 else 0
+
+                # Loop args: "auto" (honor the file's own loop metadata),
+                # "none" (no loop), or a sample number.
+                def _parse_loop_arg(value: str):
+                    value = value.strip().lower()
+                    if value in ("", "auto", "-1"):
+                        return "auto"
+                    if value == "none":
+                        return "none"
+                    return int(value)
+
+                loop_start_arg = _parse_loop_arg(sys.argv[5]) if len(sys.argv) > 5 else "auto"
+                loop_end_arg = _parse_loop_arg(sys.argv[6]) if len(sys.argv) > 6 else "auto"
+                name_hint = sys.argv[7] if len(sys.argv) > 7 else "audio.bin"
+
+                encoded = sys.stdin.read()
+                payload = base64.b64decode(encoded) if encoded else b""
+
+                if internal_path:
+                    file_data = read_archive_file_bytes(archive_path, internal_path, romfs_path)
+                    logical_path = internal_path
+                else:
+                    file_data = Path(archive_path).read_bytes()
+                    logical_path = archive_path
+
+                data, _, is_zstd = decompress_container(file_data, logical_path, romfs_path)
+                bars = parse_bars(data)
+                if entry_index >= len(bars.entries):
+                    raise IndexError(
+                        f"Entry index {entry_index} out of range "
+                        f"(BARS has {len(bars.entries)} entries)"
+                    )
+                entry = bars.entries[entry_index]
+
+                if payload[:4] == b"BWAV":
+                    full_bwav = payload
+                    if loop_start_arg == "none":
+                        full_bwav = bwav_writer.set_bwav_loop(full_bwav, None, None)
+                    elif loop_start_arg != "auto":
+                        loop_end_val = (
+                            loop_end_arg if isinstance(loop_end_arg, int) else 0x7FFFFFFF
+                        )
+                        full_bwav = bwav_writer.set_bwav_loop(
+                            full_bwav, loop_start_arg, loop_end_val
+                        )
+                else:
+                    if payload[:4] != b"RIFF":
+                        # Any other format (MP3, OGG, FLAC, ...) goes through ffmpeg.
+                        payload = bwav_writer.decode_audio_to_wav(payload, name_hint)
+                    wav = bwav_writer.parse_wav(payload)
+                    if loop_start_arg == "none":
+                        ls, le = None, None
+                    elif loop_start_arg == "auto":
+                        ls, le = wav.loop_start, wav.loop_end
+                    else:
+                        ls = loop_start_arg
+                        le = loop_end_arg if isinstance(loop_end_arg, int) else 0x7FFFFFFF
+                    full_bwav = bwav_writer.build_bwav(
+                        wav.channels, wav.sample_rate, ls, le
+                    )
+
+                # Report the loop actually written to the file.
+                le_out, ls_out = _struct.unpack_from("<ii", full_bwav, 0x10 + 0x3C)
+                used_loop_start = ls_out if le_out != -1 else None
+                used_loop_end = le_out if le_out != -1 else None
+
+                # Raw pair-table offset (bars_io reports -1 for dummy clips, but
+                # the table may still point at a real, replaceable block).
+                num_assets = _struct.unpack_from("<I", data, 0xC)[0]
+                pairs_start = 0x10 + num_assets * 4
+                raw_bwav_off = _struct.unpack_from(
+                    "<i", data, pairs_start + entry_index * 8 + 4
+                )[0]
+
+                embedded = None
+                needs_stream_file = False
+                if raw_bwav_off in (-1, 0):
+                    # Stream-only entry: nothing embedded to swap. The caller
+                    # gets the full BWAV to drop into Sound/Resource/Stream/.
+                    needs_stream_file = True
+                else:
+                    was_prefetch = (
+                        _struct.unpack_from("<H", data, raw_bwav_off + 0xC)[0] != 0
+                    )
+                    if was_prefetch:
+                        blob = bwav_writer.make_prefetch_bwav(full_bwav)
+                        embedded = "prefetch"
+                        needs_stream_file = True
+                    else:
+                        blob = full_bwav
+                        embedded = "full"
+                    new_data = rebuild_bars(data, {entry_index: blob})
+                    _save_logical_file_bytes(
+                        archive_path, logical_path, new_data, is_zstd, romfs_path
+                    )
+
+                fd, bwav_tmp = tempfile.mkstemp(prefix="totk-bwav-full-", suffix=".bwav")
+                with os.fdopen(fd, "wb") as out:
+                    out.write(full_bwav)
+
+                print(
+                    json.dumps(
+                        {
+                            "success": True,
+                            "name": entry.name,
+                            "embedded": embedded,
+                            "needsStreamFile": needs_stream_file,
+                            "fullBwavTempPath": bwav_tmp,
+                            "numSamples": bwav_writer.bwav_num_samples(full_bwav),
+                            "channels": bwav_writer.bwav_channel_count(full_bwav),
+                            "loopStart": used_loop_start,
+                            "loopEnd": used_loop_end,
+                        }
+                    )
+                )
 
             elif command == "export-temp":
                 internal_path = sys.argv[3]

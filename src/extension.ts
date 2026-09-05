@@ -13,6 +13,8 @@ import {
     runBridgePrepareFontReplacementAsync,
     runBridgeReplaceBntxPayloadAsync,
     runBridgeReplaceTxtgPayloadAsync,
+    runBridgeReplaceBarsAudioAsync,
+    type BarsLoopSpec,
 } from './bridge';
 import { openTextureViewer, initTextureViewer } from './textureViewer';
 import { openAudioViewer, initAudioViewer } from './audioViewer';
@@ -1491,6 +1493,58 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
 
 
 
+    async function promptForBarsLoopPoints(): Promise<{ start: BarsLoopSpec; end: BarsLoopSpec } | undefined> {
+        const choice = await vscode.window.showQuickPick(
+            [
+                {
+                    label: 'Use loop from file',
+                    description: 'Honor loop metadata in the source (WAV smpl chunk / BWAV header), if any',
+                    value: 'auto' as const,
+                },
+                { label: 'No loop', description: 'Play once, no looping', value: 'none' as const },
+                { label: 'Loop entire clip', description: 'Loop from the first to the last sample', value: 'whole' as const },
+                { label: 'Custom loop points…', description: 'Enter loop start/end sample positions', value: 'custom' as const },
+            ],
+            { title: 'Loop points for the replacement audio', placeHolder: 'How should this sound loop?' },
+        );
+        if (!choice) {
+            return undefined;
+        }
+        if (choice.value === 'auto') {
+            return { start: 'auto', end: 'auto' };
+        }
+        if (choice.value === 'none') {
+            return { start: 'none', end: 'none' };
+        }
+        if (choice.value === 'whole') {
+            return { start: 0, end: 2147483647 };
+        }
+
+        const validateSample = (v: string): string | undefined =>
+            /^\d+$/.test(v.trim()) ? undefined : 'Enter a sample number (a non-negative integer)';
+        const startStr = await vscode.window.showInputBox({
+            title: 'Loop start (samples)',
+            prompt: 'Sample position where the loop begins (e.g. 48000 = 1 second at 48 kHz)',
+            value: '0',
+            validateInput: validateSample,
+        });
+        if (startStr === undefined) {
+            return undefined;
+        }
+        const endStr = await vscode.window.showInputBox({
+            title: 'Loop end (samples)',
+            prompt: 'Sample position where the loop ends — leave empty for the end of the clip',
+            validateInput: (v) => (v.trim() === '' ? undefined : validateSample(v)),
+        });
+        if (endStr === undefined) {
+            return undefined;
+        }
+        return {
+            start: parseInt(startStr.trim(), 10),
+            end: endStr.trim() === '' ? 2147483647 : parseInt(endStr.trim(), 10),
+        };
+    }
+
     context.subscriptions.push(
         vscode.commands.registerCommand('totk-editor.openBarsArchive', async (uri: vscode.Uri) => {
             const python = getPython();
@@ -1518,6 +1572,73 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
                             getBridgeEnv(),
                         );
                         return audioRaw as any;
+                    }, async (index: number) => {
+                        const picked = await vscode.window.showOpenDialog({
+                            canSelectMany: false,
+                            title: 'Select replacement audio',
+                            filters: {
+                                'Audio': ['wav', 'bwav', 'mp3', 'ogg', 'oga', 'flac', 'm4a', 'aac', 'opus', 'wma', 'aiff', 'aif'],
+                                'All files': ['*'],
+                            },
+                        });
+                        if (!picked || picked.length === 0) {
+                            return undefined;
+                        }
+                        const payload = await fs.promises.readFile(picked[0].fsPath);
+                        const sourceName = path.basename(picked[0].fsPath);
+
+                        const loops = await promptForBarsLoopPoints();
+                        if (!loops) {
+                            return undefined;
+                        }
+
+                        const result = await vscode.window.withProgress(
+                            {
+                                location: vscode.ProgressLocation.Notification,
+                                title: 'Encoding and replacing BARS audio…',
+                            },
+                            () => runBridgeReplaceBarsAudioAsync(
+                                python, bridgePath, diskArchive, filePath, index, payload,
+                                loops.start, loops.end, sourceName, getBridgeEnv(),
+                            ),
+                        );
+                        if (result.error || !result.success) {
+                            void vscode.window.showErrorMessage(
+                                'Failed to replace BARS audio: ' + (result.error || 'Unknown error'),
+                            );
+                            return undefined;
+                        }
+
+                        if (result.needsStreamFile && result.fullBwavTempPath) {
+                            const choice = await vscode.window.showInformationMessage(
+                                `"${result.name}" is a streamed sound: the BARS now holds only a prefetch clip. ` +
+                                'The full BWAV must also be placed at Sound/Resource/Stream/ in your mod.',
+                                'Save Full BWAV…', 'Skip',
+                            );
+                            if (choice === 'Save Full BWAV…') {
+                                const target = await vscode.window.showSaveDialog({
+                                    defaultUri: vscode.Uri.file(path.join(
+                                        path.dirname(diskArchive), `${result.name}.bwav`,
+                                    )),
+                                    filters: { 'BWAV audio': ['bwav'] },
+                                });
+                                if (target) {
+                                    await fs.promises.copyFile(result.fullBwavTempPath, target.fsPath);
+                                }
+                            }
+                        }
+                        if (result.fullBwavTempPath) {
+                            fs.promises.unlink(result.fullBwavTempPath).catch(() => { /* best effort */ });
+                        }
+
+                        void vscode.window.showInformationMessage(`Replaced audio for "${result.name}".`);
+                        const refreshed = await runBridgeReadAsync(
+                            python,
+                            bridgePath,
+                            ['list-bars', diskArchive, filePath],
+                            getBridgeEnv(),
+                        );
+                        return (refreshed as any).entries;
                     });
                 } else {
                     const err = raw && (raw as any).error ? (raw as any).error : 'Unknown error';

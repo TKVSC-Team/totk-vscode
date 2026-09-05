@@ -61,8 +61,8 @@ Preview and edit subfiles of SARC and BNTX archives
 - **Unsupported**
 - - VSP
 
-#### Audio Player
-- Bars
+#### Audio Player/Replacer
+- Bars (play entries, and replace their audio from WAV/BWAV — or any common format like MP3, OGG, or FLAC when ffmpeg is installed. Audio is encoded to DSP-ADPCM automatically, with loop points taken from the file or set by hand)
 - BFWAV
 
 #### Font Viewer/Replacer
@@ -107,7 +107,7 @@ To demonstrate with a direct comparison, modifying the defense of every level of
 
 - Node Based Editors (AINB, ASB, BAEV, and EVFL are all planned.)
 - BFRES Support (Preview, Editing.)
-- Audio Support (BARS, BWAV.) (Read currently supported, write W.I.P)
+- Audio Support (BARS, BWAV.) (Read and BARS entry replacement supported; standalone BWAV/Opus writing W.I.P)
 - Actor Tooling (Automating the process as much as possible.)
 - Full romfs file content string searching
 

@@ -13,9 +13,10 @@ export function openBarsViewer(
     key: string,
     entries: BarsEntry[],
     fetchAudio: (index: number, usePrefetch: boolean) => Promise<BarsAudioResult>,
+    replaceAudio?: (index: number) => Promise<BarsEntry[] | undefined>,
 ): void {
     const existing = panels.get(key);
-    
+
     if (existing) {
         existing.reveal();
         return;
@@ -37,9 +38,25 @@ export function openBarsViewer(
         },
     );
 
-    panel.webview.html = buildHtml(barsName, entries);
+    panel.webview.html = buildHtml(barsName, entries, !!replaceAudio);
 
     panel.webview.onDidReceiveMessage(async (message) => {
+        if (message.type === 'replace-audio' && replaceAudio) {
+            try {
+                const newEntries = await replaceAudio(message.index);
+                if (newEntries) {
+                    // Rebuild the whole view so metadata and playback reflect the new audio.
+                    panel.webview.html = buildHtml(barsName, newEntries, true);
+                } else {
+                    panel.webview.postMessage({ type: 'replace-done', index: message.index });
+                }
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                void vscode.window.showErrorMessage(`Audio replacement failed: ${msg}`);
+                panel.webview.postMessage({ type: 'replace-done', index: message.index });
+            }
+            return;
+        }
         if (message.type === 'fetch-audio') {
             try {
                 const res = await fetchAudio(message.index, !!message.usePrefetch);
@@ -65,7 +82,7 @@ export function openBarsViewer(
     });
 }
 
-function buildHtml(barsName: string, entries: BarsEntry[]): string {
+function buildHtml(barsName: string, entries: BarsEntry[], canReplace: boolean): string {
     const playableIndices: number[] = [];
 
     const entriesHtml = entries.map((e, idx) => {
@@ -112,6 +129,7 @@ function buildHtml(barsName: string, entries: BarsEntry[]): string {
                 <div class="entry-meta">
                     ${e.has_prefetch ? `<button class="tag prefetch" id="tag-prefetch-${idx}" data-index="${idx}">Prefetch</button>` : ''}
                     ${e.has_romfs_bwav ? `<button class="tag romfs" id="tag-romfs-${idx}" data-index="${idx}">Full</button>` : ''}
+                    ${canReplace ? `<button class="tag replace" id="replace-btn-${idx}" data-index="${idx}" title="Replace this entry's audio with a WAV or BWAV file">Replace</button>` : ''}
                 </div>
             </div>
             
@@ -217,6 +235,9 @@ function buildHtml(barsName: string, entries: BarsEntry[]): string {
     }
     .tag.prefetch { background: #3b82f640; color: #60a5fa; }
     .tag.romfs { background: #10b98140; color: #34d399; }
+    .tag.replace { background: #f59e0b40; color: #fbbf24; opacity: 0.8; }
+    .tag.replace:hover { opacity: 1; }
+    .tag.replace:disabled { opacity: 0.4; cursor: wait; }
     
     .custom-player {
         display: flex;
@@ -528,6 +549,16 @@ function buildHtml(barsName: string, entries: BarsEntry[]): string {
             }
         }
 
+        // Replace buttons (every entry, playable or not)
+        document.querySelectorAll('.tag.replace').forEach(el => {
+            el.addEventListener('click', () => {
+                const idx = parseInt(el.dataset.index);
+                el.disabled = true;
+                el.textContent = 'Replacing…';
+                vscode.postMessage({ type: 'replace-audio', index: idx });
+            });
+        });
+
         // Initialize players
         playableIndices.forEach(idx => {
             const btnRomfs = document.getElementById('tag-romfs-' + idx);
@@ -707,6 +738,12 @@ function buildHtml(barsName: string, entries: BarsEntry[]): string {
                         activeFetches--;
                         fetchNext();
                     });
+            } else if (message.type === 'replace-done') {
+                const rbtn = document.getElementById('replace-btn-' + message.index);
+                if (rbtn) {
+                    rbtn.disabled = false;
+                    rbtn.textContent = 'Replace';
+                }
             } else if (message.type === 'audio-error') {
                 const btn = document.getElementById('play-btn-' + message.index);
                 if (btn) {

@@ -165,6 +165,20 @@ export interface BarsAudioResult extends BridgeResult {
     loopEnd?: number;
 }
 
+export interface BarsReplaceResult extends BridgeResult {
+    success?: boolean;
+    name?: string;
+    /** What was embedded into the BARS: 'prefetch', 'full', or null (stream-only entry). */
+    embedded?: 'prefetch' | 'full' | null;
+    /** True when the entry streams from romfs and the full BWAV must also be placed there. */
+    needsStreamFile?: boolean;
+    fullBwavTempPath?: string;
+    numSamples?: number;
+    channels?: number;
+    loopStart?: number | null;
+    loopEnd?: number | null;
+}
+
 export interface BntxTextureResult {
     bntxTexture: true;
     error?: string;
@@ -359,6 +373,40 @@ export async function runBridgeReplaceTxtgPayloadAsync(
         bridgePath,
         ['replace-txtg-payload', archivePath, internalPath],
         rawPayload.toString('base64'),
+        env,
+    );
+}
+
+/** Loop specification for a BARS audio replacement:
+ *  'auto' honors the source file's own loop metadata, 'none' strips loops,
+ *  a number is an explicit sample position. */
+export type BarsLoopSpec = 'auto' | 'none' | number;
+
+export async function runBridgeReplaceBarsAudioAsync(
+    pythonExecutable: string,
+    bridgePath: string,
+    archivePath: string,
+    internalPath: string,
+    entryIndex: number,
+    audioPayload: Buffer,
+    loopStart: BarsLoopSpec = 'auto',
+    loopEnd: BarsLoopSpec = 'auto',
+    sourceName = 'audio.bin',
+    env?: NodeJS.ProcessEnv,
+): Promise<BarsReplaceResult> {
+    return runBridgeJsonAsync<BarsReplaceResult>(
+        pythonExecutable,
+        bridgePath,
+        [
+            'replace-bars-audio',
+            archivePath,
+            internalPath,
+            entryIndex.toString(),
+            loopStart.toString(),
+            loopEnd.toString(),
+            sourceName,
+        ],
+        audioPayload.toString('base64'),
         env,
     );
 }
