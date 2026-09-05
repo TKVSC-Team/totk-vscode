@@ -26,7 +26,7 @@ import sqlite3
 import struct
 import zlib
 
-from compression import compress_container, decompress_container
+from totk_compression import compress_container, decompress_container
 
 MAGIC = b"RESTBL"
 HEADER_SIZE = 22

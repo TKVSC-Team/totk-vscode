@@ -27,6 +27,8 @@ export function getBridgeEnv(): NodeJS.ProcessEnv {
         TKVSC_GAME_ID: profile.id,
         TKVSC_COMPRESSION_BACKEND: profile.compressionBackend,
         TKVSC_ARCHIVE_EXTENSIONS: archiveExtensions.join(','),
+        TKVSC_AINB_CATEGORY_DIRS: (profile.ainb?.categoryDirs ?? []).join(','),
+        TKVSC_AINB_NODE_DEFS_GLOB: profile.ainb?.nodeDefinitionGlob ?? '',
         TKVSC_HANDLER_MANIFEST: manifestPath,
         TKVSC_AAMP_HASH_NAMES: aampHashNamesPath,
         TKVSC_ROMFS_INDEX: indexPaths?.romfsIndex ?? '',

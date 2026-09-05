@@ -50,6 +50,16 @@ function parseGameProfile(raw: unknown): GameProfileRegistration | undefined {
     if (typeof obj.msbtConfigPath === 'string' && obj.msbtConfigPath.trim()) {
         profile.msbtConfigPath = obj.msbtConfigPath.trim();
     }
+    if (obj.ainb && typeof obj.ainb === 'object') {
+        const ainb = obj.ainb as Record<string, unknown>;
+        profile.ainb = {
+            categoryDirs: isStringArray(ainb.categoryDirs) ? ainb.categoryDirs : undefined,
+            nodeDefinitionGlob:
+                typeof ainb.nodeDefinitionGlob === 'string' && ainb.nodeDefinitionGlob.trim()
+                    ? ainb.nodeDefinitionGlob.trim()
+                    : undefined,
+        };
+    }
     if (obj.indexing && typeof obj.indexing === 'object') {
         const indexing = obj.indexing as Record<string, unknown>;
         profile.indexing = {

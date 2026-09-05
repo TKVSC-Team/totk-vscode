@@ -38,7 +38,7 @@ from asb_io import (
 from bntx_editor import BntxEditor
 from byml_editor_format import to_editor_text
 from byml_yaml_utils import format_byml_for_editor, normalize_byml_u64_literals
-from compression import compress_container, decompress_container
+from totk_compression import compress_container, decompress_container
 from msbt_editor_format import from_editor_text as msbt_from_editor_text
 from msbt_editor_format import to_editor_text as msbt_to_editor_text
 from tag_product_format import from_editor_text as tag_product_from_editor_text
@@ -726,6 +726,12 @@ def main():
 
             output_path = sys.argv[2]
             print(json.dumps(build_romfs_index(romfs_path, output_path)))
+
+        elif command == "build-ainb-node-defs":
+            from ainb_node_defs import build_ainb_node_defs
+
+            output_path = sys.argv[2]
+            print(json.dumps(build_ainb_node_defs(romfs_path, output_path)))
 
         elif command == "build-canonical-path-index":
             from canonical_path_index import build_canonical_path_index

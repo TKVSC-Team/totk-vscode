@@ -62,6 +62,11 @@ import {
     setIndexStorageRoot,
 } from './indexPaths';
 import {
+    AINB_NODE_DEFS_SCHEMA_VERSION,
+    invalidateAinbNodeDefs,
+    setAinbNodeDefsBuilder,
+} from './ainbNodeDefs';
+import {
     detectProjectAdapter,
     detectProjectAdapterAsync,
     getProjectAdapters,
@@ -877,12 +882,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
     );
     const romfsIndexStatePath = () => gameIndexPaths().romfsIndexState;
     const canonicalIndexStatePath = () => gameIndexPaths().canonicalIndexState;
+    const ainbNodeDefsPath = () => gameIndexPaths().ainbNodeDefs;
+    const ainbNodeDefsStatePath = () => gameIndexPaths().ainbNodeDefsState;
     const ROMFS_INDEX_STATE_KEY = 'totk-editor.romfsIndexState';
     const CANONICAL_INDEX_STATE_KEY = 'totk-editor.canonicalIndexState';
+    const AINB_NODE_DEFS_STATE_KEY = 'totk-editor.ainbNodeDefsState';
     const ROMFS_INDEX_SCHEMA_VERSION = INDEX_SCHEMA_VERSION;
     const CANONICAL_INDEX_SCHEMA_VERSION = INDEX_SCHEMA_VERSION;
     const PROJECT_CANONICAL_IMPORT_SCHEMA_VERSION = 3;
     let romfsIndexBuildPromise: Promise<void> | undefined;
+    let ainbNodeDefsBuildPromise: Promise<boolean> | undefined;
     let canonicalIndexBuildPromise: Promise<void> | undefined;
     let gameDumpTree: ReturnType<typeof registerGameDumpTree> | undefined;
 
@@ -1106,6 +1115,77 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
         return rebuilt;
     };
 
+    /**
+     * Harvest the AINB node definition catalog from the dump. Runs the first time an AINB
+     * is opened for a game, then only when the dump or the catalog shape changes; the
+     * shipped catalog covers the editor until it lands. Resolves true once a fresh
+     * catalog is on disk.
+     */
+    const buildAinbNodeDefs = async (force = false): Promise<boolean> => {
+        if (ainbNodeDefsBuildPromise) {
+            return ainbNodeDefsBuildPromise;
+        }
+        const romfsPath = resolveRomfsPath();
+        const pythonExe = getPython();
+        const gameId = activeGameId();
+        if (!romfsPath || !pythonExe) {
+            return false;
+        }
+        if (!force && !shouldRebuildIndex(
+            ainbNodeDefsPath(),
+            romfsPath,
+            AINB_NODE_DEFS_SCHEMA_VERSION,
+            gameId,
+            AINB_NODE_DEFS_STATE_KEY,
+            ainbNodeDefsStatePath(),
+        )) {
+            return false;
+        }
+
+        let built = false;
+        ainbNodeDefsBuildPromise = Promise.resolve(vscode.window.withProgress(
+            {
+                location: vscode.ProgressLocation.Notification,
+                title: 'Building AINB node definitions (this can take a few minutes)...',
+                cancellable: false,
+            },
+            async () => {
+                try {
+                    const outputPath = ainbNodeDefsPath();
+                    logger.info(`Starting AINB node definition build at: ${outputPath}`);
+                    await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+                    const result = await runBridgeJsonAsync<{ path: string; count: number }>(
+                        pythonExe,
+                        bridgePath,
+                        ['build-ainb-node-defs', outputPath],
+                        undefined,
+                        getBridgeEnv(),
+                    );
+                    await writeIndexState(
+                        AINB_NODE_DEFS_STATE_KEY,
+                        ainbNodeDefsStatePath(),
+                        romfsPath,
+                        AINB_NODE_DEFS_SCHEMA_VERSION,
+                        gameId,
+                    );
+                    logger.info(`AINB node definitions built: ${result?.count ?? 0} definitions.`);
+                    invalidateAinbNodeDefs();
+                    built = true;
+                } catch (err) {
+                    logger.error('Failed to build AINB node definitions:', err as Error);
+                } finally {
+                    ainbNodeDefsBuildPromise = undefined;
+                }
+                return built;
+            }
+        ));
+        return ainbNodeDefsBuildPromise;
+    };
+
+    // The AINB editor asks for this on open rather than reaching for the bridge itself.
+    setAinbNodeDefsBuilder(buildAinbNodeDefs);
+    context.subscriptions.push({ dispose: () => setAinbNodeDefsBuilder(undefined) });
+
     const runCanonicalPropagation = async (info: {
         diskArchivePath: string;
         internalPath: string;
@@ -1280,6 +1360,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
             await buildCanonicalIndex(true);
             await importKnownProjectCanonicalPaths();
             void vscode.window.showInformationMessage('TKVSC: Canonical path index rebuilt.');
+        }),
+        vscode.commands.registerCommand('totk-editor.rebuildAinbNodeDefs', async () => {
+            const romfsPath = resolveRomfsPath();
+            if (!romfsPath) {
+                void vscode.window.showWarningMessage(
+                    'Set TKVSC.romfsPath before rebuilding AINB node definitions.',
+                );
+                return;
+            }
+            const python = getPython();
+            if (!python) {
+                await promptPythonSetup(context);
+                return;
+            }
+            void vscode.window.showInformationMessage('TKVSC: Rebuilding AINB node definitions...');
+            const built = await buildAinbNodeDefs(true);
+            void vscode.window.showInformationMessage(
+                built
+                    ? 'TKVSC: AINB node definitions rebuilt. Reopen any open AINB editors to use them.'
+                    : 'TKVSC: AINB node definitions could not be rebuilt - see the TKVSC output log.',
+            );
         }),
         vscode.commands.registerCommand('totk-editor.canonicalSyncOn', async () => {
             const config = vscode.workspace.getConfiguration('TKVSC');

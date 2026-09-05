@@ -9,6 +9,8 @@ export interface GameIndexPaths {
     romfsIndexState: string;
     canonicalIndex: string;
     canonicalIndexState: string;
+    ainbNodeDefs: string;
+    ainbNodeDefsState: string;
 }
 
 let indexStorageRoot: string | undefined;
@@ -33,6 +35,8 @@ export function getGameIndexPaths(globalStorageFsPath: string, gameId: string): 
         romfsIndexState: path.join(indexDir, 'romfs-index.state.json'),
         canonicalIndex: path.join(indexDir, 'canonical-paths.sqlite'),
         canonicalIndexState: path.join(indexDir, 'canonical-paths.state.json'),
+        ainbNodeDefs: path.join(indexDir, 'ainb-node-defs.json.gz'),
+        ainbNodeDefsState: path.join(indexDir, 'ainb-node-defs.state.json'),
     };
 }
 

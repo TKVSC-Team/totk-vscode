@@ -16,9 +16,9 @@ def decompress_container(
 ) -> tuple[bytes, bool, bool]:
     backend = get_compression_backend_id()
     if backend == "plain-zstd-yaz0":
-        from compression.backends.plain import decompress_container as impl
+        from totk_compression.backends.plain import decompress_container as impl
     else:
-        from compression.backends.totk import decompress_container as impl
+        from totk_compression.backends.totk import decompress_container as impl
     return impl(file_data, logical_path, romfs_path)
 
 
@@ -31,7 +31,7 @@ def compress_container(
 ) -> bytes:
     backend = get_compression_backend_id()
     if backend == "plain-zstd-yaz0":
-        from compression.backends.plain import compress_container as impl
+        from totk_compression.backends.plain import compress_container as impl
     else:
-        from compression.backends.totk import compress_container as impl
+        from totk_compression.backends.totk import compress_container as impl
     return impl(file_data, logical_path, romfs_path, was_zstd, was_yaz0)

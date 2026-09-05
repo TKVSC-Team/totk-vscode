@@ -2071,7 +2071,11 @@ export function getAinbGraphViewHtml(_webview: vscode.Webview, fileName: string)
         for (i = 0; i < (def.props || []).length; i++) {
             var pr = def.props[i];
             if (!n.Properties[pr.t]) { n.Properties[pr.t] = []; }
-            n.Properties[pr.t].push({ 'Name': pr.n, 'Default Value': defaultValueFor(pr.t), 'Flags': [] });
+            n.Properties[pr.t].push({
+                'Name': pr.n,
+                'Default Value': pr.d !== undefined ? pr.d : defaultValueFor(pr.t),
+                'Flags': []
+            });
         }
         for (i = 0; i < (def.in || []).length; i++) {
             var ip = def.in[i];
@@ -2079,7 +2083,7 @@ export function getAinbGraphViewHtml(_webview: vscode.Webview, fileName: string)
             var entry = { 'Name': ip.n };
             // Pointer params always serialize a Classname, so never omit it.
             if (ip.t === 'Pointer') { entry.Classname = ip.c || ''; }
-            entry['Default Value'] = defaultValueFor(ip.t);
+            entry['Default Value'] = ip.d !== undefined ? ip.d : defaultValueFor(ip.t);
             entry['Node Index'] = -1;
             entry['Output Index'] = 0;
             entry.Flags = ['Uses Default'];
@@ -2953,16 +2957,20 @@ export function getAinbGraphViewHtml(_webview: vscode.Webview, fileName: string)
     }
 
     // ---------------------------------------------------------------- host messages
+    function adoptNodeDefs(defs) {
+        nodeDefs = defs;
+        nodeDefByName = {};
+        for (var di = 0; di < nodeDefs.length; di++) {
+            nodeDefByName[nodeDefs[di].name] = nodeDefs[di];
+        }
+    }
+
     window.addEventListener('message', function (event) {
         var msg = event.data;
         if (msg.type === 'init' || msg.type === 'setDoc') {
             doc = msg.doc;
             if (msg.nodeDefs && msg.nodeDefs.length) {
-                nodeDefs = msg.nodeDefs;
-                nodeDefByName = {};
-                for (var di = 0; di < nodeDefs.length; di++) {
-                    nodeDefByName[nodeDefs[di].name] = nodeDefs[di];
-                }
+                adoptNodeDefs(msg.nodeDefs);
             }
             if (msg.layout && Object.keys(msg.layout).length) { layout = msg.layout; }
             if (msg.view) { view = msg.view; }
@@ -2973,6 +2981,12 @@ export function getAinbGraphViewHtml(_webview: vscode.Webview, fileName: string)
             render();
             refreshToolbar();
             if (msg.type === 'init' && (!msg.view)) { fitToView(); }
+        } else if (msg.type === 'nodeDefs') {
+            if (msg.nodeDefs && msg.nodeDefs.length) {
+                adoptNodeDefs(msg.nodeDefs);
+                render();
+                refreshToolbar();
+            }
         } else if (msg.type === 'state') {
             canUndo = !!msg.canUndo; canRedo = !!msg.canRedo; isDirty = !!msg.isDirty;
             readOnly = !!msg.readOnly;

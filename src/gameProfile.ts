@@ -10,6 +10,14 @@ export interface GameIndexingConfig {
     archiveExtensions?: string[];
 }
 
+/** Where this game keeps its AINB, for the node definition harvester. */
+export interface GameAinbConfig {
+    /** Directories under romfs holding loose AINB, e.g. `Logic`. Archives are always swept. */
+    categoryDirs?: string[];
+    /** Glob for the game's node definition tables; `{category}` expands to each categoryDir. */
+    nodeDefinitionGlob?: string;
+}
+
 export interface GameProfileRegistration {
     id: string;
     displayName: string;
@@ -23,6 +31,7 @@ export interface GameProfileRegistration {
     archivePatterns?: string[];
     /** Game config (.gcf) with MSBT tag definitions. Relative to the registering extension root. */
     msbtConfigPath?: string;
+    ainb?: GameAinbConfig;
 }
 
 export interface GameProfile extends GameProfileRegistration {
@@ -49,6 +58,10 @@ const DEFAULT_TOTK_PROFILE: GameProfileRegistration = {
         enableCanonicalPaths: true,
     },
     msbtConfigPath: 'vendor/TotK.gcf',
+    ainb: {
+        categoryDirs: ['Logic', 'AI', 'Sequence'],
+        nodeDefinitionGlob: '{category}/NodeDefinition/Node.Product.*.aidefn.byml*',
+    },
 };
 
 const DEFAULT_ARCHIVE_EXTENSIONS = [

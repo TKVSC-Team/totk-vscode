@@ -25,5 +25,13 @@
   "archivePatterns": [
     "\\.(pack|sarc|genvb|blarc|bfarc|bntx)(\\.zs)?$"
   ],
-  "msbtConfigPath": "vendor/TotK.gcf"
+  "msbtConfigPath": "vendor/TotK.gcf",
+  "ainb": {
+    "categoryDirs": [
+      "Logic",
+      "AI",
+      "Sequence"
+    ],
+    "nodeDefinitionGlob": "{category}/NodeDefinition/Node.Product.*.aidefn.byml*"
+  }
 }

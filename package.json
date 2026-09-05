@@ -491,6 +491,10 @@
         "title": "TKVSC: Rebuild Canonical Path Index"
       },
       {
+        "command": "totk-editor.rebuildAinbNodeDefs",
+        "title": "TKVSC: Rebuild AINB Node Definitions"
+      },
+      {
         "command": "totk-editor.useTotkIcons",
         "title": "TKVSC: File Icon Theme Help"
       },

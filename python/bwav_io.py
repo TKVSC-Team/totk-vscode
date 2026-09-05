@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from compression import decompress_container
+from totk_compression import decompress_container
 
 _BWAV_MAGIC = b"BWAV"
 _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"

@@ -28,6 +28,11 @@ def _load_ainb_module():
     return ainb
 
 
+def load_ainb_module():
+    """The AINB toolkit with the TotK enum database selected."""
+    return _load_ainb_module()
+
+
 def _stem_from_path(logical_path: str) -> str:
     name = Path(logical_path.replace("\\", "/")).name
     if name.endswith(".zs"):

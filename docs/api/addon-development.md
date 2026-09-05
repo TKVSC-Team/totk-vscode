@@ -123,6 +123,10 @@ Game addons register a profile so TKVSC knows how to validate dumps, compress `.
         "indexing": {
           "enableRomfsSearch": true,
           "enableCanonicalPaths": false
+        },
+        "ainb": {
+          "categoryDirs": ["AI", "Sequence"],
+          "nodeDefinitionGlob": "{category}/NodeDefinition/Node.Product.*.aidefn.byml*"
         }
       },
       "archivePatterns": ["\\.(pack|sarc|genvb)(\\.zs)?$"],

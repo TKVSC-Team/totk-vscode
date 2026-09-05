@@ -6,7 +6,7 @@ import { getDiskArchivePath, getLocatorInsideDiskArchive, isPathInsideArchive } 
 import { getBridgeEnv } from './api/bridgeEnv';
 import { runBridgeJsonAsync, runBridgeReadContentAsync } from './bridge';
 import { getAinbGraphViewHtml } from './ainbGraphView';
-import { loadAinbNodeDefs } from './ainbNodeDefs';
+import { ensureAinbNodeDefs, loadAinbNodeDefs } from './ainbNodeDefs';
 import { getCachedPythonExecutable } from './pythonEnv';
 
 /** A single set/delete of a value at a path inside the AINB document. */
@@ -347,6 +347,10 @@ export class AinbEditorProvider implements vscode.CustomEditorProvider<AinbDocum
         switch (message.type) {
             case 'ready':
                 this.postDoc(document, 'init');
+                // First AINB opened for this game harvests the catalog from the dump. The
+                // editor is already usable on the shipped one, so this stays off the
+                // opening path and pushes the result in when it is ready.
+                void this.refreshNodeDefs(document);
                 break;
 
             case 'edit':
@@ -444,6 +448,28 @@ export class AinbEditorProvider implements vscode.CustomEditorProvider<AinbDocum
             readOnly: document.isReadOnly,
             // Only needed on the first push; resends would just re-parse ~1.8 MB.
             nodeDefs: type === 'init' ? loadAinbNodeDefs(this.context.extensionPath) : undefined,
+        });
+    }
+
+    /** Build the dump's own node definitions if needed, then push them to the webview. */
+    private async refreshNodeDefs(document: AinbDocument): Promise<void> {
+        let built = false;
+        try {
+            built = await ensureAinbNodeDefs();
+        } catch {
+            // Reported by the builder; the shipped catalog stays in place.
+            return;
+        }
+        if (!built) {
+            return;
+        }
+        const panel = this.webviews.get(document.uri.toString());
+        if (!panel) {
+            return;
+        }
+        void panel.webview.postMessage({
+            type: 'nodeDefs',
+            nodeDefs: loadAinbNodeDefs(this.context.extensionPath),
         });
     }
 
