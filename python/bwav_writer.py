@@ -96,18 +96,17 @@ def parse_wav(wav_bytes: bytes) -> WavData:
         raise ValueError("WAV has no channels")
 
     if audio_format == 1 and bits_per_sample == 16:
-        interleaved = list(struct.unpack(f"<{len(data)//2}h", data[: len(data) // 2 * 2]))
+        interleaved = list(struct.unpack(f"<{len(data) // 2}h", data[: len(data) // 2 * 2]))
     elif audio_format == 1 and bits_per_sample == 24:
         n = len(data) // 3
         interleaved = [
-            int.from_bytes(data[i * 3 : i * 3 + 3], "little", signed=True) >> 8
-            for i in range(n)
+            int.from_bytes(data[i * 3 : i * 3 + 3], "little", signed=True) >> 8 for i in range(n)
         ]
     elif audio_format == 1 and bits_per_sample == 32:
-        raw = struct.unpack(f"<{len(data)//4}i", data[: len(data) // 4 * 4])
+        raw = struct.unpack(f"<{len(data) // 4}i", data[: len(data) // 4 * 4])
         interleaved = [s >> 16 for s in raw]
     elif audio_format == 3 and bits_per_sample == 32:
-        raw = struct.unpack(f"<{len(data)//4}f", data[: len(data) // 4 * 4])
+        raw = struct.unpack(f"<{len(data) // 4}f", data[: len(data) // 4 * 4])
         interleaved = [max(-32768, min(32767, int(round(s * 32767.0)))) for s in raw]
     else:
         raise ValueError(
@@ -202,9 +201,7 @@ def _analyze_ranges(mtx: list[list[float]], vec_idxs: list[int]) -> bool:
     return vmin / vmax < 1.0e-10
 
 
-def _bidirectional_filter(
-    mtx: list[list[float]], vec_idxs: list[int], vec: list[float]
-) -> None:
+def _bidirectional_filter(mtx: list[list[float]], vec_idxs: list[int], vec: list[float]) -> None:
     x = 0
     for i in range(1, 3):
         index = vec_idxs[i]
@@ -294,9 +291,7 @@ def _contrast_vectors(s1: list[float], s2: list[float]) -> float:
     return val1 + (2.0 * val * val2) + (2.0 * (-s2[1] * val + -s2[2]) * val3)
 
 
-def _filter_records(
-    vec_best: list[list[float]], exp: int, records: list[list[float]]
-) -> None:
+def _filter_records(vec_best: list[list[float]], exp: int, records: list[list[float]]) -> None:
     for _ in range(2):
         buffer_list = [[0.0] * 3 for _ in range(exp)]
         buffer1 = [0] * exp
@@ -407,9 +402,7 @@ def _c_div(a: int, b: int) -> int:
     return q if (a >= 0) == (b >= 0) else -q
 
 
-def _encode_frame(
-    pcm: list[int], sample_count: int, coefs: list[tuple[int, int]]
-) -> bytes:
+def _encode_frame(pcm: list[int], sample_count: int, coefs: list[tuple[int, int]]) -> bytes:
     """Encode one frame. ``pcm`` holds [hist2, hist1, s0..s13]; decoded samples
     are written back into ``pcm`` so the next frame uses decoder-accurate
     history."""
@@ -589,9 +582,7 @@ def build_bwav(
     struct.pack_into("<4sHHIHH", out, 0, _BWAV_MAGIC, 0xFEFF, 1, crc, 0, len(channels))
     for ci, (coefs, adpcm) in enumerate(encoded):
         o = 0x10 + ci * 0x4C
-        struct.pack_into(
-            "<HHIII", out, o, 1, pans[ci], sample_rate, num_samples, num_samples
-        )
+        struct.pack_into("<HHIII", out, o, 1, pans[ci], sample_rate, num_samples, num_samples)
         struct.pack_into("<16h", out, o + 0x10, *coefs)
         struct.pack_into("<IIIii", out, o + 0x30, offsets[ci], offsets[ci], 1, le, ls)
         struct.pack_into("<Hhh", out, o + 0x44, adpcm[0], 0, 0)
@@ -643,9 +634,7 @@ def make_prefetch_bwav(full_bwav: bytes) -> bytes:
     return bytes(result)
 
 
-def set_bwav_loop(
-    bwav: bytes, loop_start: int | None, loop_end: int | None
-) -> bytes:
+def set_bwav_loop(bwav: bytes, loop_start: int | None, loop_end: int | None) -> bytes:
     """Return a copy of a BWAV with its loop points patched on every channel.
 
     ``loop_start=None`` clears the loop. ``loop_end`` is clamped to the sample
@@ -699,8 +688,7 @@ def decode_audio_to_wav(payload: bytes, name_hint: str = "audio") -> bytes:
         out = Path(tmp) / "output.wav"
         inp.write_bytes(payload)
         result = subprocess.run(
-            [tool, "-y", "-i", str(inp), "-map_metadata", "-1",
-             "-c:a", "pcm_s16le", str(out)],
+            [tool, "-y", "-i", str(inp), "-map_metadata", "-1", "-c:a", "pcm_s16le", str(out)],
             capture_output=True,
         )
         if result.returncode != 0 or not out.is_file():

@@ -38,11 +38,11 @@ from asb_io import (
 from bntx_editor import BntxEditor
 from byml_editor_format import to_editor_text
 from byml_yaml_utils import format_byml_for_editor, normalize_byml_u64_literals
-from totk_compression import compress_container, decompress_container
 from msbt_editor_format import from_editor_text as msbt_from_editor_text
 from msbt_editor_format import to_editor_text as msbt_to_editor_text
 from tag_product_format import from_editor_text as tag_product_from_editor_text
 from tag_product_format import to_editor_text as tag_product_to_editor_text
+from totk_compression import compress_container, decompress_container
 from txtg_editor import TxtgEditor
 from xlink_io import (
     is_xlnk_binary,
@@ -1164,9 +1164,7 @@ def main():
                     if loop_start_arg == "none":
                         full_bwav = bwav_writer.set_bwav_loop(full_bwav, None, None)
                     elif loop_start_arg != "auto":
-                        loop_end_val = (
-                            loop_end_arg if isinstance(loop_end_arg, int) else 0x7FFFFFFF
-                        )
+                        loop_end_val = loop_end_arg if isinstance(loop_end_arg, int) else 0x7FFFFFFF
                         full_bwav = bwav_writer.set_bwav_loop(
                             full_bwav, loop_start_arg, loop_end_val
                         )
@@ -1182,9 +1180,7 @@ def main():
                     else:
                         ls = loop_start_arg
                         le = loop_end_arg if isinstance(loop_end_arg, int) else 0x7FFFFFFF
-                    full_bwav = bwav_writer.build_bwav(
-                        wav.channels, wav.sample_rate, ls, le
-                    )
+                    full_bwav = bwav_writer.build_bwav(wav.channels, wav.sample_rate, ls, le)
 
                 # Report the loop actually written to the file.
                 le_out, ls_out = _struct.unpack_from("<ii", full_bwav, 0x10 + 0x3C)
@@ -1195,9 +1191,7 @@ def main():
                 # the table may still point at a real, replaceable block).
                 num_assets = _struct.unpack_from("<I", data, 0xC)[0]
                 pairs_start = 0x10 + num_assets * 4
-                raw_bwav_off = _struct.unpack_from(
-                    "<i", data, pairs_start + entry_index * 8 + 4
-                )[0]
+                raw_bwav_off = _struct.unpack_from("<i", data, pairs_start + entry_index * 8 + 4)[0]
 
                 embedded = None
                 needs_stream_file = False
@@ -1206,9 +1200,7 @@ def main():
                     # gets the full BWAV to drop into Sound/Resource/Stream/.
                     needs_stream_file = True
                 else:
-                    was_prefetch = (
-                        _struct.unpack_from("<H", data, raw_bwav_off + 0xC)[0] != 0
-                    )
+                    was_prefetch = _struct.unpack_from("<H", data, raw_bwav_off + 0xC)[0] != 0
                     if was_prefetch:
                         blob = bwav_writer.make_prefetch_bwav(full_bwav)
                         embedded = "prefetch"

@@ -57,9 +57,7 @@ def rebuild_bars(data: bytes, replacements: dict[int, bytes]) -> bytes:
 
     for idx, blob in replacements.items():
         if idx < 0 or idx >= count:
-            raise IndexError(
-                f"Entry index {idx} out of range (BARS has {count} entries)"
-            )
+            raise IndexError(f"Entry index {idx} out of range (BARS has {count} entries)")
         if blob[:4] != _BWAV_MAGIC:
             raise ValueError(f"Replacement for entry {idx} is not a BWAV")
         orig = entries[idx][1]

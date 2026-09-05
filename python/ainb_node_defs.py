@@ -307,7 +307,6 @@ def _load_aidefn(
     structure to stand on its own.
     """
     import oead
-
     from totk_compression import decompress_container
 
     defaults: dict[str, dict] = {}
@@ -386,9 +385,7 @@ def build_ainb_node_defs(romfs_path: str, output_path: str) -> dict:
     if not defs:
         raise ValueError(f"No AINB files found under {romfs_path}")
 
-    defaults, tags = _load_aidefn(
-        romfs_root, romfs_path, category_dirs, _node_definition_glob()
-    )
+    defaults, tags = _load_aidefn(romfs_root, romfs_path, category_dirs, _node_definition_glob())
 
     definitions = []
     for name, entry in defs.items():
