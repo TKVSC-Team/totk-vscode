@@ -51,7 +51,7 @@ function isMsbtFileName(name: string): boolean {
 }
 
 function isBymlFileName(name: string): boolean {
-    return /\.(byml|bgyml)(\.zs)?$/i.test(name);
+    return /\.(byml|byaml|bgyml)(\.zs)?$/i.test(name);
 }
 
 type TemplatePromptConfig = {
@@ -69,7 +69,7 @@ function templatePromptConfigForName(name: string): TemplatePromptConfig | undef
     if (isBymlFileName(name)) {
         return {
             kindLabel: 'BYML',
-            filters: { BYML: ['byml', 'bgyml', 'zs'], All: ['*'] },
+            filters: { BYML: ['byml', 'byaml', 'bgyml', 'zs'], All: ['*'] },
         };
     }
     if (isAampExtension(name)) {
@@ -241,7 +241,7 @@ async function getUniqueTargetUri(folderUri: vscode.Uri, name: string): Promise<
 
     let base = name;
     let ext = '';
-    const compoundMatch = name.match(/^(.+?)(\.(?:pack|sarc|genvb|blarc|bfarc|bntx|byml|bgyml|msbt|txtg)(?:\.zs)?)$/i);
+    const compoundMatch = name.match(/^(.+?)(\.(?:pack|sarc|genvb|blarc|bfarc|bkres|bntx|byml|byaml|bgyml|msbt|txtg)(?:\.zs)?)$/i);
     if (compoundMatch) {
         base = compoundMatch[1]!;
         ext = compoundMatch[2]!;

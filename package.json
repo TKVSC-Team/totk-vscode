@@ -115,7 +115,8 @@
       {
         "id": "byml",
         "extensions": [
-          ".byml"
+          ".byml",
+          ".byaml"
         ],
         "aliases": [
           "BYML",
@@ -167,7 +168,9 @@
           ".genvb",
           ".genvb.zs",
           ".bfarc",
-          ".bfarc.zs"
+          ".bfarc.zs",
+          ".bkres",
+          ".bkres.zs"
         ],
         "aliases": [
           "TotK Archive"
@@ -325,7 +328,7 @@
       },
       {
         "command": "totk-editor.openPack",
-        "title": "TKVSC: Open Archive (.pack, .sarc, .genvb, .blarc, .bfarc, .bntx)",
+        "title": "TKVSC: Open Archive (.pack, .sarc, .genvb, .blarc, .bfarc, .bkres, .bntx)",
         "icon": "$(package)"
       },
       {
@@ -811,7 +814,7 @@
         },
         {
           "command": "totk-editor.explorerExport",
-          "when": "resourceExtname == .txtg || resourceExtname == .bntx || resourceExtname == .bftex || resourceExtname == .byml || resourceExtname == .bgyml || resourceExtname == .bfmdl || resourceExtname == .bfska",
+          "when": "resourceExtname == .txtg || resourceExtname == .bntx || resourceExtname == .bftex || resourceExtname == .byml || resourceExtname == .byaml || resourceExtname == .bgyml || resourceExtname == .bfmdl || resourceExtname == .bfska",
           "group": "5_export@1"
         },
         {
@@ -1105,6 +1108,8 @@
         "**.genvb.zs": "package",
         "**.bfarc": "package",
         "**.bfarc.zs": "package",
+        "**.bkres": "package",
+        "**.bkres.zs": "package",
         "**.asb": "robot",
         "**.baev": "log",
         "**.aamp": "settings",

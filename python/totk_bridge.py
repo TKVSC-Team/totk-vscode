@@ -613,7 +613,7 @@ def read_file_content(file_data: bytes, logical_path: str, sarc=None, romfs_path
         return read_rstb_content(file_data, logical_path, romfs_path)
     return (
         f"<Binary Data: {len(file_data)} bytes. "
-        "Editable types: .byml, .bgyml, .msbt, .ainb, .asb, .baev, .belnk, .bslnk, "
+        "Editable types: .byml, .byaml, .bgyml, .msbt, .ainb, .asb, .baev, .belnk, .bslnk, "
         ".rsizetable, AAMP (many extensions - see aamp-extensions.json)>"
     )
 

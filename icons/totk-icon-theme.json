@@ -52,7 +52,9 @@
     "*.genvb": "_totk_pack",
     "*.genvb.zs": "_totk_pack",
     "*.bfarc": "_totk_pack",
-    "*.bfarc.zs": "_totk_pack"
+    "*.bfarc.zs": "_totk_pack",
+    "*.bkres": "_totk_pack",
+    "*.bkres.zs": "_totk_pack"
   },
   "folderNamesExpanded": {
     "*.pack": "_totk_pack",
@@ -62,7 +64,9 @@
     "*.genvb": "_totk_pack",
     "*.genvb.zs": "_totk_pack",
     "*.bfarc": "_totk_pack",
-    "*.bfarc.zs": "_totk_pack"
+    "*.bfarc.zs": "_totk_pack",
+    "*.bkres": "_totk_pack",
+    "*.bkres.zs": "_totk_pack"
   },
   "fileExtensions": {
     "pack": "_totk_pack",
@@ -73,7 +77,10 @@
     "genvb.zs": "_totk_pack",
     "bfarc": "_totk_pack",
     "bfarc.zs": "_totk_pack",
+    "bkres": "_totk_pack",
+    "bkres.zs": "_totk_pack",
     "byml": "_totk_byml",
+    "byaml": "_totk_byml",
     "bgyml": "_totk_bgyml",
     "msbt": "_totk_msbt",
     "tkproj": "_totk_tkproj",

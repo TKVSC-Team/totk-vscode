@@ -14,12 +14,14 @@ _DEFAULT_ARCHIVE_EXTENSIONS = (
     ".genvb",
     ".blarc",
     ".bfarc",
+    ".bkres",
     ".bntx",
     ".pack.zs",
     ".sarc.zs",
     ".genvb.zs",
     ".blarc.zs",
     ".bfarc.zs",
+    ".bkres.zs",
     ".bntx.zs",
 )
 

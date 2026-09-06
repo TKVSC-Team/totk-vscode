@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getActiveGameId, getGameProfileRegistry } from './gameProfile';
 
-const DEFAULT_ARCHIVE_PATTERN = /\.(pack|sarc|genvb|blarc|bfarc|bntx)(\.zs)?$/i;
+const DEFAULT_ARCHIVE_PATTERN = /\.(pack|sarc|genvb|blarc|bfarc|bkres|bntx)(\.zs)?$/i;
 
 const TXTG_FILE_PATTERN = /\.txtg(\.zs)?$/i;
 const BNTX_PARENT_PATTERN = /\.bntx(\.zs)?[/\\]/i;

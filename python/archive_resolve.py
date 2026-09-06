@@ -1,4 +1,4 @@
-"""Resolve nested .pack / .sarc / .genvb / .blarc / .bntx paths to an open SARC and in-archive prefix."""
+"""Resolve nested .pack / .sarc / .genvb / .blarc / .bkres / .bntx paths to an open SARC and in-archive prefix."""
 
 import os
 import re
@@ -9,7 +9,7 @@ import oead
 from bntx_reader import is_bntx, list_textures, read_texture_data
 from totk_compression import compress_container, decompress_container
 
-_ARCHIVE_SEGMENT = re.compile(r"\.(pack|sarc|genvb|blarc|bfarc|bntx)(\.zs)?$", re.IGNORECASE)
+_ARCHIVE_SEGMENT = re.compile(r"\.(pack|sarc|genvb|blarc|bfarc|bkres|bntx)(\.zs)?$", re.IGNORECASE)
 _BNTX_SEGMENT = re.compile(r"\.bntx(\.zs)?$", re.IGNORECASE)
 _ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 

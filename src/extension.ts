@@ -500,7 +500,7 @@ class SarcProvider implements vscode.FileSystemProvider {
 
     private rejectArchiveMutation(operation: string): never {
         throw vscode.FileSystemError.NoPermissions(
-            `Cannot ${operation} paths inside .pack / .sarc / .genvb / .blarc / .bfarc / .bntx archives. Extract the file or use a dedicated modding tool.`,
+            `Cannot ${operation} paths inside .pack / .sarc / .genvb / .blarc / .bfarc / .bkres / .bntx archives. Extract the file or use a dedicated modding tool.`,
         );
     }
 
@@ -1885,6 +1885,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
         '.bfcsh': { 'Bfres Color Animation': ['bfcsh'], 'YAML': ['yaml'] },
         '.bftxp': { 'Bfres Texture Pattern Animation': ['bftxp'], 'YAML': ['yaml'], 'GIF': ['gif'] },
         '.byml': { 'BYML': ['byml'], 'YAML': ['yaml'] },
+        '.byaml': { 'BYML': ['byaml'], 'YAML': ['yaml'] },
         '.bgyml': { 'BYML': ['bgyml'], 'YAML': ['yaml'] },
         '.txtg': { 'TexToGo Image': ['txtg'], 'DDS': ['dds'], 'PNG': ['png'], 'JPEG': ['jpg'], 'TGA': ['tga'], 'BMP': ['bmp'] },
         '.msbt': { 'Message Text': ['msbt'], 'JSON': ['json'], 'Text': ['txt'] },
@@ -2183,7 +2184,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<TkvscA
         const fileUri = await vscode.window.showOpenDialog({
             canSelectMany: false,
             filters: {
-                'TotK Archives': ['pack', 'sarc', 'genvb', 'blarc', 'bfarc', 'bntx', 'zs'],
+                'TotK Archives': ['pack', 'sarc', 'genvb', 'blarc', 'bfarc', 'bkres', 'bntx', 'zs'],
             },
         });
 

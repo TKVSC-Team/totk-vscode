@@ -19,11 +19,13 @@
       ".genvb.zs",
       ".blarc.zs",
       ".bfarc.zs",
-      ".bntx.zs"
+      ".bntx.zs",
+      ".bkres",
+      ".bkres.zs"
     ]
   },
   "archivePatterns": [
-    "\\.(pack|sarc|genvb|blarc|bfarc|bntx)(\\.zs)?$"
+    "\\.(pack|sarc|genvb|blarc|bfarc|bkres|bntx)(\\.zs)?$"
   ],
   "msbtConfigPath": "vendor/TotK.gcf",
   "ainb": {

@@ -36,7 +36,7 @@ DEFAULT_VERSION = 1
 _HASH_SECTION = "Hash"
 _NAME_SECTION = "Name"
 
-_ARCHIVE_SEPARATORS = (".pack/", ".sarc/", ".genvb/", ".blarc/", ".bfarc/", ".bntx/")
+_ARCHIVE_SEPARATORS = (".pack/", ".sarc/", ".genvb/", ".blarc/", ".bfarc/", ".bkres/", ".bntx/")
 
 
 class RstbError(ValueError):
